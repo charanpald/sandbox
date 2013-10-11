@@ -4,18 +4,18 @@ import logging
 import os 
 import itertools
 import scipy.sparse.linalg
-import exp.util.SparseUtils as ExpSU
+import sandbox.util.SparseUtils as ExpSU
 import numpy.testing as nptst 
 from sppy import csarray 
-from exp.sandbox.RandomisedSVD import RandomisedSVD
-from exp.util.MCEvaluator import MCEvaluator
+from sandbox.misc.RandomisedSVD import RandomisedSVD
+from sandbox.util.MCEvaluator import MCEvaluator
 from apgl.util.Util import Util
 from apgl.util.Parameter import Parameter
-from exp.sandbox.recommendation.AbstractMatrixCompleter import AbstractMatrixCompleter
-from exp.util.SparseUtilsCython import SparseUtilsCython
-from exp.sandbox.SVDUpdate import SVDUpdate
-from exp.util.LinOperatorUtils import LinOperatorUtils
-from exp.util.SparseUtils import SparseUtils
+from sandbox.recommendation.AbstractMatrixCompleter import AbstractMatrixCompleter
+from sandbox.util.SparseUtilsCython import SparseUtilsCython
+from sandbox.misc.SVDUpdate import SVDUpdate
+from sandbox.util.LinOperatorUtils import LinOperatorUtils
+from sandbox.util.SparseUtils import SparseUtils
 from sppy.linalg.GeneralLinearOperator import GeneralLinearOperator
 
 def learnPredict(args): 
