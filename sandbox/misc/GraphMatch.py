@@ -7,6 +7,7 @@ import os
 import sys 
 import tempfile
 import logging 
+from os.path import expanduser
 from apgl.graph import SparseGraph, VertexList
 from apgl.util.Parameter import Parameter
 from apgl.util.Util import Util
@@ -117,13 +118,11 @@ class GraphMatch(object):
         configFile.close()
         
         fnull = open(os.devnull, 'w')
-        #This is a bit hacky 
-        try: 
-            argList = ["/home/charanpal/.local/bin/graphm", configFileName] 
-            subprocess.call(argList, stdout = fnull, stderr = fnull)    
-        except OSError: 
-            argList = ["/home/dhanjalc/.local/bin/graphm", configFileName] 
-            subprocess.call(argList, stdout = fnull, stderr = fnull)
+
+        home = expanduser("~")
+        argList = [home + "/.local/bin/graphm", configFileName] 
+        subprocess.call(argList, stdout = fnull, stderr = fnull)    
+
         fnull.close()
         
         #Next: parse input files 
