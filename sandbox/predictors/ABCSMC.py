@@ -163,6 +163,8 @@ class ABCSMC(object):
         logging.debug("Parent PID: " + str(os.getppid()) + " Child PID: " + str(os.getpid()))
         currentTheta = []
         currentWeights = numpy.zeros(self.N)
+        
+        os.system('taskset -p 0xffffffff %d' % os.getpid())
 
         for t in range(self.T):
             logging.debug("Particle number : " + str(t))
