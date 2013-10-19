@@ -44,8 +44,14 @@ def runModel(args):
             logging.debug("Accepting " + str(len(currentTheta)) + " pop. " + str(t) + " " + str(theta)  + " dist=" + str(dist))
             fileName = thetaDir + "theta_t="+str(t)+"_"+str(len(currentTheta))
             
-            distArray = numpy.array([dist])            
-            numpy.savez(fileName, theta, distArray)
+            distArray = numpy.array([dist])   
+
+            try:
+               with open(fileName, "w") as fileObj:
+                   numpy.savez(fileObj, theta, distArray)
+            except IOError:
+               logging.debug("File IOError (probably a collision) occured with " + fileName)           
+            
             currentTheta.append(theta)
             
             return 1, 1
