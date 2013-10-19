@@ -43,7 +43,7 @@ def runModel(args):
         
         if dist <= epsilon and len(currentTheta) < N:    
             logging.debug("Accepting " + str(len(currentTheta)) + " pop. " + str(t) + " " + str(theta)  + " dist=" + str(dist))
-            fileName = thetaDir + "theta_t="+str(t)+"_"+str(len(currentTheta))
+            fileName = thetaDir + "theta_t="+str(t)+"_"+str(len(currentTheta) + ".npz")
             
             distArray = numpy.array([dist])   
 
