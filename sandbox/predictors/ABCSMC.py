@@ -43,7 +43,7 @@ def runModel(args):
         
         if dist <= epsilon and len(currentTheta) < N:    
             logging.debug("Accepting " + str(len(currentTheta)) + " pop. " + str(t) + " " + str(theta)  + " dist=" + str(dist))
-            fileName = thetaDir + "theta_t="+str(t)+"_"+str(len(currentTheta) + ".npz")
+            fileName = thetaDir + "theta_t="+str(t)+"_"+str(len(currentTheta)) + ".npz" 
             
             distArray = numpy.array([dist])   
 
@@ -138,8 +138,8 @@ class ABCSMC(object):
                     paramList.append((tempTheta.copy(), self.createModel, t, self.epsilonArray[t], self.N, self.thetaDir))
 
             pool = multiprocessing.Pool(processes=self.numProcesses)               
-            #resultsIterator = pool.map(runModel, paramList)     
-            resultsIterator = map(runModel, paramList)     
+            resultsIterator = pool.map(runModel, paramList)     
+            #resultsIterator = map(runModel, paramList)     
 
             for result in resultsIterator: 
                 self.numRuns[t] += result[0]
