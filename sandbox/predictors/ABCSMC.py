@@ -138,8 +138,8 @@ class ABCSMC(object):
                     paramList.append((tempTheta.copy(), self.createModel, t, self.epsilonArray[t], self.N, self.thetaDir))
 
             pool = multiprocessing.Pool(processes=self.numProcesses)               
-            resultsIterator = pool.map(runModel, paramList)     
-            #resultsIterator = map(runModel, paramList)     
+            #resultsIterator = pool.map(runModel, paramList)     
+            resultsIterator = map(runModel, paramList)     
 
             for result in resultsIterator: 
                 self.numRuns[t] += result[0]
