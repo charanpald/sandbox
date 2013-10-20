@@ -21,9 +21,13 @@ def loadThetaArray(N, thetaDir, t):
         fileName = thetaDir + "theta_t="+str(t)+"_"+str(i)+".npz"
         if os.path.exists(fileName): 
             logging.debug("Loading theta from " + fileName)
-            data = numpy.load(fileName)
-            currentThetas.append(data["arr_0"])
-            dists.append(data["arr_1"])
+            
+            try: 
+                data = numpy.load(fileName)
+                currentThetas.append(data["arr_0"])
+                dists.append(data["arr_1"])
+            except IOError as e: 
+                logging.debug("Error whilst loading: " + str(e))
             
     return numpy.array(currentThetas), numpy.array(dists)
 
