@@ -162,7 +162,7 @@ class ABCSMC(object):
             
         logging.debug("Num accepts: " + str(self.numAccepts))
         logging.debug("Num runs: " + str(self.numRuns))
-        logging.debug("Acceptance rate: " + str(self.numAccepts/(self.numRuns + self.numRuns==0)))
+        logging.debug("Acceptance rate: " + str(self.numAccepts/(self.numRuns + numpy.array(self.numRuns==0, numpy.int))))
               
         return currentTheta
 
