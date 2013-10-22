@@ -22,7 +22,7 @@ def loadThetaArray(N, thetaDir, t):
     for i in range(N): 
         fileName = thetaDir + "theta_t="+str(t)+"_"+str(i)+".npz"
         if os.path.exists(fileName): 
-            logging.debug("Loading theta from " + fileName)
+            #logging.debug("Loading theta from " + fileName)
             
             try: 
                 data = numpy.load(fileName)
