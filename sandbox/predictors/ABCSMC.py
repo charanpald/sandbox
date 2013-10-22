@@ -30,8 +30,8 @@ def loadThetaArray(N, thetaDir, t):
                 dists.append(data["arr_1"])
             except IOError as e: 
                 logging.debug("Error whilst loading: " + str(e))
-            except zipfile.BadZipFile: 
-                logging.warn("BadZipFile error whilst loading " + fileName)
+            except zipfile.BadZipfile: 
+                logging.warn("BadZipfile error whilst loading " + fileName)
                 badFileDir = thetaDir + "debug/"
                 if not os.path.exists(badFileDir): 
                     os.mkdir(badFileDir)
@@ -39,7 +39,6 @@ def loadThetaArray(N, thetaDir, t):
                 logging.warn("Moved " + fileName + " to " + badFileDir)
             except:
                 logging.error("Unexpected error whilst loading " + fileName)
-                print("Unexpected error whilst loading " + fileName)
                 raise
             
     return numpy.array(currentThetas), numpy.array(dists)
