@@ -35,7 +35,7 @@ def loadThetaArray(N, thetaDir, t):
                 badFileDir = thetaDir + "debug/"
                 if not os.path.exists(badFileDir): 
                     os.mkdir(badFileDir)
-                shutil.copy(fileName, badFileDir + fileName)
+                shutil.copy(fileName, badFileDir)
                 os.remove(fileName)
                 logging.warn("Moved " + fileName + " to " + badFileDir)
             except:
