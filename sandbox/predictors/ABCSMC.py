@@ -35,7 +35,7 @@ def loadThetaArray(N, thetaDir, t):
                 badFileDir = thetaDir + "debug/"
                 if not os.path.exists(badFileDir): 
                     os.mkdir(badFileDir)
-                shutil.move(fileName, badFileDir)
+                shutil.rename(fileName, badFileDir)
                 logging.warn("Moved " + fileName + " to " + badFileDir)
             except:
                 logging.error("Unexpected error whilst loading " + fileName)
