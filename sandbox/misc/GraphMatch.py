@@ -35,6 +35,8 @@ class GraphMatch(object):
         self.gamma = 0.0
         #Same as dummy_nodes_fill 
         self.rho = 0.5 
+        self.init = "rand"
+        self.lambdaM = 50
         
     def match(self, graph1, graph2): 
         """
@@ -95,7 +97,7 @@ class GraphMatch(object):
         configStr +="graph_2=" + graph2FileName + " s\n"
         configStr +="C_matrix=" + similaritiesFileName + " s\n"
         configStr +="algo=" + self.algorithm + " s\n"
-        configStr +="algo_init_sol=unif s\n"
+        configStr +="algo_init_sol=" + self.init + " s\n"
         configStr +="alpha_ldh=" + str(self.alpha) + " d\n"
         configStr +="cdesc_matrix=A c\n"
         configStr +="cscore_matrix=A c\n"
@@ -105,8 +107,8 @@ class GraphMatch(object):
         configStr +="dummy_nodes=0 i\n"
         configStr +="dummy_nodes_fill=" + str(self.rho) + " d\n"
         configStr +="dummy_nodes_c_coef=" + str(self.gamma) + " d\n"
-        configStr +="qcvqcc_lambda_M=10 d\n"
-        configStr +="qcvqcc_lambda_min=1e-5 d\n"
+        configStr +="qcvqcc_lambda_M="+ str(self.lambdaM) + " d\n"
+        configStr +="qcvqcc_lambda_min=1e-3 d\n"
         configStr +="blast_match=0 i\n"
         configStr +="blast_match_proj=0 i\n"
         configStr +="exp_out_file=" + outputFileName + " s\n"
