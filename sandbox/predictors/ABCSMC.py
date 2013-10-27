@@ -214,8 +214,9 @@ class ABCSMC(object):
                     normalisation = 0
                     for j in range(self.N):
                         normalisation += lastWeights[j]*self.abcParams.perturbationKernelDensity(lastTheta[j], theta)
-                        
-                    currentWeights[i] = self.abcParams.priorDensity(theta)/normalisation
+                    
+                    if abs(normalisation) >= 10**-9:     
+                        currentWeights[i] = self.abcParams.priorDensity(theta)/normalisation
             
             currentWeights = currentWeights/numpy.sum(currentWeights)
         
