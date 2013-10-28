@@ -294,7 +294,7 @@ class GraphMatch(object):
             if normC != 0: 
                 dist = dist + self.alpha*n/normC 
         else: 
-            logging.debug("Graph distance: " + str(dist1) + " label distance: " + str(dist2) + " weighted distance: " + str(dist) + " graph sizes: " + str((graph1.size, graph2.size)))   
+            logging.debug("Graph objective: " + str(dist1) + " label objective: " + str(dist2) + " weighted objective: " + str(dist) + " graph sizes: " + str((graph1.size, graph2.size)))   
         
         if verbose: 
             return dist, dist1, dist2
