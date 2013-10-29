@@ -219,6 +219,7 @@ class ABCSMC(object):
                         currentWeights[i] = self.abcParams.priorDensity(theta)/normalisation
             
             currentWeights = currentWeights/numpy.sum(currentWeights)
+            logging.debug("ABC weights are " + str(currentWeights))
         
         logging.debug("Finished ABC procedure") 
         
