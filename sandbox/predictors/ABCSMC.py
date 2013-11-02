@@ -78,7 +78,7 @@ def runModel(args):
     return 0, 0 
             
 class ABCSMC(object):
-    def __init__(self, epsilonArray, createModel, paramsObj, thetaDir, autoEpsilon=False, eps=0.02):
+    def __init__(self, epsilonArray, createModel, paramsObj, thetaDir, autoEpsilon=False, minEpsilon=0.1):
         """
         Create a multiprocessing SMCABC object with the given arguments. The aim
         is to estimate a posterior pi(theta| x) propto f(x|theta) pi(theta) without
@@ -95,7 +95,9 @@ class ABCSMC(object):
         
         :param thetaDir: The directory to store theta values 
         
-        :param autoEpsilon: If autoEpsilon is true then the first value in epsilonArray is used as epsilon, and epsilonArray[t+1] is computed as the min dist for particles at t   
+        :param autoEpsilon: If autoEpsilon is true then the first value in epsilonArray is used as epsilon, and epsilonArray[t+1] is computed as the min dist for particles at t
+        
+        :param minEpsilon: This is the minumum value of epsilon allowed, and we stop if it goes beyond this number 
         """
         dt = datetime.now()
         numpy.random.seed(dt.microsecond)
@@ -104,6 +106,7 @@ class ABCSMC(object):
         self.abcParams = paramsObj 
         self.thetaDir = thetaDir 
         self.autoEpsilon = autoEpsilon
+        self.minEpsilon = minEpsilon
 
         #Number of particles
         self.T = epsilonArray.shape[0]
@@ -114,7 +117,6 @@ class ABCSMC(object):
         self.numRuns = numpy.zeros(self.T) 
         self.numAccepts = numpy.zeros(self.T)
         self.maxRuns = 1000
-        self.epsThreshold = eps 
 
     def setPosteriorSampleSize(self, posteriorSampleSize):
         """
@@ -201,7 +203,7 @@ class ABCSMC(object):
             if len(currentTheta) != self.N: 
                 break 
             
-            if self.autoEpsilon and t!=self.T-1 and self.epsilonArray[t]-self.epsilonArray[t+1] <= self.epsThreshold:
+            if self.autoEpsilon and t!=self.T-1 and self.epsilonArray[t] < self.minEpsilon:
                 logging.debug("Epsilon threshold became too small")
                 break 
                    
