@@ -173,7 +173,7 @@ class ABCSMC(object):
             
         if self.autoEpsilon and t!=self.T-1:
             self.epsilonArray[t+1] = numpy.mean(dists)
-            logging.debug("Found new epsilon: " + str(self.epsilonArray))
+            logging.debug("Found new epsilon: " + str(self.epsilonArray[0:t+1]))
             
         logging.debug("Num accepts: " + str(self.numAccepts))
         logging.debug("Num runs: " + str(self.numRuns))
