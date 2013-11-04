@@ -195,11 +195,13 @@ class ABCSMC(object):
 
         for t in range(self.T):
             logging.debug("Particle number : " + str(t))
+            
             lastTheta = currentTheta
             lastWeights = currentWeights
             currentWeights = numpy.zeros(self.N)
 
             currentTheta = self.findThetas(lastTheta, lastWeights, t)
+            logging.debug("Perturbation sigma for t = " + str(t) +  " : " + str(numpy.std(lastTheta, 0)/self.pertScale))
             
             if len(currentTheta) != self.N: 
                 break 
