@@ -117,6 +117,7 @@ class ABCSMC(object):
         self.numRuns = numpy.zeros(self.T) 
         self.numAccepts = numpy.zeros(self.T)
         self.maxRuns = 1000
+        self.pertScale = 2.0
 
     def setPosteriorSampleSize(self, posteriorSampleSize):
         """
@@ -151,7 +152,7 @@ class ABCSMC(object):
                 else:  
                     while True: 
                         tempTheta = lastTheta[Util.randomChoice(lastWeights)[0], :]
-                        tempTheta = self.abcParams.perturbationKernel(tempTheta)
+                        tempTheta = self.abcParams.perturbationKernel(tempTheta, numpy.std(lastTheta, 0)/self.pertScale)
                         if self.abcParams.priorDensity(tempTheta) != 0: 
                             break 
                     paramList.append((tempTheta.copy(), self.createModel, t, self.epsilonArray[t], self.N, self.thetaDir))
@@ -215,7 +216,7 @@ class ABCSMC(object):
                 else:
                     normalisation = 0
                     for j in range(self.N):
-                        normalisation += lastWeights[j]*self.abcParams.perturbationKernelDensity(lastTheta[j], theta)
+                        normalisation += lastWeights[j]*self.abcParams.perturbationKernelDensity(lastTheta[j], theta, numpy.std(lastTheta, 0)/self.pertScale)
                     
                     if abs(normalisation) >= 10**-9:     
                         currentWeights[i] = self.abcParams.priorDensity(theta)/normalisation
