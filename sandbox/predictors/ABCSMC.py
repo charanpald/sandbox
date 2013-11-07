@@ -21,9 +21,7 @@ def loadThetaArray(N, thetaDir, t):
         
     for i in range(N): 
         fileName = thetaDir + "theta_t="+str(t)+"_"+str(i)+".npz"
-        if os.path.exists(fileName): 
-            #logging.debug("Loading theta from " + fileName)
-            
+        if os.path.exists(fileName):   
             try: 
                 data = numpy.load(fileName)
                 currentThetas.append(data["arr_0"])
@@ -53,7 +51,7 @@ def runModel(args):
         model = createModel(t)
         model.setParams(theta)
         model.simulate()
-        dist = model.distance() 
+        dist = model.objective() 
         del model 
         
         currentTheta = loadThetaArray(N, thetaDir, t)[0].tolist()                
