@@ -5,7 +5,7 @@ import orngTree
 import orngEnsemble
 import numpy
 from apgl.util.Parameter import Parameter
-from apgl.metabolomics.leafrank.AbstractOrangePredictor import AbstractOrangePredictor
+from sandbox.predictors.leafrank.AbstractOrangePredictor import AbstractOrangePredictor
 
 class RandomForest(AbstractOrangePredictor):
     def __init__(self):

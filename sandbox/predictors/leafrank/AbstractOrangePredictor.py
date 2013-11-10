@@ -1,5 +1,5 @@
 import numpy 
-from apgl.predictors.AbstractWeightedPredictor import AbstractWeightedPredictor
+from sandbox.predictors.AbstractWeightedPredictor import AbstractWeightedPredictor
 
 class AbstractOrangePredictor(AbstractWeightedPredictor):
     def labelsToInds(self, y):

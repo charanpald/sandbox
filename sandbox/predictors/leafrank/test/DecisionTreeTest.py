@@ -2,7 +2,7 @@
 import unittest
 import numpy
 import logging
-from apgl.metabolomics.leafrank.DecisionTree import DecisionTree
+from sandbox.predictors.leafrank.DecisionTree import DecisionTree
 import orngTree
 from apgl.util.PathDefaults import PathDefaults
 from apgl.util.Evaluator import Evaluator

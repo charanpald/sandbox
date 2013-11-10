@@ -4,8 +4,8 @@ A Python implementation of ranking forests using TreeRank.
 """
 import numpy
 import logging
-from exp.sandbox.predictors.AbstractTreeRank import AbstractTreeRank
-from exp.sandbox.predictors.TreeRank import TreeRank
+from sandbox.predictors.AbstractTreeRank import AbstractTreeRank
+from sandbox.predictors.TreeRank import TreeRank
 from apgl.util.Parameter import Parameter
 from apgl.util.Util import Util
 from apgl.util.Evaluator import Evaluator

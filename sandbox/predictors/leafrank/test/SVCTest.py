@@ -2,7 +2,7 @@ import unittest
 import numpy
 import logging
 import sys
-from apgl.metabolomics.leafrank.SVC import SVC, SvcGS
+from sandbox.predictors.leafrank.SVC import SVC, SvcGS
 
 class SvcTest(unittest.TestCase):
     def setUp(self):

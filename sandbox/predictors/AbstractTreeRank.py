@@ -4,7 +4,7 @@ import sklearn.cross_validation as cross_val
 from apgl.util.Parameter import Parameter
 from apgl.util.Util import Util
 from apgl.util.Evaluator import Evaluator
-from apgl.predictors.AbstractPredictor import AbstractPredictor
+from sandbox.predictors.AbstractPredictor import AbstractPredictor
 
 class AbstractTreeRank(AbstractPredictor):
     """
