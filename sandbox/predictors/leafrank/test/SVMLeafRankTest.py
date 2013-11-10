@@ -2,7 +2,7 @@ import unittest
 import numpy
 import sys
 import logging
-from exp.sandbox.predictors.leafrank.SVMLeafRank import SVMLeafRank
+from sandbox.predictors.leafrank.SVMLeafRank import SVMLeafRank
 from apgl.util.Evaluator import Evaluator 
 
 class SVMLeafRankTest(unittest.TestCase):
@@ -13,7 +13,7 @@ class SVMLeafRankTest(unittest.TestCase):
 
         self.X = numpy.random.rand(numExamples, numFeatures)
         c = numpy.random.rand(numFeatures)
-        self.y = numpy.sign(self.X.dot(c) < numpy.mean(self.X.dot(c)))*2-1
+        self.y = numpy.sign(self.X.dot(c) - numpy.mean(self.X.dot(c)))*2-1
 
         self.folds = 5 
         self.paramDict = {} 

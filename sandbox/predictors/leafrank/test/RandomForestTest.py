@@ -1,8 +1,8 @@
 
 import unittest
 import numpy
-from apgl.metabolomics.leafrank.RandomForest import RandomForest
-from apgl.metabolomics.leafrank.DecisionTree import DecisionTree
+from sandbox.predictors.leafrank.RandomForest import RandomForest
+from sandbox.predictors.leafrank.DecisionTree import DecisionTree
 import orngTree
 import orange
 import orngEnsemble
@@ -16,7 +16,7 @@ class  RandomForestTestCase(unittest.TestCase):
 
         self.X = numpy.random.rand(numExamples, numFeatures)
         c = numpy.random.rand(numFeatures)
-        self.y = numpy.sign(self.X.dot(c) < numpy.mean(self.X.dot(c)))
+        self.y = numpy.sign(self.X.dot(c) - numpy.mean(self.X.dot(c)))
 
     def testLearnModel(self):
         randomForest = RandomForest()
@@ -41,19 +41,6 @@ class  RandomForestTestCase(unittest.TestCase):
 
         self.assertTrue((predY2 == predY*2-1).all())
 
-    def testSetWeight(self):
-        randomForest = RandomForest()
-        randomForest.setWeight(1.0)
-        randomForest.learnModel(self.X, self.y)
-
-        predY = randomForest.predict(self.X)
-        self.assertTrue((predY == numpy.ones(self.y.shape[0])).all())
-
-        randomForest.setWeight(0.0)
-        randomForest.learnModel(self.X, self.y)
-
-        predY = randomForest.predict(self.X)
-        self.assertTrue((predY == numpy.zeros(self.y.shape[0])).all())
 
     def testMinSplit(self):
         randomForest = RandomForest()
@@ -96,7 +83,8 @@ class  RandomForestTestCase(unittest.TestCase):
         randomForest.learnModel(self.X, self.y)
 
         predY = randomForest.predict(self.X)
-        self.assertTrue((predY == numpy.zeros(predY.shape[0])).all())
+        print(predY)
+        self.assertTrue((predY == numpy.ones(predY.shape[0])*-1).all())
 
         randomForest.setWeight(1.0)
         randomForest.learnModel(self.X, self.y)
