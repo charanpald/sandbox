@@ -197,11 +197,12 @@ class ABCSMC(object):
             lastTheta = currentTheta
             lastWeights = currentWeights
             currentWeights = numpy.zeros(self.N)
+            
+            if t != 0: 
+                logging.debug("Perturbation sigma for t = " + str(t) +  " : " + str(numpy.std(lastTheta, 0)/self.pertScale))            
 
             currentTheta = self.findThetas(lastTheta, lastWeights, t)
-            if t != 0: 
-                logging.debug("Perturbation sigma for t = " + str(t) +  " : " + str(numpy.std(lastTheta, 0)/self.pertScale))
-            
+
             if len(currentTheta) != self.N: 
                 break 
             
