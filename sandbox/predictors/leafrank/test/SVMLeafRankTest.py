@@ -13,7 +13,7 @@ class SVMLeafRankTest(unittest.TestCase):
 
         self.X = numpy.random.rand(numExamples, numFeatures)
         c = numpy.random.rand(numFeatures)
-        self.y = numpy.sign(self.X.dot(c) - numpy.mean(self.X.dot(c)))*2-1
+        self.y = numpy.sign(self.X.dot(c) - numpy.mean(self.X.dot(c)))
 
         self.folds = 5 
         self.paramDict = {} 
