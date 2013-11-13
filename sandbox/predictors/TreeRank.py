@@ -76,7 +76,7 @@ class TreeRank(AbstractTreeRank):
         
         if numpy.unique(predY).shape[0] == 2 and inds.shape[0] >= self.minSplit:
             leftInds = inds[predY == self.bestResponse]
-            featureInds = numpy.sort(numpy.random.permutation(X.shape[1])[0:numpy.round(X.shape[1]*self.featureSize)])
+            featureInds = numpy.sort(numpy.random.permutation(X.shape[1])[0:int(numpy.round(X.shape[1]*self.featureSize))])
             leftNode = RankNode(leftInds, featureInds)
             leftNode.setPure(numpy.unique(Y[leftInds]).shape[0] <= 1)
             leftNode.setIsLeafNode(d==self.maxDepth-1 or leftNode.isPure())
@@ -85,7 +85,7 @@ class TreeRank(AbstractTreeRank):
             tree.setVertex((d+1, 2*k), leftNode)
 
             rightInds = inds[predY != self.bestResponse]
-            featureInds = numpy.sort(numpy.random.permutation(X.shape[1])[0:numpy.round(X.shape[1]*self.featureSize)])
+            featureInds = numpy.sort(numpy.random.permutation(X.shape[1])[0:int(numpy.round(X.shape[1]*self.featureSize))])
             rightNode = RankNode(rightInds, featureInds)
             rightNode.setPure(numpy.unique(Y[rightInds]).shape[0] <= 1)
             rightNode.setIsLeafNode(d==self.maxDepth-1 or rightNode.isPure())
@@ -121,7 +121,7 @@ class TreeRank(AbstractTreeRank):
 
         tree = DictTree()
         trainInds = numpy.arange(Y.shape[0])
-        featureInds = numpy.sort(numpy.random.permutation(X.shape[1])[0:numpy.round(X.shape[1]*self.featureSize)]) 
+        featureInds = numpy.sort(numpy.random.permutation(X.shape[1])[0:int(numpy.round(X.shape[1]*self.featureSize))]) 
 
         #Seed the tree
         node = RankNode(trainInds, featureInds)

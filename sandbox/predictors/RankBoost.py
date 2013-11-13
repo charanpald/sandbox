@@ -3,10 +3,10 @@ import subprocess
 import tempfile
 import numpy
 import logging 
-from apgl.predictors.AbstractPredictor import AbstractPredictor
+from sandbox.predictors.AbstractPredictor import AbstractPredictor
 from apgl.util.Parameter import Parameter
 from apgl.util.Evaluator import Evaluator
-import scikits.learn.cross_val as cross_val
+from sklearn.cross_validation import StratifiedKFold
 """
 A wrapper for the RankBoost code written in RankLib. Note that RankLib must
 be on the current path.
@@ -121,7 +121,7 @@ class RankBoost(AbstractPredictor):
         Computer the average AUC using k-fold cross validation and the linear kernel.
         """
         Parameter.checkInt(folds, 2, float('inf'))
-        idx = cross_val.StratifiedKFold(y, folds)
+        idx = StratifiedKFold(y, folds)
         metricMethods = [Evaluator.auc2, Evaluator.roc]
         trainMetrics, testMetrics = AbstractPredictor.evaluateLearn2(X, y, idx, self.modelSelect, self.predict, metricMethods)
 
