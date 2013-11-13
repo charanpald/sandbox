@@ -16,7 +16,7 @@ class  DecisionTreeTestCase(unittest.TestCase):
 
         self.X = numpy.random.rand(numExamples, numFeatures)
         c = numpy.random.rand(numFeatures)
-        self.y = numpy.sign(self.X.dot(c) < numpy.mean(self.X.dot(c)))
+        self.y = numpy.sign(self.X.dot(c) - numpy.mean(self.X.dot(c)))
 
     def testLearnModel(self):
         decisionTree = DecisionTree()

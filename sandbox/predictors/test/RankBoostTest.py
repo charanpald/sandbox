@@ -2,11 +2,9 @@ import numpy
 import unittest
 import logging
 import sys 
-from exp.metabolomics.TreeRank import TreeRank
-from exp.metabolomics.leafrank.LinearSVM import LinearSVM
-from exp.metabolomics.RankBoost import RankBoost
+from sandbox.predictors.RankBoost import RankBoost
 from apgl.util.Evaluator import Evaluator
-from apgl.data.Standardiser import Standardiser
+from sandbox.data.Standardiser import Standardiser
 
 class RankBoostTest(unittest.TestCase):
     def setUp(self):
@@ -66,3 +64,6 @@ class RankBoostTest(unittest.TestCase):
 
     def testStr(self):
         rankBoost = RankBoost()
+
+if __name__ == '__main__':
+    unittest.main()

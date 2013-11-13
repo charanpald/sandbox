@@ -75,7 +75,7 @@ class TreeRankForest(AbstractTreeRank):
             raise ValueError("Labels must be -1/+1: " + str(labels))
 
         forestList = []
-        numSampledExamples = numpy.round(self.sampleSize*X.shape[0])
+        numSampledExamples = int(numpy.round(self.sampleSize*X.shape[0]))
 
         for i in range(self.numTrees):
             Util.printIteration(i, 1, self.numTrees, "Tree: ")
