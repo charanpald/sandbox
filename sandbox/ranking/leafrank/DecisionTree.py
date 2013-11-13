@@ -3,7 +3,7 @@ import orange
 import orngTree
 import numpy
 from apgl.util.Parameter import Parameter
-from sandbox.predictors.leafrank.AbstractOrangePredictor import AbstractOrangePredictor
+from sandbox.ranking.leafrank.AbstractOrangePredictor import AbstractOrangePredictor
 
 class DecisionTree(AbstractOrangePredictor):
     def __init__(self):

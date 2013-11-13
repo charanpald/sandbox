@@ -3,10 +3,10 @@ import numpy
 import unittest
 import logging 
 import sys 
-from sandbox.predictors.TreeRankForest import TreeRankForest
-from sandbox.predictors.RankNode import RankNode
-from sandbox.predictors.leafrank.SVMLeafRank import SVMLeafRank
-from sandbox.predictors.leafrank.DecisionTree import DecisionTree
+from sandbox.ranking.TreeRankForest import TreeRankForest
+from sandbox.ranking.RankNode import RankNode
+from sandbox.ranking.leafrank.SVMLeafRank import SVMLeafRank
+from sandbox.ranking.leafrank.DecisionTree import DecisionTree
 from apgl.util.PathDefaults import PathDefaults
 from apgl.util.Evaluator import Evaluator
 from sandbox.data.Standardiser import Standardiser

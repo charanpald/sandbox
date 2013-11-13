@@ -6,9 +6,9 @@ import sklearn.cross_validation as cross_val
 from apgl.graph.DictTree import DictTree
 from apgl.util.Parameter import Parameter
 from apgl.util.Util import Util
-from sandbox.predictors.RankNode import RankNode
-from sandbox.predictors.AbstractTreeRank import AbstractTreeRank
-from sandbox.predictors.leafrank.MajorityPredictor import MajorityPredictor
+from sandbox.ranking.RankNode import RankNode
+from sandbox.ranking.AbstractTreeRank import AbstractTreeRank
+from sandbox.ranking.leafrank.MajorityPredictor import MajorityPredictor
 from apgl.util.Evaluator import Evaluator 
 
 class TreeRank(AbstractTreeRank):

@@ -2,7 +2,7 @@ import numpy
 import unittest
 import logging
 import sys 
-from sandbox.predictors.RankBoost import RankBoost
+from sandbox.ranking.RankBoost import RankBoost
 from apgl.util.Evaluator import Evaluator
 from sandbox.data.Standardiser import Standardiser
 

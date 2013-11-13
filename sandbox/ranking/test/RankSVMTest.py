@@ -2,7 +2,7 @@ import numpy
 import sys
 import logging
 import unittest
-from sandbox.predictors.RankSVM import RankSVM
+from sandbox.ranking.RankSVM import RankSVM
 from apgl.util.Evaluator import Evaluator
 
 class  RankSVMTest(unittest.TestCase):
