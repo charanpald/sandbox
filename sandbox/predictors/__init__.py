@@ -5,6 +5,5 @@ try:
 except ImportError:
     pass 
 from sandbox.predictors.KernelRidgeRegression import KernelRidgeRegression
-from sandbox.predictors.PrimalRidgeRegression import PrimalRidgeRegression
 
 
