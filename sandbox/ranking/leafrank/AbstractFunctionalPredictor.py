@@ -1,5 +1,5 @@
 import numpy 
-from apgl.metabolomics.leafrank.AbstractWeightedPredictor import AbstractWeightedPredictor
+from sandbox.predictors.AbstractWeightedPredictor import AbstractWeightedPredictor
 
 class AbstractFunctionalPredictor(AbstractWeightedPredictor):
     def __init__(self):

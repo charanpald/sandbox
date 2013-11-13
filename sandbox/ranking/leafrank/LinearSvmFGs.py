@@ -8,8 +8,8 @@ import logging
 import sklearn.svm as svm
 from apgl.util.Parameter import Parameter
 from apgl.util.Evaluator import Evaluator
-from apgl.metabolomics.leafrank.AbstractFunctionalPredictor import AbstractFunctionalPredictor
-from apgl.metabolomics.leafrank.LinearSVM import LinearSVM
+from sandbox.ranking.leafrank.AbstractFunctionalPredictor import AbstractFunctionalPredictor
+from sandbox.ranking.leafrank.LinearSVM import LinearSVM
 from apgl.data.Standardiser import Standardiser
 
 class LinearSvmFGs(AbstractFunctionalPredictor):
