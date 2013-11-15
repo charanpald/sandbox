@@ -75,7 +75,6 @@ class Standardiser(AbstractPreprocessor):
         X = self.centreArray(X)
         X = self.normaliseArray(X)
 
-        logging.debug("Standardised array of shape " + str(X.shape))
         return X
 
     def unstandardiseArray(self, X):
