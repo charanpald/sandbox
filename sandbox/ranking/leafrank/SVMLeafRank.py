@@ -16,7 +16,7 @@ class SVMLeafRank(LibSVM):
         self.paramDict = paramDict
         self.folds = folds 
         self.chunkSize = 2
-        self.setMetricMethod("auc")  
+        self.setMetricMethod("auc2")  
         self.sampleSize = sampleSize        
             
     def generateLearner(self, X, y):
@@ -45,3 +45,21 @@ class SVMLeafRank(LibSVM):
         As we are using AUC we will look for the max value. 
         """
         return super(SVMLeafRank, self).getBestLearner(meanErrors, paramDict, X, y, idx, best="max")
+        
+    def copy(self): 
+        """
+        Return a new copied version of this object. 
+        """
+        svm = SVMLeafRank(self.paramDict, self.folds, self.sampleSize)
+        svm.setKernel(self.kernel,self.kernelParam)
+        svm.setC(self.C)
+        svm.setErrorCost(self.errorCost)
+        svm.setSvmType(self.type) 
+        svm.processes=self.processes
+        svm.epsilon=self.epsilon
+        svm.metricMethod = self.metricMethod
+        svm.chunkSize = self.chunkSize
+        svm.timeout = self.timeout
+        svm.normModelSelect = svm.normModelSelect 
+        
+        return svm 

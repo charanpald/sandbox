@@ -14,6 +14,7 @@ class AbstractTreeRank(AbstractPredictor):
         """
         Create the AbstractTreeRank with the given leaf rank generator. 
         """
+        super(AbstractTreeRank, self).__init__()
         self.maxDepth = 2
         self.minSplit = 50
         self.bestResponse = 1
@@ -58,7 +59,7 @@ class AbstractTreeRank(AbstractPredictor):
         :type maxDepth: :class:`int`
         """
         Parameter.checkInt(maxDepth, 1, float("inf"))
-        self.maxDepth = maxDepth
+        self.maxDepth = int(maxDepth)
 
     def getMaxDepth(self):
         """
@@ -138,3 +139,9 @@ class AbstractTreeRank(AbstractPredictor):
         allMetrics = [bestTrainAUCs, bestTrainROCs, bestTestAUCs, bestTestROCs]
 
         return (bestParams, allMetrics, bestMetaDicts)
+
+    def getMetricMethod(self):
+        return Evaluator.auc2      
+
+        
+        

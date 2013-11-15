@@ -229,3 +229,19 @@ class TreeRank(AbstractTreeRank):
         bestDepth = depths[numpy.argmax(meanAUCs)]
         self.learnModel(X, Y)
         self.tree = TreeRank.cut(self.tree, bestDepth)
+        
+    def copy(self): 
+        learner = TreeRank(self.leafRanklearner.copy())
+        learner.maxDepth = self.maxDepth
+        learner.minSplit = self.minSplit
+        learner.bestResponse = self.bestResponse
+        learner.featureSize = self.featureSize
+        learner.minLabelCount = self.minLabelCount
+        
+        return learner 
+        
+    def __str__(self): 
+        outputStr = "TreeRank: maxDepth=" + str(self.maxDepth) + " minSplit=" + str(self.minSplit)
+        outputStr += " bestResponse=" + str(self.bestResponse) + " featureSize=" + str(self.featureSize)
+        outputStr += " minLabelCount=" + str(self.minLabelCount) + "\nleafRank=" + str(self.leafRanklearner)
+        return outputStr 
