@@ -14,6 +14,7 @@ be on the current path.
 
 class RankBoost(AbstractPredictor):
     def __init__(self):
+        super(RankBoost, self).__init__()
         self.iterations = 100
         self.learners = 20
         self.bestResponse = 1
@@ -57,41 +58,57 @@ class RankBoost(AbstractPredictor):
         #Must make sure examples are +1/-1
         newY = numpy.array(y==self.bestResponse, numpy.int)*2 - 1
 
-        trainFileName = tempfile.gettempdir() + "/trainData" + str(numpy.random.randint(numpy.iinfo(numpy.int).max))
-        self.modelFileName = tempfile.gettempdir() + "/model" + str(numpy.random.randint(numpy.iinfo(numpy.int).max))
+        numTempFiles = 2
+        tempFileNameList = []         
+        
+        for i in range(numTempFiles): 
+            fileObj = tempfile.NamedTemporaryFile(delete=False)
+            tempFileNameList.append(fileObj.name) 
+            fileObj.close() 
+
+        trainFileName = tempFileNameList[0]
+        modelFileName = tempFileNameList[1]
         self.saveExamples(X, newY, trainFileName)
         
         callList = [self.libPath + "ssrankboost-learn", "-t", str(self.iterations), "-n", str(self.learners)]
-        callList.extend([trainFileName, self.modelFileName])
+        callList.extend([trainFileName, modelFileName])
 
         try:
             self.outputStr =  subprocess.check_output(callList)
         except AttributeError:
             subprocess.call(callList)
 
-        modelFile = open(self.modelFileName, "r")
+        modelFile = open(modelFileName, "r")
         self.model = modelFile.read()
         modelFile.close()
-        os.remove(self.modelFileName)
-
+        os.remove(modelFileName)
         os.remove(trainFileName)
 
     def predict(self, X):
-        testFileName = tempfile.gettempdir() + "/testData" + str(numpy.random.randint(numpy.iinfo(numpy.int).max))
-        scoreFileName = tempfile.gettempdir() + "/scoreFileName" + str(numpy.random.randint(numpy.iinfo(numpy.int).max))
+        numTempFiles = 3
+        tempFileNameList = []         
+        
+        for i in range(numTempFiles): 
+            fileObj = tempfile.NamedTemporaryFile(delete=False)
+            tempFileNameList.append(fileObj.name) 
+            fileObj.close()         
+        
+        testFileName = tempFileNameList[0]
+        scoreFileName = tempFileNameList[1]
+        modelFileName = tempFileNameList[2]
         self.saveExamples(X, numpy.ones(X.shape[0]), testFileName)
 
-        modelFile = open(self.modelFileName, "w")
+        modelFile = open(modelFileName, "w")
         modelFile.write(self.model)
         modelFile.close()
         
-        callList = [self.libPath + "ssrankboost-test", testFileName, self.modelFileName, scoreFileName]
+        callList = [self.libPath + "ssrankboost-test", testFileName, modelFileName, scoreFileName]
         try:
             self.outputStr =  subprocess.check_output(callList)
         except AttributeError:
             subprocess.call(callList)
         os.remove(testFileName)
-        os.remove(self.modelFileName)
+        os.remove(modelFileName)
 
         #Now read the scores files
         scores = numpy.fromfile(scoreFileName, sep=" ")
@@ -139,3 +156,12 @@ class RankBoost(AbstractPredictor):
     def __str__(self):
         outputStr = "RankBoost: learners=" + str(self.learners) + " iterations=" + str(self.iterations)
         return outputStr 
+        
+    def copy(self): 
+        learner = RankBoost()
+        learner.learners = self.learners
+        learner.iterations = self.iterations
+        return learner 
+        
+    def getMetricMethod(self):
+        return Evaluator.auc2

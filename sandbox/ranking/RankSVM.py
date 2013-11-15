@@ -11,9 +11,10 @@ import logging
 
 class RankSVM(AbstractPredictor):
     """
-    Learn the RankSVM algorithm. All QIds are the same. 
+    Learn using the RankSVM algorithm. All QIds are the same. 
     """
     def __init__(self):
+        super(RankSVM, self).__init__()
         self.C = 1
         self.gamma = 1.0
         self.kernel = "linear"
@@ -135,5 +136,16 @@ class RankSVM(AbstractPredictor):
 
     def __str__(self):
         outputStr = "RankSVM: C=" + str(self.C) + " kernel=" + str(self.kernel)
-        outputStr += " gamma= " + str(self.gamma)
+        outputStr += " gamma=" + str(self.gamma)
         return outputStr 
+        
+    def copy(self): 
+        learner = RankSVM()
+        learner.C = self.C 
+        learner.gamma = self.gamma 
+        learner.kernel = self.kernel 
+        
+        return learner 
+        
+    def getMetricMethod(self):
+        return Evaluator.auc2
