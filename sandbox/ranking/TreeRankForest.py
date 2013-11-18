@@ -8,7 +8,6 @@ from sandbox.ranking.AbstractTreeRank import AbstractTreeRank
 from sandbox.ranking.TreeRank import TreeRank
 from apgl.util.Parameter import Parameter
 from apgl.util.Util import Util
-from apgl.util.Evaluator import Evaluator
 
 class TreeRankForest(AbstractTreeRank):
     def __init__(self, leafRanklearner):
@@ -78,7 +77,7 @@ class TreeRankForest(AbstractTreeRank):
         numSampledExamples = int(numpy.round(self.sampleSize*X.shape[0]))
 
         for i in range(self.numTrees):
-            Util.printIteration(i, 1, self.numTrees, "Tree: ")
+            Util.printConciseIteration(i, 1, self.numTrees, "Tree: ")
             if self.sampleReplace:
                 inds = numpy.random.randint(0, X.shape[0], numSampledExamples)
             else:
@@ -147,3 +146,15 @@ class TreeRankForest(AbstractTreeRank):
         outputStr += " featureSize=" + str(self.featureSize) + " bestResponse=" + str(self.bestResponse)
         outputStr += " minSplit= " + str(self.minSplit) + " maxDepth=" + str(self.maxDepth)
         return outputStr 
+        
+    def copy(self): 
+        learner = TreeRankForest(self.leafRanklearner.copy())
+        learner.maxDepth = self.maxDepth
+        learner.minSplit = self.minSplit
+        learner.bestResponse = self.bestResponse
+        learner.featureSize = self.featureSize
+        learner.minLabelCount = self.minLabelCount
+        learner.numTrees = self.numTrees
+        learner.sampleReplace = self.sampleReplace        
+        
+        return learner 
