@@ -15,7 +15,7 @@ class  DecisionTreeTestCase(unittest.TestCase):
 
         self.X = numpy.random.rand(numExamples, numFeatures)
         c = numpy.random.rand(numFeatures)
-        self.y = numpy.sign(self.X.dot(c) < numpy.mean(self.X.dot(c)))
+        self.y = numpy.sign(self.X.dot(c) - numpy.mean(self.X.dot(c)))
 
     def testLearnModel(self):
         decisionTree = DecisionTree()
@@ -41,18 +41,18 @@ class  DecisionTreeTestCase(unittest.TestCase):
         self.assertTrue((predY2 == predY*2-1).all())
 
     def testSetWeight(self):
+        #Try weight = 0 and weight = 1
         decisionTree = DecisionTree()
-        decisionTree.setWeight(1.0)
-        decisionTree.learnModel(self.X, self.y)
-
-        predY = decisionTree.predict(self.X)
-        self.assertTrue((predY == numpy.ones(self.y.shape[0])).all())
-
         decisionTree.setWeight(0.0)
         decisionTree.learnModel(self.X, self.y)
 
         predY = decisionTree.predict(self.X)
-        self.assertTrue((predY == numpy.zeros(self.y.shape[0])).all())
+        self.assertTrue((predY == -1*numpy.ones(predY.shape[0])).all())
+
+        decisionTree.setWeight(1.0)
+        decisionTree.learnModel(self.X, self.y)
+        predY = decisionTree.predict(self.X)
+        self.assertTrue((predY == numpy.ones(predY.shape[0])).all())
 
     def testMinSplit(self):
         decisionTree = DecisionTree()
@@ -79,19 +79,7 @@ class  DecisionTreeTestCase(unittest.TestCase):
         self.assertEquals(learner.getMaxDepth(), 5)
         self.assertEquals(learner.getMinSplit(), 50)
 
-    def testSetWeight(self):
-        #Try weight = 0 and weight = 1
-        decisionTree = DecisionTree()
-        decisionTree.setWeight(0.0)
-        decisionTree.learnModel(self.X, self.y)
 
-        predY = decisionTree.predict(self.X)
-        self.assertTrue((predY == numpy.zeros(predY.shape[0])).all())
-
-        decisionTree.setWeight(1.0)
-        decisionTree.learnModel(self.X, self.y)
-        predY = decisionTree.predict(self.X)
-        self.assertTrue((predY == numpy.ones(predY.shape[0])).all())
 
     def testSetM(self):
         decisionTree = DecisionTree()

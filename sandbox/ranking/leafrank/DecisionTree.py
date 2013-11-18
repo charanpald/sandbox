@@ -3,15 +3,22 @@ import orange
 import orngTree
 import numpy
 from apgl.util.Parameter import Parameter
+from apgl.util.Evaluator import Evaluator 
+from apgl.util.Sampling import Sampling 
 from sandbox.ranking.leafrank.AbstractOrangePredictor import AbstractOrangePredictor
 
 class DecisionTree(AbstractOrangePredictor):
-    def __init__(self):
+    def __init__(self, paramDict={}, folds=5, sampleSize=None):
         super(DecisionTree, self).__init__()
         self.maxDepth = 10
         self.minSplit = 30
         #Post-pruned using m-error estimate pruning method with parameter m 
         self.m = 2 
+        self.paramDict = paramDict
+        self.folds = folds 
+        self.chunkSize = 2
+        self.setMetricMethod("auc2")  
+        self.sampleSize = sampleSize     
 
     def setM(self, m):
         self.m = m
@@ -107,3 +114,36 @@ class DecisionTree(AbstractOrangePredictor):
             return 1
         else:
             return max([DecisionTree.depth(branch) for branch in tree.branches]) + 1
+
+    def generateLearner(self, X, y):
+        """
+        Train using the given examples and labels, and use model selection to
+        find the best parameters.
+        """
+        if numpy.unique(y).shape[0] != 2:
+            print(y)
+            raise ValueError("Can only operate on binary data")
+
+        #Do model selection first 
+        if self.sampleSize == None: 
+            idx = Sampling.crossValidation(self.folds, X.shape[0])
+            learner, meanErrors = self.parallelModelSelect(X, y, idx, self.paramDict)
+        else: 
+            idx = Sampling.crossValidation(self.folds, self.sampleSize)
+            inds = numpy.random.permutation(X.shape[0])[0:self.sampleSize]
+            learner, meanErrors = self.parallelModelSelect(X[inds, :], y[inds], idx, self.paramDict)
+            learner = self.getBestLearner(meanErrors, self.paramDict, X, y)
+        
+        return learner
+
+    def copy(self): 
+        learner = DecisionTree()
+        learner.maxDepth = self.maxDepth
+        learner.minSplit = self.minSplit 
+        learner.m = self.m
+        learner.paramDict = self.paramDict
+        learner.folds = self.folds 
+        learner.chunkSize = self.chunkSize 
+        learner.sampleSize = self.sampleSize
+
+        return learner     
