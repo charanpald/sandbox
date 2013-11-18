@@ -194,6 +194,10 @@ class ABCSMC(object):
         for t in range(self.T):
             logging.debug("Particle number : " + str(t))
             
+            if self.autoEpsilon and t!=self.T-1 and self.epsilonArray[t] < self.minEpsilon:
+                logging.debug("Epsilon threshold became too small")
+                break             
+            
             lastTheta = currentTheta
             lastWeights = currentWeights
             currentWeights = numpy.zeros(self.N)
@@ -204,10 +208,6 @@ class ABCSMC(object):
             currentTheta = self.findThetas(lastTheta, lastWeights, t)
 
             if len(currentTheta) != self.N: 
-                break 
-            
-            if self.autoEpsilon and t!=self.T-1 and self.epsilonArray[t] < self.minEpsilon:
-                logging.debug("Epsilon threshold became too small")
                 break 
                    
             for i in range(self.N):
