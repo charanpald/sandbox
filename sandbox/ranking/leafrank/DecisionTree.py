@@ -147,3 +147,7 @@ class DecisionTree(AbstractOrangePredictor):
         learner.sampleSize = self.sampleSize
 
         return learner     
+
+    def __str__(self):
+        outputStr = "DecisionTree: maxDepth=" + str(self.maxDepth) + " minSplit=" + str(self.minSplit) + " m=" + str(self.m) + " sampleSize=" + str(self.sampleSize)
+        return outputStr 

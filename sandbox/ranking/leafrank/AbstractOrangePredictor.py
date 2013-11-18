@@ -17,5 +17,3 @@ class AbstractOrangePredictor(AbstractWeightedPredictor):
         y[newY==1] = self.bestResponse
         return y
 
-    def __str__(self):
-        return str(self.learner)
