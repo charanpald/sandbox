@@ -644,3 +644,14 @@ class AbstractPredictor(object):
                 betaGrid[inds] = clf.coef_[0]  
         
         return -betaGrid 
+        
+    def getMetricMethod(self):
+        """
+
+        Depending on the type "Epsilon_SVR" or "C_SVC" returns a way to measure
+        the performance of the classifier.
+        """
+        return getattr(Evaluator, self.metricMethod)      
+      
+    def setMetricMethod(self, metricMethod): 
+        self.metricMethod = metricMethod 
