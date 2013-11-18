@@ -108,13 +108,7 @@ class LibSVM(AbstractPredictor):
         self.type = type
         self.__updateParams()
 
-    def getMetricMethod(self):
-        """
 
-        Depending on the type "Epsilon_SVR" or "C_SVC" returns a way to measure
-        the performance of the classifier.
-        """
-        return getattr(Evaluator, self.metricMethod)
         
 
     def setErrorCost(self, errorCost):
@@ -414,6 +408,4 @@ class LibSVM(AbstractPredictor):
         :return: the weight on the positive examples between 0 and 1 (the negative weight is 1-weight)
         """
         return self.getErrorCost()
-        
-    def setMetricMethod(self, metricMethod): 
-        self.metricMethod = metricMethod 
+
