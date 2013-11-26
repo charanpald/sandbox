@@ -76,7 +76,7 @@ def runModel(args):
     return 0, 0 
             
 class ABCSMC(object):
-    def __init__(self, epsilonArray, createModel, paramsObj, thetaDir, autoEpsilon=False, minEpsilon=0.1):
+    def __init__(self, epsilonArray, createModel, paramsObj, thetaDir, autoEpsilon=False, minEpsilon=0.1, thetaUniformChoice=False):
         """
         Create a multiprocessing SMCABC object with the given arguments. The aim
         is to estimate a posterior pi(theta| x) propto f(x|theta) pi(theta) without
@@ -116,6 +116,8 @@ class ABCSMC(object):
         self.numAccepts = numpy.zeros(self.T)
         self.maxRuns = 1000
         self.pertScale = 2.0
+        
+        self.thetaUniformChoice = thetaUniformChoice
 
     def setPosteriorSampleSize(self, posteriorSampleSize):
         """
@@ -148,8 +150,11 @@ class ABCSMC(object):
                     tempTheta = self.abcParams.sampleParams()
                     paramList.append((tempTheta.copy(), self.createModel, t, self.epsilonArray[t], self.N, self.thetaDir))
                 else:  
-                    while True: 
-                        tempTheta = lastTheta[Util.randomChoice(lastWeights)[0], :]
+                    while True:
+                        if self.thetaUniformChoice: 
+                            tempTheta = lastTheta[numpy.random.randint(self.N), :]   
+                        else: 
+                            tempTheta = lastTheta[Util.randomChoice(lastWeights)[0], :]
                         tempTheta = self.abcParams.perturbationKernel(tempTheta, numpy.std(lastTheta, 0)/self.pertScale)
                         if self.abcParams.priorDensity(tempTheta) != 0: 
                             break 
