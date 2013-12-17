@@ -19,10 +19,7 @@ class RankBoost(AbstractPredictor):
         self.learners = 20
         self.bestResponse = 1
 
-        #This is terrible
-        self.libPath = "/home/charanpal/Documents/Postdoc/Code/semisup_rankboost/"
-        if not os.path.isdir(self.libPath):
-            self.libPath = "/tsi/thane/dhanjal/semisup_rankboost/"
+        self.libPath = os.getenv("HOME") + "/Documents/Postdoc/Code/semisup_rankboost/"
 
     def setIterations(self, iterations):
         Parameter.checkInt(iterations, 0, float('inf'))
