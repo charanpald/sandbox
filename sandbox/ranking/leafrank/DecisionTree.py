@@ -73,7 +73,7 @@ class DecisionTree(AbstractOrangePredictor):
         self.learner = orngTree.TreeLearner(m_pruning=self.m, measure="gainRatio")
         self.learner.max_depth = self.maxDepth
         self.learner.stop = orange.TreeStopCriteria_common()
-        self.learner.stop.min_examples = self.minSplit
+        self.learner.stop.min_instances = self.minSplit
         self.classifier = self.learner(eTable, weightID)
 
     def getLearner(self):
