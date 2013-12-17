@@ -115,7 +115,7 @@ class TreeRank(AbstractTreeRank):
         Parameter.checkArray(Y)
         labels = numpy.unique(Y)
         if labels.shape[0] != 2:
-            raise ValueError("Can only accept binary labelled data")
+            raise ValueError("Can only accept binary labelled data: " + str(labels))
         if (labels != numpy.array([-1, 1])).any(): 
             raise ValueError("Labels must be -1/+1: " + str(labels))
 
