@@ -145,7 +145,6 @@ class LibSVM(AbstractPredictor):
             raise 
         
         self.__updateParams()
-        print(self)
         self.model.fit(X, y)
 
     def classify(self, X):
