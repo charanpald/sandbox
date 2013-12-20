@@ -9,10 +9,9 @@ import sklearn
 
 
 class LibSVM(AbstractPredictor):
-    def __init__(self, kernel='linear', kernelParam=0.1, C=1.0, cost=0.5, type="C_SVC", processes=None, epsilon=0.001):
+    def __init__(self, kernel='linear', kernelParam=0.1, C=1.0, cost=0.5, type="C_SVC", processes=None, epsilon=0.001, penalty="l2"):
         try:
             from sklearn.svm import SVC 
-            import sklearn.metrics
         except ImportError:
             raise 
             
@@ -23,8 +22,10 @@ class LibSVM(AbstractPredictor):
         self.epsilon = epsilon
         self.type = type
         self.tol = 0.001
+        self.penalty = penalty
         self.setKernel(kernel, kernelParam)
         self.setSvmType(type)
+        self.setPenalty(penalty)
 
         self.processes = processes
         self.chunkSize = 2
@@ -53,17 +54,22 @@ class LibSVM(AbstractPredictor):
 
     def __updateParams(self):
         try:
-            from sklearn.svm import SVC, SVR
+            from sklearn.svm import SVC, SVR, LinearSVC
         except:
             raise
 
-        if self.type == "Epsilon_SVR":
+        if self.penalty == "l1" and (self.type != "C_SVC" or self.kernel != "linear"):
+            raise ValueError("Must be linear SVC for l1 loss")
+            
+        if self.type == "Epsilon_SVR" and self.penalty == "l2":
             self.model = SVR(C=self.C, kernel=self.kernel, degree=self.kernelParam, gamma=self.kernelParam, epsilon=self.epsilon, tol=self.tol)
-        elif self.type == "C_SVC":
+        elif self.type == "C_SVC" and self.penalty == "l2":
             self.model = SVC(C=self.C, kernel=self.kernel, degree=self.kernelParam, gamma=self.kernelParam, tol=self.tol, class_weight={-1:1-self.errorCost, 1:self.errorCost})
+        elif self.type == "C_SVC" and self.penalty == "l1":
+            self.model = LinearSVC(C=self.C, tol=self.tol, class_weight={-1:1-self.errorCost, 1:self.errorCost}, penalty=self.penalty, dual=False)
         else:
             raise ValueError("Invalid type : " + str(type))
-
+            
     def setC(self, C):
         try:
             from sklearn.svm import SVC
@@ -95,6 +101,10 @@ class LibSVM(AbstractPredictor):
     def setGamma(self, gamma):
         self.kernelParam = gamma
         self.__updateParams()
+        
+    def setPenalty(self, penalty):
+        self.penalty = penalty 
+        self.__updateParams()
 
     def setSvmType(self, type):
         try:
@@ -107,9 +117,6 @@ class LibSVM(AbstractPredictor):
 
         self.type = type
         self.__updateParams()
-
-
-        
 
     def setErrorCost(self, errorCost):
         """
@@ -138,6 +145,7 @@ class LibSVM(AbstractPredictor):
             raise 
         
         self.__updateParams()
+        print(self)
         self.model.fit(X, y)
 
     def classify(self, X):
@@ -233,6 +241,9 @@ class LibSVM(AbstractPredictor):
 
     def getModel(self):
         return self.model
+    
+    def getLoss(self): 
+        return self.penalty 
 
     def parallelVfcvRbf(self, X, y, idx, type="C_SVC"):
         """
@@ -253,7 +264,6 @@ class LibSVM(AbstractPredictor):
         """
         Parameter.checkClass(X, numpy.ndarray)
         Parameter.checkClass(y, numpy.ndarray)
-        folds = len(idx)
 
         self.setKernel("gaussian")
 
@@ -274,7 +284,7 @@ class LibSVM(AbstractPredictor):
         """
         Return a new copied version of this object. 
         """
-        svm = LibSVM(kernel=self.kernel, kernelParam=self.kernelParam, C=self.C, cost=self.errorCost, type=self.type, processes=self.processes, epsilon=self.epsilon)
+        svm = LibSVM(kernel=self.kernel, kernelParam=self.kernelParam, C=self.C, cost=self.errorCost, type=self.type, processes=self.processes, epsilon=self.epsilon, loss=self.penalty)
         svm.metricMethod = self.metricMethod
         svm.chunkSize = self.chunkSize
         svm.timeout = self.timeout

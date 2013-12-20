@@ -17,7 +17,7 @@ class SVMLeafRank(LibSVM):
         self.folds = folds 
         self.chunkSize = 2
         self.setMetricMethod("auc2")  
-        self.sampleSize = sampleSize        
+        self.sampleSize = sampleSize    
             
     def generateLearner(self, X, y):
         """
@@ -54,6 +54,7 @@ class SVMLeafRank(LibSVM):
         svm.setKernel(self.kernel,self.kernelParam)
         svm.setC(self.C)
         svm.setErrorCost(self.errorCost)
+        svm.setPenalty(self.penalty)
         svm.setSvmType(self.type) 
         svm.processes=self.processes
         svm.epsilon=self.epsilon
