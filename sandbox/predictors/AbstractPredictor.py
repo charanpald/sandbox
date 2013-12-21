@@ -355,8 +355,8 @@ class AbstractPredictor(object):
             
             m += 1 
             
-        pool = multiprocessing.Pool(processes=self.processes, maxtasksperchild=100)
         if self.processes != 1: 
+            pool = multiprocessing.Pool(processes=self.processes, maxtasksperchild=100)
             resultsIterator = pool.imap(computeTestError, paramList, self.chunkSize)
         else: 
             resultsIterator = itertools.imap(computeTestError, paramList)
@@ -367,7 +367,8 @@ class AbstractPredictor(object):
                 error = resultsIterator.next()
                 meanErrors[inds] += error/float(folds)
 
-        pool.terminate()
+        if self.processes != 1:
+            pool.terminate()
 
         learner = self.getBestLearner(meanErrors, paramDict, X, y, idx)
 
