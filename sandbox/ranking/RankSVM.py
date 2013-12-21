@@ -13,7 +13,7 @@ class RankSVM(AbstractPredictor):
     """
     Learn using the RankSVM algorithm. All QIds are the same. 
     """
-    def __init__(self, numProcesses):
+    def __init__(self, numProcesses=1):
         super(RankSVM, self).__init__()
         self.C = 1
         self.gamma = 1.0
