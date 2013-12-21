@@ -13,11 +13,12 @@ be on the current path.
 """
 
 class RankBoost(AbstractPredictor):
-    def __init__(self):
+    def __init__(self, numProcesses=1):
         super(RankBoost, self).__init__()
         self.iterations = 100
         self.learners = 20
         self.bestResponse = 1
+        self.processes = numProcesses
 
         self.libPath = os.getenv("HOME") + "/Documents/Postdoc/Code/semisup_rankboost/"
 

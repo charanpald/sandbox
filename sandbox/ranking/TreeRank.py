@@ -12,7 +12,7 @@ from sandbox.ranking.leafrank.MajorityPredictor import MajorityPredictor
 from apgl.util.Evaluator import Evaluator 
 
 class TreeRank(AbstractTreeRank):
-    def __init__(self, leafRanklearner):
+    def __init__(self, leafRanklearner, numProcesses=1):
         """
         Create a new TreeRank object and initialise with a function that
         generates leaf rank objects, for example LinearSVM or DecisionTree. The
@@ -21,6 +21,7 @@ class TreeRank(AbstractTreeRank):
         :param leafRanklearner: A learning algorithm with a generateLearner method
         """
         super(TreeRank, self).__init__(leafRanklearner)
+        self.processes = numProcesses
         
 
     def getTree(self):
@@ -237,6 +238,7 @@ class TreeRank(AbstractTreeRank):
         learner.bestResponse = self.bestResponse
         learner.featureSize = self.featureSize
         learner.minLabelCount = self.minLabelCount
+        learner.processes = self.processes
         
         return learner 
         

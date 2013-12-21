@@ -7,7 +7,7 @@ class SVMLeafRank(LibSVM):
     """
     This is a subclass of LibSVM which will do model selection before learning. 
     """
-    def __init__(self, paramDict, folds, sampleSize=None):
+    def __init__(self, paramDict, folds, sampleSize=None, numProcesses=1):
         """
         sampleSize is the number of randomly chosen examples to use for model 
         selection 
@@ -17,7 +17,8 @@ class SVMLeafRank(LibSVM):
         self.folds = folds 
         self.chunkSize = 2
         self.setMetricMethod("auc2")  
-        self.sampleSize = sampleSize    
+        self.sampleSize = sampleSize  
+        self.processes = numProcesses
             
     def generateLearner(self, X, y):
         """

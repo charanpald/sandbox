@@ -10,7 +10,7 @@ from apgl.util.Parameter import Parameter
 from apgl.util.Util import Util
 
 class TreeRankForest(AbstractTreeRank):
-    def __init__(self, leafRanklearner):
+    def __init__(self, leafRanklearner, numProcesses=1):
         """
         Create a new TreeRankForest object and initialise with a function that
         generates leaf rank objects, for example LinearSVM or DecisionTree. The
@@ -22,6 +22,7 @@ class TreeRankForest(AbstractTreeRank):
         self.numTrees = 5
         self.sampleSize = 0.5
         self.sampleReplace = True
+        self.processes = numProcesses
 
     def setSampleSize(self, sampleSize):
         """

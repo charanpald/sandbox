@@ -8,7 +8,7 @@ from apgl.util.Sampling import Sampling
 from sandbox.ranking.leafrank.AbstractOrangePredictor import AbstractOrangePredictor
 
 class DecisionTree(AbstractOrangePredictor):
-    def __init__(self, paramDict={}, folds=5, sampleSize=None):
+    def __init__(self, paramDict={}, folds=5, sampleSize=None, numProcesses=1):
         super(DecisionTree, self).__init__()
         self.maxDepth = 10
         self.minSplit = 30
@@ -18,7 +18,8 @@ class DecisionTree(AbstractOrangePredictor):
         self.folds = folds 
         self.chunkSize = 2
         self.setMetricMethod("auc2")  
-        self.sampleSize = sampleSize     
+        self.sampleSize = sampleSize  
+        self.processes = numProcesses
 
     def setM(self, m):
         self.m = m
