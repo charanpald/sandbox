@@ -145,8 +145,8 @@ class TreeRankForest(AbstractTreeRank):
         outputStr = "TreeRankForest:" + " numTrees=" + str(self.numTrees)
         outputStr += " sampleSize=" + str(self.sampleSize) + " sampleReplace=" + str(self.sampleReplace)
         outputStr += " featureSize=" + str(self.featureSize) + " bestResponse=" + str(self.bestResponse)
-        outputStr += " minSplit= " + str(self.minSplit) + " maxDepth=" + str(self.maxDepth)
-        outputStr += str(self.leafRanklearner)
+        outputStr += " minSplit=" + str(self.minSplit) + " maxDepth=" + str(self.maxDepth)
+        outputStr += " " + str(self.leafRanklearner)
         return outputStr 
         
     def copy(self): 
