@@ -157,6 +157,7 @@ class TreeRankForest(AbstractTreeRank):
         learner.featureSize = self.featureSize
         learner.minLabelCount = self.minLabelCount
         learner.numTrees = self.numTrees
-        learner.sampleReplace = self.sampleReplace        
+        learner.sampleReplace = self.sampleReplace     
+        learner.sampleSize = self.sampleSize
         
         return learner 
