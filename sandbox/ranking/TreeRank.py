@@ -2,6 +2,7 @@
 A Python implementation of TreeRank. 
 """
 import numpy
+import logging
 import sklearn.cross_validation as cross_val
 from apgl.graph.DictTree import DictTree
 from apgl.util.Parameter import Parameter
@@ -57,6 +58,11 @@ class TreeRank(AbstractTreeRank):
         """
         Take a node in a tree and classify in order to split it into 2 
         """
+        if self.featureSize == None: 
+            featureSize = numpy.sqrt(X.shape[1])/float(X.shape[1])
+        else: 
+            featureSize = self.featureSize       
+        
         node = tree.getVertex((d, k))
         inds = node.getTrainInds()
         featureInds = node.getFeatureInds()
@@ -77,7 +83,7 @@ class TreeRank(AbstractTreeRank):
         
         if numpy.unique(predY).shape[0] == 2 and inds.shape[0] >= self.minSplit:
             leftInds = inds[predY == self.bestResponse]
-            featureInds = numpy.sort(numpy.random.permutation(X.shape[1])[0:int(numpy.round(X.shape[1]*self.featureSize))])
+            featureInds = numpy.sort(numpy.random.permutation(X.shape[1])[0:int(numpy.round(X.shape[1]*featureSize))])
             leftNode = RankNode(leftInds, featureInds)
             leftNode.setPure(numpy.unique(Y[leftInds]).shape[0] <= 1)
             leftNode.setIsLeafNode(d==self.maxDepth-1 or leftNode.isPure())
@@ -86,7 +92,7 @@ class TreeRank(AbstractTreeRank):
             tree.setVertex((d+1, 2*k), leftNode)
 
             rightInds = inds[predY != self.bestResponse]
-            featureInds = numpy.sort(numpy.random.permutation(X.shape[1])[0:int(numpy.round(X.shape[1]*self.featureSize))])
+            featureInds = numpy.sort(numpy.random.permutation(X.shape[1])[0:int(numpy.round(X.shape[1]*featureSize))])
             rightNode = RankNode(rightInds, featureInds)
             rightNode.setPure(numpy.unique(Y[rightInds]).shape[0] <= 1)
             rightNode.setIsLeafNode(d==self.maxDepth-1 or rightNode.isPure())
@@ -119,10 +125,14 @@ class TreeRank(AbstractTreeRank):
             raise ValueError("Can only accept binary labelled data: " + str(labels))
         if (labels != numpy.array([-1, 1])).any(): 
             raise ValueError("Labels must be -1/+1: " + str(labels))
+        if self.featureSize == None: 
+            featureSize = numpy.sqrt(X.shape[1])/float(X.shape[1])
+        else: 
+            featureSize = self.featureSize
 
         tree = DictTree()
         trainInds = numpy.arange(Y.shape[0])
-        featureInds = numpy.sort(numpy.random.permutation(X.shape[1])[0:int(numpy.round(X.shape[1]*self.featureSize))]) 
+        featureInds = numpy.sort(numpy.random.permutation(X.shape[1])[0:int(numpy.round(X.shape[1]*featureSize))]) 
 
         #Seed the tree
         node = RankNode(trainInds, featureInds)

@@ -15,7 +15,7 @@ class AbstractTreeRank(AbstractPredictor):
         Create the AbstractTreeRank with the given leaf rank generator. 
         """
         super(AbstractTreeRank, self).__init__()
-        self.maxDepth = 2
+        self.maxDepth = 10
         self.minSplit = 50
         self.bestResponse = 1
         self.featureSize = 1.0
@@ -27,10 +27,11 @@ class AbstractTreeRank(AbstractPredictor):
         """
         Set the number of features to use for node computation.
 
-        :param featureSize: the proportion of features to randomly select to compute each node.
+        :param featureSize: the proportion of features to randomly select to compute each node. If none then use sqrt(X.shape[1]) features. 
         :type featureSize: :class:`float`
         """
-        Parameter.checkFloat(featureSize, 0.0, 1.0)
+        if featureSize != None: 
+            Parameter.checkFloat(featureSize, 0.0, 1.0)
         self.featureSize = featureSize
 
     def getFeatureSize(self):
