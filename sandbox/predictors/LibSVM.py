@@ -179,7 +179,7 @@ class LibSVM(AbstractPredictor):
         except:
             raise
 
-        w = self.model.coef_
+        w = numpy.ravel(self.model.coef_)
         b = self.model.intercept_ 
 
         return w, b
