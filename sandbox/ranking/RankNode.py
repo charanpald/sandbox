@@ -17,6 +17,9 @@ class RankNode(object):
         self.score = None
         #The indices of the test examples 
         self.testInds = None
+        #The gain in AUC by splitting 
+        self.aucGain = None 
+
 
     def getFeatureInds(self):
         return self.featureInds
@@ -61,4 +64,6 @@ class RankNode(object):
     def __str__(self):
         outputStr = "Size: " + str(self.trainInds.shape[0]) + ", pure: " + str(self.pure) + ", isLeafNode: " + str(self.leafNode)
         outputStr += ", score: " + str(self.score)
+        if self.aucGain != None: 
+            outputStr += ", AUC gain: " + str(self.aucGain)    
         return outputStr
