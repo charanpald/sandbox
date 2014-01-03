@@ -10,6 +10,7 @@ from sandbox.ranking.leafrank.DecisionTree import DecisionTree
 from apgl.util.PathDefaults import PathDefaults
 from apgl.util.Evaluator import Evaluator
 from sandbox.data.Standardiser import Standardiser
+from sandbox.data.ExamplesGenerator import ExamplesGenerator
 
 class TreeRankForestTest(unittest.TestCase):
     def setUp(self):
@@ -66,6 +67,7 @@ class TreeRankForestTest(unittest.TestCase):
 
         self.assertTrue((scores==scores2).all())
 
+    @unittest.skip("")
     def testPredict2(self):
         #Test on Gauss2D dataset
         dataDir = PathDefaults.getDataDir()
@@ -111,7 +113,7 @@ class TreeRankForestTest(unittest.TestCase):
             self.assertAlmostEquals(Evaluator.auc(testScores, testY), testAucs[i], 1)
             i+=1
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testEvaluateCvOuter(self):
         maxDepth = 10
         treeRankForest = TreeRankForest(self.leafRanklearner)
@@ -121,6 +123,24 @@ class TreeRankForestTest(unittest.TestCase):
         (bestParams, allMetrics, bestMetaDicts) = treeRankForest.evaluateCvOuter(self.X, self.y, folds)
 
         #print(allMetrics)
+
+    def testVariableImportance(self):
+        X, y, c = ExamplesGenerator().generateBinaryExamples(numExamples=100, verbose=True) 
+        
+        treeRankForest = TreeRankForest(self.leafRanklearner)
+        treeRankForest.setFeatureSize(0.5)
+        treeRankForest.setNumTrees(20)
+        treeRankForest.setSampleSize(1.0)
+        treeRankForest.learnModel(X, y)
+        
+        weightVector = treeRankForest.variableImportance(X, y)
+
+        #Seems to work, sort of         
+        print(c)
+        print(weightVector)
+        
+        print(numpy.argsort(c))
+        print(numpy.argsort(weightVector))
 
     def testStr(self):
         treeRankForest = TreeRankForest(self.leafRanklearner)

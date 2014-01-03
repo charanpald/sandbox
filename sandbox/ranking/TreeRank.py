@@ -240,7 +240,34 @@ class TreeRank(AbstractTreeRank):
         bestDepth = depths[numpy.argmax(meanAUCs)]
         self.learnModel(X, Y)
         self.tree = TreeRank.cut(self.tree, bestDepth)
+      
+    def variableImportance(self, X, y): 
+        """
+        Compute the variable importance, first by computing the marginal gain in AUC 
+        at internal nodes. Only works if the leaf rank learner returns a weight 
+        vector e.g. SVM 
+        """
+        nonLeaves = self.tree.nonLeaves()
+        averageWeight = numpy.zeros(X.shape[1])
         
+        #Compute AUCs then use to weight variables 
+        for nodeId in nonLeaves: 
+            node = self.tree.getVertex(nodeId)
+            posCurrent = numpy.sum(y[node.trainInds] == 1)/float(numpy.sum(y == 1))
+            negCurrent = numpy.sum(y[node.trainInds] != 1)/float(numpy.sum(y != 1))
+            
+            leftChildId = self.tree.neighbours(nodeId)[0]
+            leftChild = self.tree.getVertex(leftChildId)
+            posLeftChild = numpy.sum(y[leftChild.trainInds] == 1)/float(numpy.sum(y == 1))
+            negLeftChild = numpy.sum(y[leftChild.trainInds] != 1)/float(numpy.sum(y != 1))
+            
+            node.aucGain = ((negCurrent*posLeftChild - posCurrent*negLeftChild)**2)/4.0 
+
+            averageWeight[node.getFeatureInds()] += node.aucGain * numpy.abs(node.getLeafRank().getWeights()[0])
+            
+        return averageWeight
+            
+      
     def copy(self): 
         learner = TreeRank(self.leafRanklearner.copy())
         learner.maxDepth = self.maxDepth

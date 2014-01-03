@@ -20,7 +20,7 @@ class TreeRankForest(AbstractTreeRank):
         """
         super(TreeRankForest, self).__init__(leafRanklearner)
         self.numTrees = 5
-        self.sampleSize = 0.5
+        self.sampleSize = 1.0
         self.sampleReplace = True
         self.processes = numProcesses
 
@@ -75,6 +75,7 @@ class TreeRankForest(AbstractTreeRank):
             raise ValueError("Labels must be -1/+1: " + str(labels))
 
         forestList = []
+        indList = []
         numSampledExamples = int(numpy.round(self.sampleSize*X.shape[0]))
 
         for i in range(self.numTrees):
@@ -91,8 +92,10 @@ class TreeRankForest(AbstractTreeRank):
             treeRank.setBestResponse(self.bestResponse)
             treeRank.learnModel(X[inds, :], y[inds])
             forestList.append(treeRank)
+            indList.append(inds)
 
         self.forestList = forestList
+        self.indList = indList
 
     def predict(self, X):
         """
@@ -114,6 +117,22 @@ class TreeRankForest(AbstractTreeRank):
 
         scores = scores/self.numTrees
         return scores
+
+    def variableImportance(self, X, y): 
+        """
+        Compute the variable importance, first by computing the marginal gain in AUC 
+        at internal nodes and summing for all trees. Only works if the leaf rank learner 
+        returns a weight vector e.g. SVM 
+        """
+        averageWeight = numpy.zeros(X.shape[1])
+        for i, treeRank in enumerate(self.forestList): 
+            inds = self.indList[i]
+            Xs = X[inds, :] 
+            ys = y[inds]
+            averageWeight += treeRank.variableImportance(Xs, ys)
+            
+        return averageWeight 
+            
 
     def getForest(self):
         """

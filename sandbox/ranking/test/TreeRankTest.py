@@ -10,6 +10,7 @@ from apgl.util.PathDefaults import PathDefaults
 from apgl.graph.DictTree import DictTree
 from apgl.util.Evaluator import Evaluator
 from sandbox.data.Standardiser import Standardiser
+from sandbox.data.ExamplesGenerator import ExamplesGenerator
 
 class TreeRankTestCase(unittest.TestCase):
     def setUp(self):
@@ -275,6 +276,21 @@ class TreeRankTestCase(unittest.TestCase):
         self.assertTrue(tree.depth() <= maxDepth)
 
         #Checked inside the code 
+
+    def testVariableImportance(self):
+        X, y, c = ExamplesGenerator().generateBinaryExamples(numExamples=500, verbose=True) 
+        
+        treeRank = TreeRank(self.leafRanklearner)
+        treeRank.learnModel(X, y)
+        
+        weightVector = treeRank.variableImportance(X, y)
+
+        #Seems to work, sort of         
+        #print(c)
+        #print(weightVector)
+        
+        #print(numpy.argsort(c))
+        #print(numpy.argsort(weightVector))
 
 if __name__ == '__main__':
     unittest.main()
