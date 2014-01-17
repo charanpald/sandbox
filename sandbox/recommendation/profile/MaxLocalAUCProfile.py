@@ -19,14 +19,26 @@ class MaxLocalAUCProfile(object):
         self.X = SparseUtils.generateSparseLowRank((m, n), self.k, numInds)
         
         self.X = self.X/self.X
+        self.X = self.X.tocsr()
         
     def profileLearnModel(self):
         lmbda = 0.01
         r = numpy.ones(self.X.shape[0])*0.0
         eps = 0.1
-        maxLocalAuc = MaxLocalAUC(lmbda, self.k, r, sigma=5.0, eps=eps)
+        sigma = 5
+        maxLocalAuc = MaxLocalAUC(lmbda, self.k, r, sigma=sigma, eps=eps)
+                
+        ProfileUtils.profile('maxLocalAuc.learnModel(self.X)', globals(), locals())
+
+    def profileLearnModel2(self):
+        #Profile stochastic case 
+        lmbda = 0.01
+        r = numpy.ones(self.X.shape[0])*0.0
+        eps = 0.001
+        sigma = 5
+        maxLocalAuc = MaxLocalAUC(lmbda, self.k, r, sigma=sigma, eps=eps, stochastic=True)
                 
         ProfileUtils.profile('maxLocalAuc.learnModel(self.X)', globals(), locals())
 
 profiler = MaxLocalAUCProfile()
-profiler.profileLearnModel() 
+profiler.profileLearnModel()  #6.2 
