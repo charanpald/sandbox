@@ -8,7 +8,7 @@ class MaxLocalAUC(object):
     Let's try different ways of maximising the local AUC with a penalty term. 
     """
     def __init__(self, lmbda, k, r, sigma=0.05, eps=0.1): 
-        self.lmbda = k
+        self.lmbda = lmbda
         self.k = k 
         self.r = r
         self.sigma = sigma
@@ -25,7 +25,6 @@ class MaxLocalAUC(object):
         
         rowInds, colInds = X.nonzero()
         mStar = numpy.unique(rowInds).shape[0]
-        print(mStar)
         
         U = numpy.random.rand(m, self.k)
         V = numpy.random.rand(n, self.k)
@@ -188,7 +187,7 @@ class MaxLocalAUC(object):
         return localAuc
     
     def objective(self, X, U, V):         
-        localAuc = 0 
+        obj = 0 
         mStar = 0
         
         for i in range(X.shape[0]): 
@@ -209,9 +208,10 @@ class MaxLocalAUC(object):
                         partialAuc += 1/((1+gamma) * (1+kappa))
                             
                 mStar += 1
-                localAuc += partialAuc/float(omegai.shape[0] * omegaBari.shape[0])
+                obj += partialAuc/float(omegai.shape[0] * omegaBari.shape[0])
         
-        localAuc /= mStar        
+        obj /= mStar       
+        obj = 0.5*self.lmbda * (numpy.sum(U**2) + numpy.sum(V**2)) - obj
         
-        return localAuc 
+        return obj 
             
