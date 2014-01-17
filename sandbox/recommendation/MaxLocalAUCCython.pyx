@@ -58,6 +58,13 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     
     return deltaPhi
 
+@cython.boundscheck(False) 
+cdef inline double updateDeltaBeta1(double uivq, double uivp, double onePlusKappaSq, double kappa, double twoKappa):
+    gamma = exp(-uivp+uivq)
+    onePlusGamma = 1+gamma
+    
+    denom = onePlusGamma**2 * onePlusKappaSq
+    return ((gamma+kappa+gamma*twoKappa)/denom)
 
 @cython.boundscheck(False)
 def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, omegaList, unsigned int j, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
@@ -80,8 +87,12 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] allInds = numpy.arange(n, dtype=numpy.uint)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] uiV = numpy.zeros(k, numpy.float)
+    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] uiVexp = numpy.zeros(k, numpy.float)
+    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] riExp = numpy.zeros(k, numpy.float)
     
     deltaPhi = lmbda * V[j, :]
+
+    riExp = numpy.exp(r)
 
     for i in range(m): 
         omegai = omegaList[i]
@@ -90,23 +101,24 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
         ui = U[i, :]
         ri = r[i]
         uiV = ui.dot(V.T)
+        uiVexp = numpy.exp(-uiV)
         
         if X[i, j] != 0: 
             omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
             
             p = j 
             uivp = uiV[p]
-            kappa = exp(-uivp + ri)
+            kappa = uiVexp[p]*riExp[i]
             onePlusKappa = 1+kappa
             onePlusKappaSq = onePlusKappa**2
             twoKappa = 2*kappa
             
             for q in omegaBari: 
                 uivq = uiV[q]
-                gamma = exp(-uivp+uivq)
+                gamma = uiVexp[p]/uiVexp[q]
                 onePlusGamma = 1+gamma
                 
-                denom = onePlusGamma**2 * onePlusKappaSq
+                denom = onePlusGamma**2 * onePlusKappaSq 
                 deltaBeta += ui*((gamma+kappa+gamma*twoKappa)/denom)
         else:
             q = j 
@@ -118,7 +130,7 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
                 gamma = exp(-uivp+uivq)
                 kappa = exp(-uivp+ri)
                 
-                deltaBeta += -ui* (gamma/((1+gamma)**2 * (1+kappa)))
+                deltaBeta -= ui* (gamma/((1+gamma)**2 * (1+kappa)))
         
         numOmegai = omegai.shape[0]       
         numOmegaBari = n-numOmegai
