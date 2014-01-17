@@ -20,6 +20,9 @@ class MaxLocalAUC(object):
         
         self.printStep = 5
         self.stocPrintStep = 10
+        
+        #The fraction of pairs n**2 to use to estimate local AUC 
+        self.sampleSize = 0.2 
     
     def getOmegaList(self, X): 
         """
@@ -82,6 +85,7 @@ class MaxLocalAUC(object):
                 
                 if ind % self.stocPrintStep == 0: 
                     logging.debug("Local AUC = " + str(self.localAUC(X, U, V, omegaList)) + " objective = " + str(self.objective(X, U, V, omegaList)))
+                    logging.debug("Local AUC estimation = " + str(self.localAUCEstimation(X, U, V, omegaList)))
                     logging.debug("Norm delta U = " + str(normDeltaU) + " " + "Norm delta V = " + str(normDeltaV))
             
             else: 
@@ -93,6 +97,7 @@ class MaxLocalAUC(object):
                 
                 if ind % self.printStep == 0: 
                     logging.debug("Local AUC = " + str(self.localAUC(X, U, V, omegaList)) + " objective = " + str(self.objective(X, U, V, omegaList)))
+                    logging.debug("Local AUC estimation = " + str(self.localAUCEstimation(X, U, V, omegaList)))
                     logging.debug("Norm delta U = " + str(normDeltaU) + " " + "Norm delta V = " + str(normDeltaV))
             
             objs.append(self.objective(X, U, V, omegaList))             
@@ -252,6 +257,43 @@ class MaxLocalAUC(object):
                             
                 mStar += 1
                 localAuc += partialAuc/float(omegai.shape[0] * omegaBari.shape[0])
+        
+        localAuc /= mStar        
+        
+        return localAuc
+
+    def localAUCEstimation(self, X, U, V, omegaList): 
+        """
+        Compute the estimated local AUC for the score functions UV^T relative to X with 
+        quantile vector r. 
+        """
+        #For now let's compute the full matrix 
+        Z = U.dot(V.T)
+        
+        localAuc = 0 
+        mStar = 0
+        allInds = numpy.arange(X.shape[1])
+        sampleSize = int(X.shape[1]**2 * self.sampleSize)
+
+        for i in range(X.shape[0]): 
+            omegai = omegaList[i]
+            omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
+            
+            if omegai.shape[0] * omegaBari.shape[0] != 0: 
+                partialAuc = 0                
+                
+                for j in range(sampleSize):
+                    ind = numpy.random.randint(omegai.shape[0])
+                    p = omegai[ind] 
+                    
+                    ind = numpy.random.randint(omegaBari.shape[0])
+                    q = omegaBari[ind]   
+                    
+                    if Z[i, p] > Z[i, q] and Z[i, p] > self.r[i]: 
+                        partialAuc += 1 
+                            
+                mStar += 1
+                localAuc += partialAuc/float(sampleSize)
         
         localAuc /= mStar        
         
