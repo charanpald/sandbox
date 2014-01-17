@@ -22,10 +22,10 @@ class MaxLocalAUCProfile(object):
         self.X = self.X.tocsr()
         
     def profileLearnModel(self):
-        lmbda = 0.01
+        lmbda = 0.00001
         r = numpy.ones(self.X.shape[0])*0.0
-        eps = 0.1
-        sigma = 5
+        eps = 0.02
+        sigma = 100
         maxLocalAuc = MaxLocalAUC(lmbda, self.k, r, sigma=sigma, eps=eps)
                 
         ProfileUtils.profile('maxLocalAuc.learnModel(self.X)', globals(), locals())
@@ -35,10 +35,11 @@ class MaxLocalAUCProfile(object):
         lmbda = 0.01
         r = numpy.ones(self.X.shape[0])*0.0
         eps = 0.001
-        sigma = 5
+        sigma = 10
         maxLocalAuc = MaxLocalAUC(lmbda, self.k, r, sigma=sigma, eps=eps, stochastic=True)
                 
         ProfileUtils.profile('maxLocalAuc.learnModel(self.X)', globals(), locals())
 
 profiler = MaxLocalAUCProfile()
-profiler.profileLearnModel()  #6.2 
+profiler.profileLearnModel()  
+#profiler.profileLearnModel2()
