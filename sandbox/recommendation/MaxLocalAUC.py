@@ -19,7 +19,7 @@ class MaxLocalAUC(object):
         self.stochastic = stochastic
         
         self.printStep = 5
-        self.stocPrintStep = 100
+        self.stocPrintStep = 10
     
     def getOmegaList(self, X): 
         """
@@ -32,7 +32,7 @@ class MaxLocalAUC(object):
             omegaList.append(numpy.array(X[i, :].nonzero()[1], numpy.uint))
         return omegaList 
     
-    def learnModel(self, X): 
+    def learnModel(self, X, verbose=False): 
         """
         Max local AUC with Frobenius norm penalty. Solve with gradient descent. 
         The input is a sppy.csarray object 
@@ -42,7 +42,6 @@ class MaxLocalAUC(object):
         n = X.shape[1]
         omegaList = self.getOmegaList(X)
 
-        
         rowInds, colInds = X.nonzero()
         mStar = numpy.unique(rowInds).shape[0]
         
@@ -56,25 +55,34 @@ class MaxLocalAUC(object):
         
         normDeltaU = numpy.linalg.norm(U - lastU)
         normDeltaV = numpy.linalg.norm(V - lastV)
+        objs = []
         
         ind = 0
         
-        while normDeltaU > self.eps and normDeltaV > self.eps: 
+        if self.stochastic: 
+            eps = self.eps/m
+        else:
+            eps = self.eps 
+        
+        while normDeltaU > eps and normDeltaV > eps: 
             lastU = U.copy() 
             lastV = V.copy() 
             
             if self.stochastic:
                 i = numpy.random.randint(m)
-                deltaUi = self.derivativeUi(X, U, V, omegaList, i, mStar)
+                #deltaUi = self.derivativeUi(X, U, V, omegaList, i, mStar)
+                deltaUi = derivativeUi(X, U, V, omegaList, i, mStar, self.k, self.lmbda, self.r)
                 
                 j = numpy.random.randint(n)
-                deltaVj = self.derivativeVi(X, U, V, omegaList, j)
+                #deltaVj = self.derivativeVi(X, U, V, omegaList, j)
+                deltaVj = derivativeVi(X, U, V, omegaList, j, self.k, self.lmbda, self.r)
                 
                 U[i, :] -= deltaUi
                 V[j, :] -= deltaVj
                 
                 if ind % self.stocPrintStep == 0: 
                     logging.debug("Local AUC = " + str(self.localAUC(X, U, V, omegaList)) + " objective = " + str(self.objective(X, U, V, omegaList)))
+                    logging.debug("Norm delta U = " + str(normDeltaU) + " " + "Norm delta V = " + str(normDeltaV))
             
             else: 
                 deltaU = self.sigma*self.derivativeU(X, U, V, omegaList, mStar)
@@ -85,13 +93,18 @@ class MaxLocalAUC(object):
                 
                 if ind % self.printStep == 0: 
                     logging.debug("Local AUC = " + str(self.localAUC(X, U, V, omegaList)) + " objective = " + str(self.objective(X, U, V, omegaList)))
+                    logging.debug("Norm delta U = " + str(normDeltaU) + " " + "Norm delta V = " + str(normDeltaV))
+            
+            objs.append(self.objective(X, U, V, omegaList))             
             
             normDeltaU = numpy.linalg.norm(U - lastU)
             normDeltaV = numpy.linalg.norm(V - lastV) 
             ind += 1
                         
-            
-        return U, V
+        if verbose:     
+            return U, V, numpy.array(objs)
+        else: 
+            return U, V
         
     def derivativeU(self, X, U, V, omegaList, mStar): 
         """
@@ -223,10 +236,11 @@ class MaxLocalAUC(object):
         
         localAuc = 0 
         mStar = 0
+        allInds = numpy.arange(X.shape[1])
         
         for i in range(X.shape[0]): 
             omegai = omegaList[i]
-            omegaBari = numpy.setdiff1d(numpy.arange(X.shape[1]), omegai)
+            omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
             
             if omegai.shape[0] * omegaBari.shape[0] != 0: 
                 partialAuc = 0                
@@ -248,25 +262,28 @@ class MaxLocalAUC(object):
         obj = 0 
         mStar = 0
         
+        allInds = numpy.arange(X.shape[1])        
+        
         for i in range(X.shape[0]): 
-            omegai = X[i, :].nonzero()[1]
-            omegaBari = numpy.setdiff1d(numpy.arange(X.shape[1]), omegai)
+            omegai = omegaList[i]
+            omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
             
-            ui = U[i, :]            
+            ui = U[i, :]       
+            uiV = ui.dot(V.T)
+            ri = self.r[i]
             
             if omegai.shape[0] * omegaBari.shape[0] != 0: 
                 partialAuc = 0                
                 
                 for p in omegai: 
-                    uivp = ui.dot(V[p, :])
-                    kappa = numpy.exp(-(uivp - self.r[i]))
+                    uivp = uiV[p]
+                    kappa = numpy.exp(-uivp+ri)
                     onePlusKappa = 1+kappa
                     
                     for q in omegaBari: 
-                        uivq = ui.dot(V[q, :])
+                        uivq = uiV[q]
                         gamma = exp(-uivp+uivq)
-                        
-                        
+
                         partialAuc += 1/((1+gamma) * onePlusKappa)
                             
                 mStar += 1
