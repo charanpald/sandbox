@@ -1,6 +1,7 @@
 
 import numpy 
 import sppy 
+from math import exp
 
 
 class MaxLocalAUC(object): 
@@ -80,15 +81,21 @@ class MaxLocalAUC(object):
         
         deltaAlpha = numpy.zeros(self.k)
         
+        ui = U[i, :]
+        
         for p in omegai: 
+            vp = V[p, :]
+            uivp = ui.dot(vp)
+            kappa = exp(-(uivp - self.r[i]))
+            onePlusKappa = 1+kappa
+            
             for q in omegaBari: 
-                uivp = U[i, :].dot(V[p, :])
-                uivq = U[i, :].dot(V[q, :])
+                uivq = ui.dot(V[q, :])
+                gamma = exp(-(uivp - uivq))
+                onePlusGamma = 1+gamma
                 
-                gamma = numpy.exp(-(uivp - uivq))
-                kappa = numpy.exp(-(uivp - self.r[i]))
-                
-                deltaAlpha += (V[p, :] - V[q, :]) * gamma/((1+gamma)**2 * (1+kappa)) + V[q, :]*  kappa/((1+gamma) * (1+kappa)**2)
+                denom = onePlusGamma**2 * onePlusKappa**2
+                deltaAlpha += (vp*gamma*onePlusKappa + V[q, :]*(kappa-gamma))/denom 
                 
         if omegai.shape[0] * omegaBari.shape[0] != 0: 
             deltaAlpha /= float(omegai.shape[0] * omegaBari.shape[0]*mStar)
@@ -106,8 +113,9 @@ class MaxLocalAUC(object):
         for i in range(V.shape[0]): 
             dV[i, :] = self.derivativeVi(X, U, V, i)
         
-        return dV         
+        return dV    
         
+    #@profile    
     def derivativeVi(self, X, U, V, j): 
         """
         delta phi/delta v_j
@@ -116,34 +124,39 @@ class MaxLocalAUC(object):
         deltaPhi = self.lmbda * V[j, :]
         deltaAlpha = numpy.zeros(self.k)
          
-        
         for i in range(X.shape[0]): 
             omegai = X[i, :].nonzero()[1]
             omegaBari = numpy.setdiff1d(numpy.arange(X.shape[1]), omegai)
             
-            deltaBeta = numpy.zeros(self.k)           
+            deltaBeta = numpy.zeros(self.k) 
+            ui = U[i, :]
             
             if X[i, j] != 0: 
                 p = j 
+                vp = V[p, :]
+                uivp = ui.dot(vp)
+                kappa = exp(-uivp + self.r[i])
+                onePlusKappa = 1+kappa
                 
                 for q in omegaBari: 
-                    uivp = U[i, :].dot(V[p, :])
-                    uivq = U[i, :].dot(V[q, :])
+                    uivq = ui.dot(V[q, :])
+                    gamma = exp(-uivp+uivq)
+                    onePlusGamma = 1+gamma
                     
-                    gamma = numpy.exp(-(uivp - uivq))
-                    kappa = numpy.exp(-(uivp - self.r[i]))
-                    
-                    deltaBeta += U[i, :] * (gamma/((1+gamma)**2 * (1+kappa)) + kappa/((1+gamma) * (1+kappa)**2))
+                    denom = onePlusGamma**2 * onePlusKappa**2
+                    deltaBeta += ui*(gamma+kappa+2*gamma*kappa)/denom
             else:
                 q = j 
+                vq = V[q, :]
+                uivq = ui.dot(vq)
                 
                 for p in omegai: 
-                    uivp = U[i, :].dot(V[p, :])
-                    uivq = U[i, :].dot(V[q, :])
+                    uivp = ui.dot(V[p, :])
                     
-                    gamma = numpy.exp(-(uivp - uivq))
-                    kappa = numpy.exp(-(uivp - self.r[i]))
-                    deltaBeta += -U[i, :] * gamma/((1+gamma)**2 * (1+kappa))
+                    gamma = exp(-uivp+uivq)
+                    kappa = exp(-uivp+self.r[i])
+                    
+                    deltaBeta += -ui* gamma/((1+gamma)**2 * (1+kappa))
             
             if omegai.shape[0] * omegaBari.shape[0] != 0: 
                 deltaBeta /= float(omegai.shape[0] * omegaBari.shape[0])
