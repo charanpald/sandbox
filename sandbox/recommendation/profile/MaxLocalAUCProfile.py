@@ -24,7 +24,7 @@ class MaxLocalAUCProfile(object):
     def profileLearnModel(self):
         lmbda = 0.00001
         r = numpy.ones(self.X.shape[0])*0.0
-        eps = 0.02
+        eps = 0.5
         sigma = 100
         maxLocalAuc = MaxLocalAUC(lmbda, self.k, r, sigma=sigma, eps=eps)
                 
