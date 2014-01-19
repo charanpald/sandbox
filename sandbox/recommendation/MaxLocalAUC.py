@@ -3,7 +3,7 @@ import numpy
 import logging
 from math import exp
 
-from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi
+from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, derivativeUiApprox, derivativeViApprox
 
 
 class MaxLocalAUC(object): 
@@ -18,11 +18,14 @@ class MaxLocalAUC(object):
         self.eps = eps 
         self.stochastic = stochastic
         
-        self.printStep = 5
-        self.stocPrintStep = 10
+        self.recordStep = 5
+        self.stocrecordStep = 10
+
+        self.pythonDerivative = False 
+        self.approxDerivative = True 
         
-        #The fraction of pairs n**2 to use to estimate local AUC 
-        self.sampleSize = 0.2 
+        self.numSamples = 200
+        self.maxIterations = 20
     
     def getOmegaList(self, X): 
         """
@@ -59,55 +62,37 @@ class MaxLocalAUC(object):
         normDeltaU = numpy.linalg.norm(U - lastU)
         normDeltaV = numpy.linalg.norm(V - lastV)
         objs = []
+        aucs = []
         
         ind = 0
         
-        if self.stochastic: 
-            eps = self.eps/m
-        else:
-            eps = self.eps 
+        eps = self.eps 
         
-        while normDeltaU > eps and normDeltaV > eps: 
+        while (normDeltaU > eps or normDeltaV > eps) and ind < self.maxIterations: 
             lastU = U.copy() 
             lastV = V.copy() 
             
-            if self.stochastic:
-                i = numpy.random.randint(m)
-                #deltaUi = self.derivativeUi(X, U, V, omegaList, i, mStar)
-                deltaUi = derivativeUi(X, U, V, omegaList, i, mStar, self.k, self.lmbda, self.r)
-                
-                j = numpy.random.randint(n)
-                #deltaVj = self.derivativeVi(X, U, V, omegaList, j)
-                deltaVj = derivativeVi(X, U, V, omegaList, j, self.k, self.lmbda, self.r)
-                
-                U[i, :] -= deltaUi
-                V[j, :] -= deltaVj
-                
-                if ind % self.stocPrintStep == 0: 
-                    logging.debug("Local AUC = " + str(self.localAUC(X, U, V, omegaList)) + " objective = " + str(self.objective(X, U, V, omegaList)))
-                    logging.debug("Local AUC estimation = " + str(self.localAUCEstimation(X, U, V, omegaList)))
-                    logging.debug("Norm delta U = " + str(normDeltaU) + " " + "Norm delta V = " + str(normDeltaV))
+            deltaU = self.sigma*self.derivativeU(X, U, V, omegaList, mStar)
+            deltaV = self.sigma*self.derivativeV(X, U, V, omegaList)
             
-            else: 
-                deltaU = self.sigma*self.derivativeU(X, U, V, omegaList, mStar)
-                deltaV = self.sigma*self.derivativeV(X, U, V, omegaList)
-                
-                U -= deltaU
-                V -= deltaV
-                
-                if ind % self.printStep == 0: 
-                    logging.debug("Local AUC = " + str(self.localAUC(X, U, V, omegaList)) + " objective = " + str(self.objective(X, U, V, omegaList)))
-                    logging.debug("Local AUC estimation = " + str(self.localAUCEstimation(X, U, V, omegaList)))
-                    logging.debug("Norm delta U = " + str(normDeltaU) + " " + "Norm delta V = " + str(normDeltaV))
-            
-            objs.append(self.objective(X, U, V, omegaList))             
-            
+            U -= deltaU
+            V -= deltaV
+
             normDeltaU = numpy.linalg.norm(U - lastU)
-            normDeltaV = numpy.linalg.norm(V - lastV) 
+            normDeltaV = numpy.linalg.norm(V - lastV)               
+                
+            if (not self.stochastic and ind % self.recordStep == 0) or (self.stochastic and ind % self.stocrecordStep == 0): 
+                objs.append(self.objectiveApprox(X, U, V, omegaList)) 
+                aucs.append(self.localAUCApprox(X, U, V, omegaList))
+                printStr = "Iteration: " + str(ind)
+                printStr += " local AUC~" + str(aucs[-1]) + " objective~" + str(objs[-1])
+                printStr += " ||dU||=" + str(normDeltaU) + " " + "||dV||=" + str(normDeltaV)
+                logging.debug(printStr)
+            
             ind += 1
                         
         if verbose:     
-            return U, V, numpy.array(objs)
+            return U, V, numpy.array(objs), numpy.array(aucs), ind
         else: 
             return U, V
         
@@ -116,11 +101,23 @@ class MaxLocalAUC(object):
         Find the derivative for all of U. 
         """
         dU = numpy.zeros(U.shape)
-
-        for i in range(U.shape[0]): 
-            #dU[i, :] = self.derivativeUi(X, U, V, omegaList, i, mStar)
-            dU[i, :] = derivativeUi(X, U, V, omegaList, i, mStar, self.k, self.lmbda, self.r)
         
+        if not self.stochastic: 
+            inds = numpy.arange(X.shape[0])
+        else: 
+            inds = numpy.random.randint(0, X.shape[0], self.numSamples)
+        
+        if self.pythonDerivative: 
+            for i in inds: 
+                dU[i, :] = self.derivativeUi(X, U, V, omegaList, i, mStar)
+        else:
+            if self.approxDerivative: 
+                for i in inds: 
+                    dU[i, :] = derivativeUiApprox(X, U, V, omegaList, i, mStar, self.numSamples, self.k, self.lmbda, self.r)
+            else:    
+                for i in inds:
+                    dU[i, :] = derivativeUi(X, U, V, omegaList, i, mStar, self.k, self.lmbda, self.r)
+            
         return dU 
         
     #@profile
@@ -166,13 +163,26 @@ class MaxLocalAUC(object):
         """
         dV = numpy.zeros(V.shape)
         X = numpy.array(X.todense())
-
-        for i in range(V.shape[0]): 
-            #dV[i, :] = self.derivativeVi(X, U, V, omegaList, i)
-            dV[i, :] = derivativeVi(X, U, V, omegaList, i, self.k, self.lmbda, self.r)
         
+        if not self.stochastic: 
+            inds = numpy.arange(X.shape[1])
+        else: 
+            inds = numpy.random.randint(0, X.shape[1], self.numSamples)
+        
+        if self.pythonDerivative: 
+            for i in inds: 
+                V[i, :] = self.derivativeVi(X, U, V, omegaList, i)
+        else: 
+            if self.approxDerivative: 
+                for i in inds: 
+                    dV[i, :] = derivativeViApprox(X, U, V, omegaList, i, self.numSamples, self.k, self.lmbda, self.r)
+            else: 
+                for i in inds: 
+                    dV[i, :] = derivativeVi(X, U, V, omegaList, i, self.k, self.lmbda, self.r)
+            
         return dV    
-        
+      
+      
     #@profile    
     def derivativeVi(self, X, U, V, omegaList, j): 
         """
@@ -262,7 +272,7 @@ class MaxLocalAUC(object):
         
         return localAuc
 
-    def localAUCEstimation(self, X, U, V, omegaList): 
+    def localAUCApprox(self, X, U, V, omegaList): 
         """
         Compute the estimated local AUC for the score functions UV^T relative to X with 
         quantile vector r. 
@@ -273,7 +283,7 @@ class MaxLocalAUC(object):
         localAuc = 0 
         mStar = 0
         allInds = numpy.arange(X.shape[1])
-        sampleSize = int(X.shape[1]**2 * self.sampleSize)
+        sampleSize = self.numSamples
 
         for i in range(X.shape[0]): 
             omegai = omegaList[i]
@@ -335,4 +345,46 @@ class MaxLocalAUC(object):
         obj = 0.5*self.lmbda * (numpy.sum(U**2) + numpy.sum(V**2)) - obj
         
         return obj 
+
+    #@profile
+    def objectiveApprox(self, X, U, V, omegaList):         
+        obj = 0 
+        mStar = 0
+        
+        allInds = numpy.arange(X.shape[1])        
+        
+        for i in range(X.shape[0]): 
+            omegai = omegaList[i]
+            omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
             
+            ui = U[i, :]       
+            uiV = ui.dot(V.T)
+            ri = self.r[i]
+            
+            if omegai.shape[0] * omegaBari.shape[0] != 0: 
+                partialAuc = 0                
+                
+                indsP = numpy.random.randint(0, omegai.shape[0], self.numSamples)  
+                indsQ = numpy.random.randint(0, omegaBari.shape[0], self.numSamples)
+                
+                for j in range(self.numSamples):
+                    
+                    p = omegai[indsP[j]] 
+                    q = omegaBari[indsQ[j]]                  
+                
+                    uivp = uiV[p]
+                    kappa = numpy.exp(-uivp+ri)
+                    onePlusKappa = 1+kappa
+                    
+                    uivq = uiV[q]
+                    gamma = exp(-uivp+uivq)
+
+                    partialAuc += 1/((1+gamma) * onePlusKappa)
+                            
+                mStar += 1
+                obj += partialAuc/float(self.numSamples)
+        
+        obj /= mStar       
+        obj = 0.5*self.lmbda * (numpy.sum(U**2) + numpy.sum(V**2)) - obj
+        
+        return obj 
