@@ -2,7 +2,7 @@
 import numpy 
 import logging
 from math import exp
-
+from sandbox.util.SparseUtils import SparseUtils
 from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, derivativeUiApprox, derivativeViApprox
 
 
@@ -26,6 +26,8 @@ class MaxLocalAUC(object):
         
         self.numSamples = 200
         self.maxIterations = 20
+        
+        self.initialAlg = "rand"
     
     def getOmegaList(self, X): 
         """
@@ -51,10 +53,19 @@ class MaxLocalAUC(object):
         rowInds, colInds = X.nonzero()
         mStar = numpy.unique(rowInds).shape[0]
         
-        U = numpy.random.rand(m, self.k)
-        V = numpy.random.rand(n, self.k)
-        #U = numpy.zeros((m, self.k))
-        #V = numpy.zeros((n, self.k))
+        if self.initialAlg == "rand": 
+            U = numpy.random.rand(m, self.k)
+            V = numpy.random.rand(n, self.k)
+        elif self.initialAlg == "zeros": 
+            U = numpy.zeros((m, self.k))
+            V = numpy.zeros((n, self.k))
+        elif self.initialAlg == "svd":
+            logging.debug("Initialising with SVD")
+            U, s, V = SparseUtils.svdPropack(X, self.k)
+            U = numpy.ascontiguousarray(U)
+            V = numpy.ascontiguousarray(V)
+        else:
+            raise ValueError("Unknown initialisation: " + str(self.initialAlg))
         
         lastU = U+numpy.ones((m, self.k))*self.eps
         lastV = V+numpy.ones((n, self.k))*self.eps 
