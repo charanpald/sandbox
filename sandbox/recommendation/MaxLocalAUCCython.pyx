@@ -4,6 +4,7 @@ import cython
 cimport numpy
 import numpy
 
+
 cdef extern from "math.h":
     double exp(double x)
 
@@ -290,7 +291,7 @@ cdef inline double square(double d):
     return d*d    
    
 @cython.boundscheck(False)
-def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, omegaList, numpy.ndarray[long, ndim=1, mode="c"] indsJ, unsigned int sampleSize, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
+def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[long, ndim=1, mode="c"] indsJ, unsigned int sampleSize, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
     delta phi/delta V using a few randomly selected rows of V
     """
