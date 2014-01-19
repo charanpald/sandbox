@@ -284,7 +284,11 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     deltaPhi -= deltaAlpha
     
     return deltaPhi
-    
+   
+@cython.profile(False)
+cdef inline double square(double d):
+    return d*d    
+   
 @cython.boundscheck(False)
 def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, omegaList, numpy.ndarray[long, ndim=1, mode="c"] indsJ, unsigned int sampleSize, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
@@ -301,65 +305,65 @@ def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarra
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaAlpha = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] ui = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] vp = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] vq = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] allInds = numpy.arange(n, dtype=numpy.uint)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsI = numpy.zeros(k, numpy.int)
     
-    for t in range(indsJ.shape[0]):
-        j = indsJ[t]
-        dV[t, :] = lmbda * V[j, :]
-        indsI = numpy.random.randint(0, m, sampleSize)
-        #precompute U[indsI, :].V.T
+    dV = lmbda * V[indsJ, :]
     
-        for s in range(sampleSize): 
+    for t in xrange(indsJ.shape[0]):
+        j = indsJ[t]
+        
+        indsI = numpy.random.randint(0, m, sampleSize)
+    
+        for s in xrange(sampleSize): 
             i = indsI[s]
             omegai = omegaList[i]
             numOmegai = omegai.shape[0]       
-            numOmegaBari = n-numOmegai
             
             indP = numpy.random.randint(0, omegai.shape[0])
             
-            deltaBeta = numpy.zeros(k) 
             ui = U[i, :]
             riExp = exp(r[i])
             
             if X[i, j] != 0: 
                 #if j not in omega:
-                omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
-                indQ = numpy.random.randint(0, omegaBari.shape[0])
+                q = numpy.random.randint(0, n)
+                while X[i, q] != 0: 
+                    q = numpy.random.randint(0, n)
                 
                 p = j 
+                
                 uivp = ui.T.dot(V[p, :])
-                #uivp = UV[s, p]
+                #uivp = dot(ui, V[p, :])
                 uivpExp = exp(uivp)            
-                
                 kappa = riExp/uivpExp
-                onePlusKappaSq = (1+kappa)**2
-                
-                #Pick a random negative label
-                q = omegaBari[indQ] 
+
                 uivq = ui.T.dot(V[q, :])
+                #uivq = dot(ui, V[q, :])
                 gamma = exp(uivq)/uivpExp
                 
-                denom = (1+gamma)**2 * onePlusKappaSq 
-                deltaBeta += ui*((gamma+kappa+ 2*gamma*kappa)/denom)
-                deltaAlpha += deltaBeta/float(numOmegai)
+                denom = square(1+gamma) * square(1+kappa) 
+                deltaBeta = ui*((gamma+kappa+ 2*gamma*kappa)/(denom*numOmegai))
+                deltaAlpha += deltaBeta
             else:
                 q = j 
                 uivq = ui.T.dot(V[q, :])
+                #uivq = dot(ui, V[q, :])
                 
                 p = omegai[indP] 
                 uivp = ui.T.dot(V[p, :])
+                #uivp = dot(ui, V[p, :])
                 uivpExp = exp(uivp)
                 
                 gamma = exp(uivq)/uivpExp
                 kappa = riExp/uivpExp
                 
-                deltaBeta -= ui* (gamma/((1+gamma)**2 * (1+kappa)))
-                deltaAlpha += deltaBeta/float(numOmegaBari)
+                numOmegaBari = n-numOmegai
+                denom = square(1+gamma) * (1+kappa) 
+                deltaBeta = ui* (gamma/(denom * float(numOmegaBari)))
+                deltaAlpha -= deltaBeta
         
         deltaAlpha /= float(sampleSize)
         dV[t, :] -= deltaAlpha
