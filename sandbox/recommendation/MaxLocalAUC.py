@@ -84,11 +84,11 @@ class MaxLocalAUC(object):
             lastU = U.copy() 
             lastV = V.copy() 
             
-            deltaU = self.sigma*self.derivativeU(X, U, V, omegaList, mStar)
-            deltaV = self.sigma*self.derivativeV(X, U, V, omegaList)
+            deltaU, indsU = self.derivativeU(X, U, V, omegaList, mStar)
+            deltaV, indsV = self.derivativeV(X, U, V, omegaList)
             
-            U -= deltaU
-            V -= deltaV
+            U[indsU, :] = U[indsU, :] - self.sigma*deltaU
+            V[indsV, :] = V[indsV, :] - self.sigma*deltaV
 
             normDeltaU = numpy.linalg.norm(U - lastU)
             normDeltaV = numpy.linalg.norm(V - lastV)               
@@ -112,24 +112,27 @@ class MaxLocalAUC(object):
         """
         Find the derivative for all of U. 
         """
-        dU = numpy.zeros(U.shape)
         
         if not self.stochastic: 
             inds = numpy.arange(X.shape[0])
         else: 
             inds = numpy.random.randint(0, X.shape[0], self.numRowSamples)
         
+        dU = numpy.zeros((inds.shape[0], self.k))        
+        
         if self.pythonDerivative: 
-            for i in inds: 
-                dU[i, :] = self.derivativeUi(X, U, V, omegaList, i, mStar)
+            for j in range(inds.shape[0]): 
+                i = inds[j]
+                dU[j, :] = self.derivativeUi(X, U, V, omegaList, i, mStar)
         else:
             if self.approxDerivative: 
-                dU[inds, :] = derivativeUApprox(X, U, V, omegaList, inds, mStar, self.numAucSamples, self.k, self.lmbda, self.r) 
+                dU = derivativeUApprox(X, U, V, omegaList, inds, mStar, self.numAucSamples, self.k, self.lmbda, self.r) 
             else:    
-                for i in inds:
-                    dU[i, :] = derivativeUi(X, U, V, omegaList, i, mStar, self.k, self.lmbda, self.r)
+                for j in range(inds.shape[0]): 
+                    i = inds[j]
+                    dU[j, :] = derivativeUi(X, U, V, omegaList, i, mStar, self.k, self.lmbda, self.r)
             
-        return dU 
+        return dU, inds 
         
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, mStar): 
@@ -172,25 +175,26 @@ class MaxLocalAUC(object):
         """
         Find the derivative for all of V. 
         """
-        dV = numpy.zeros(V.shape)
-        X = numpy.array(X.todense())
-        
         if not self.stochastic: 
             inds = numpy.arange(X.shape[1])
         else: 
             inds = numpy.random.randint(0, X.shape[1], self.numRowSamples)
         
+        dV = numpy.zeros((inds.shape[0], self.k))        
+        
         if self.pythonDerivative: 
-            for i in inds: 
-                V[i, :] = self.derivativeVi(X, U, V, omegaList, i)
+            for j in range(inds.shape[0]): 
+                i = inds[j]
+                dV[j, :] = self.derivativeVi(X, U, V, omegaList, i)
         else: 
             if self.approxDerivative: 
-                dV[inds, :] = derivativeVApprox(X, U, V, omegaList, inds, self.numAucSamples, self.k, self.lmbda, self.r)
+                dV = derivativeVApprox(X, U, V, omegaList, inds, self.numAucSamples, self.k, self.lmbda, self.r)
             else: 
-                for i in inds: 
-                    dV[i, :] = derivativeVi(X, U, V, omegaList, i, self.k, self.lmbda, self.r)
+                for j in range(inds.shape[0]):  
+                    i = inds[j]
+                    dV[j, :] = derivativeVi(X, U, V, omegaList, i, self.k, self.lmbda, self.r)
             
-        return dV    
+        return dV, inds    
       
       
     #@profile    
