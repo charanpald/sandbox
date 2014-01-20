@@ -3,7 +3,7 @@ import numpy
 import logging
 from math import exp
 from sandbox.util.SparseUtils import SparseUtils
-from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, derivativeUiApprox, derivativeViApprox, derivativeVApprox
+from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, derivativeUiApprox, derivativeViApprox, derivativeVApprox, derivativeUApprox
 
 
 class MaxLocalAUC(object): 
@@ -123,8 +123,9 @@ class MaxLocalAUC(object):
                 dU[i, :] = self.derivativeUi(X, U, V, omegaList, i, mStar)
         else:
             if self.approxDerivative: 
-                for i in inds: 
-                    dU[i, :] = derivativeUiApprox(X, U, V, omegaList, i, mStar, self.numSamples, self.k, self.lmbda, self.r)
+                #for i in inds: 
+                #    dU[i, :] = derivativeUiApprox(X, U, V, omegaList, i, mStar, self.numSamples, self.k, self.lmbda, self.r)
+                dU[inds, :] = derivativeUApprox(X, U, V, omegaList, inds, mStar, self.numSamples, self.k, self.lmbda, self.r) 
             else:    
                 for i in inds:
                     dU[i, :] = derivativeUi(X, U, V, omegaList, i, mStar, self.k, self.lmbda, self.r)
