@@ -32,7 +32,7 @@ cdef inline numpy.ndarray[double, ndim = 1, mode="c"] scale(numpy.ndarray[double
 
 @cython.boundscheck(False)
 @cython.boundscheck(False)
-def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, omegaList, unsigned int i, unsigned int mStar, unsigned int sampleSize, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
+def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int mStar, unsigned int sampleSize, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
     delta phi/delta u_i
     """
@@ -84,7 +84,7 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     return deltaPhi
 
 @cython.boundscheck(False)
-def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, omegaList, unsigned int i, unsigned int mStar, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
+def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int mStar, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
     delta phi/delta u_i
     """
@@ -136,16 +136,67 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     
     return deltaPhi
 
-@cython.boundscheck(False) 
-cdef inline double updateDeltaBeta1(double uivq, double uivp, double onePlusKappaSq, double kappa, double twoKappa):
-    gamma = exp(-uivp+uivq)
-    onePlusGamma = 1+gamma
+
+def derivativeUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[long, ndim=1, mode="c"] indsI, unsigned int mStar, unsigned int sampleSize, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):
+    """
+    delta phi/delta U
+    """
+    cdef unsigned int p, q, ind, j, s
+    cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappaSq, gamma, onePlusGamma
+    cdef double denom, denom2
+    cdef unsigned int n, numOmegai, numOmegaBari
+    cdef numpy.ndarray[numpy.float_t, ndim=2, mode="c"] deltaPhi = numpy.zeros((indsI.shape[0], k), numpy.float)
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
+    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaAlpha = numpy.zeros(k, numpy.float)
+    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP = numpy.zeros(k, numpy.int)
+    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
     
-    denom = onePlusGamma**2 * onePlusKappaSq
-    return ((gamma+kappa+gamma*twoKappa)/denom)
+    n = X.shape[1]
+    deltaPhi = U[indsI, :]*lmbda    
+    
+    for s in range(indsI.shape[0]):
+        i = indsI[s]
+        
+        omegai = omegaList[i]
+        omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
+        numOmegai = omegai.shape[0]
+        numOmegaBari = omegaBari.shape[0]
+        
+        deltaAlpha = numpy.zeros(k)
+        
+        ri = r[i]
+        
+        if omegai.shape[0] * omegaBari.shape[0] != 0: 
+            indsP = numpy.random.randint(0, numOmegai, sampleSize)
+            indsQ = numpy.random.randint(0, numOmegaBari, sampleSize)        
+            
+            for j in range(sampleSize):
+                #Maybe sample without replacement 
+                p = omegai[indsP[j]] 
+                q = omegaBari[indsQ[j]]  
+            
+                uivp = dot(U, i, V, p, k)
+                kappa = exp(-uivp +ri)
+                onePlusKappa = 1+kappa
+                onePlusKappaSq = square(onePlusKappa)
+                
+                uivq = dot(U, i, V, q, k)
+                gamma = exp(-uivp+uivq)
+                onePlusGamma = 1+gamma
+                onePlusGammaSq = square(onePlusGamma)
+                
+                denom = onePlusGammaSq * onePlusKappaSq
+                denom2 = onePlusGammaSq * onePlusKappa
+                deltaAlpha += scale(V, p, ((gamma+kappa+2*gamma*kappa)/denom), k) - scale(V, q, (gamma/denom2), k) 
+                    
+            deltaAlpha /= float(sampleSize*mStar)
+            deltaPhi[s, :] -= deltaAlpha
+    
+    return deltaPhi
 
 @cython.boundscheck(False)
-def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, omegaList, unsigned int j, unsigned int sampleSize, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
+def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int j, unsigned int sampleSize, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
     delta phi/delta v_j
     """
@@ -224,7 +275,7 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     return deltaPhi
 
 @cython.boundscheck(False)
-def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, omegaList, unsigned int j, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
+def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int j, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
     delta phi/delta v_j
     """
