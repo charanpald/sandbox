@@ -56,9 +56,9 @@ class MaxLocalAUC(object):
         if self.initialAlg == "rand": 
             U = numpy.random.rand(m, self.k)
             V = numpy.random.rand(n, self.k)
-        elif self.initialAlg == "zeros": 
-            U = numpy.zeros((m, self.k))
-            V = numpy.zeros((n, self.k))
+        elif self.initialAlg == "ones": 
+            U = numpy.ones((m, self.k))
+            V = numpy.ones((n, self.k))
         elif self.initialAlg == "svd":
             logging.debug("Initialising with SVD")
             U, s, V = SparseUtils.svdPropack(X, self.k)
