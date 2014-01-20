@@ -14,8 +14,8 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     delta phi/delta u_i
     """
     cdef unsigned int p, q, ind, j
-    cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappSq, gamma, onePlusGamma
-    cdef double denom
+    cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappaSq, gamma, onePlusGamma
+    cdef double denom, denom2
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaPhi = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
@@ -23,7 +23,7 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] ui = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] vp = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] vq = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] uiV = numpy.zeros(k, numpy.float)
+    #cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] uiV = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP = numpy.zeros(k, numpy.int)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
     
@@ -34,9 +34,9 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     
     deltaAlpha = numpy.zeros(k)
     
-    ui = U[i, :]
+    #ui = U[i, :]
     ri = r[i]
-    uiV = ui.dot(V.T)
+    #uiV = ui.dot(V.T)
     
     if omegai.shape[0] * omegaBari.shape[0] != 0: 
         indsP = numpy.random.randint(0, omegai.shape[0], sampleSize)
@@ -48,22 +48,24 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             q = omegaBari[indsQ[j]]  
         
             vp = V[p, :]
-            uivp = uiV[p]
+            #uivp = uiV[p]
+            uivp = dot(U, i, V, p, k)
             kappa = exp(-uivp +ri)
             onePlusKappa = 1+kappa
-            onePlusKappSq = onePlusKappa**2
+            onePlusKappaSq = square(onePlusKappa)
             
             vq = V[q, :]
-            uivq = uiV[q]
+            #uivq = uiV[q]
+            uivq = dot(U, i, V, q, k)
             gamma = exp(-uivp+uivq)
             onePlusGamma = 1+gamma
+            onePlusGammaSq = square(onePlusGamma)
             
-            denom = onePlusGamma**2 * onePlusKappSq
-            deltaAlpha += vp*(gamma*onePlusKappa/denom) + vq*((kappa-gamma)/denom) 
+            denom = onePlusGammaSq * onePlusKappaSq
+            denom2 = onePlusGammaSq * onePlusKappa
+            deltaAlpha += vp*((gamma+kappa+2*gamma*kappa)/denom) - vq*(gamma/denom2) 
                 
-        
         deltaAlpha /= float(sampleSize*mStar)
-            
         deltaPhi -= deltaAlpha
     
     return deltaPhi
@@ -74,8 +76,8 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     delta phi/delta u_i
     """
     cdef unsigned int p, q
-    cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappSq, gamma, onePlusGamma
-    cdef double denom
+    cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappaSq, gamma, onePlusGamma
+    cdef double denom, denom2
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaPhi = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
@@ -101,16 +103,18 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
         uivp = uiV[p]
         kappa = exp(-uivp +ri)
         onePlusKappa = 1+kappa
-        onePlusKappSq = onePlusKappa**2
+        onePlusKappaSq = square(onePlusKappa)
         
         for q in omegaBari: 
             vq = V[q, :]
             uivq = uiV[q]
             gamma = exp(-uivp+uivq)
             onePlusGamma = 1+gamma
+            onePlusGammaSq = square(onePlusGamma)
             
-            denom = onePlusGamma**2 * onePlusKappSq
-            deltaAlpha += vp*(gamma*onePlusKappa/denom) + vq*((kappa-gamma)/denom) 
+            denom = onePlusGammaSq * onePlusKappaSq
+            denom2 = onePlusGammaSq * onePlusKappa
+            deltaAlpha += vp*((gamma+kappa+2*gamma*kappa)/denom) - vq*(gamma/denom2) 
             
     if omegai.shape[0] * omegaBari.shape[0] != 0: 
         deltaAlpha /= float(omegai.shape[0] * omegaBari.shape[0]*mStar)
@@ -289,8 +293,18 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
 @cython.profile(False)
 cdef inline double square(double d):
     return d*d    
-   
+
+@cython.boundscheck(False) 
+@cython.wraparound(False) 
+cdef inline double dot(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, numpy.ndarray[double, ndim = 2, mode="c"] V, unsigned int j, unsigned int k):
+    cdef double result = 0
+    cdef unsigned int s = 0
+    for s in range(k):
+        result += U[i, s]*V[j, s]
+    return result
+  
 @cython.boundscheck(False)
+@cython.wraparound(False)
 def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[long, ndim=1, mode="c"] indsJ, unsigned int sampleSize, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
     delta phi/delta V using a few randomly selected rows of V
@@ -305,10 +319,7 @@ def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarra
     cdef numpy.ndarray[numpy.float_t, ndim=2, mode="c"] dV = numpy.zeros((indsJ.shape[0], k), numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaAlpha = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] ui = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] allInds = numpy.arange(n, dtype=numpy.uint)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsI = numpy.zeros(k, numpy.int)
     
     dV = lmbda * V[indsJ, :]
@@ -336,13 +347,11 @@ def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarra
                 
                 p = j 
                 
-                uivp = ui.T.dot(V[p, :])
-                #uivp = dot(ui, V[p, :])
+                uivp = dot(U, i, V, p, k)
                 uivpExp = exp(uivp)            
                 kappa = riExp/uivpExp
 
-                uivq = ui.T.dot(V[q, :])
-                #uivq = dot(ui, V[q, :])
+                uivq = dot(U, i, V, q, k)
                 gamma = exp(uivq)/uivpExp
                 
                 denom = square(1+gamma) * square(1+kappa) 
@@ -350,12 +359,10 @@ def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarra
                 deltaAlpha += deltaBeta
             else:
                 q = j 
-                uivq = ui.T.dot(V[q, :])
-                #uivq = dot(ui, V[q, :])
+                uivq = dot(U, i, V, q, k)
                 
                 p = omegai[indP] 
-                uivp = ui.T.dot(V[p, :])
-                #uivp = dot(ui, V[p, :])
+                uivp = dot(U, i, V, p, k)
                 uivpExp = exp(uivp)
                 
                 gamma = exp(uivq)/uivpExp
