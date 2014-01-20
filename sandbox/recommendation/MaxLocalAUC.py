@@ -1,9 +1,10 @@
 
 import numpy 
 import logging
+import multiprocessing 
 from math import exp
 from sandbox.util.SparseUtils import SparseUtils
-from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, derivativeUiApprox, derivativeViApprox, derivativeVApprox, derivativeUApprox
+from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, derivativeVApprox, derivativeUApprox
 
 
 class MaxLocalAUC(object): 
@@ -18,14 +19,14 @@ class MaxLocalAUC(object):
         self.eps = eps 
         self.stochastic = stochastic
         
-        self.recordStep = 5
-        self.stocrecordStep = 10
+        self.recordStep = 10
 
         self.pythonDerivative = False 
         self.approxDerivative = True 
         
-        self.numSamples = 200
-        self.maxIterations = 20
+        self.numRowSamples = 10
+        self.numAucSamples = 100
+        self.maxIterations = 100
         
         self.initialAlg = "rand"
     
@@ -92,7 +93,7 @@ class MaxLocalAUC(object):
             normDeltaU = numpy.linalg.norm(U - lastU)
             normDeltaV = numpy.linalg.norm(V - lastV)               
                 
-            if (not self.stochastic and ind % self.recordStep == 0) or (self.stochastic and ind % self.stocrecordStep == 0): 
+            if ind % self.recordStep == 0: 
                 objs.append(self.objectiveApprox(X, U, V, omegaList)) 
                 aucs.append(self.localAUCApprox(X, U, V, omegaList))
                 printStr = "Iteration: " + str(ind)
@@ -116,16 +117,14 @@ class MaxLocalAUC(object):
         if not self.stochastic: 
             inds = numpy.arange(X.shape[0])
         else: 
-            inds = numpy.random.randint(0, X.shape[0], self.numSamples)
+            inds = numpy.random.randint(0, X.shape[0], self.numRowSamples)
         
         if self.pythonDerivative: 
             for i in inds: 
                 dU[i, :] = self.derivativeUi(X, U, V, omegaList, i, mStar)
         else:
             if self.approxDerivative: 
-                #for i in inds: 
-                #    dU[i, :] = derivativeUiApprox(X, U, V, omegaList, i, mStar, self.numSamples, self.k, self.lmbda, self.r)
-                dU[inds, :] = derivativeUApprox(X, U, V, omegaList, inds, mStar, self.numSamples, self.k, self.lmbda, self.r) 
+                dU[inds, :] = derivativeUApprox(X, U, V, omegaList, inds, mStar, self.numAucSamples, self.k, self.lmbda, self.r) 
             else:    
                 for i in inds:
                     dU[i, :] = derivativeUi(X, U, V, omegaList, i, mStar, self.k, self.lmbda, self.r)
@@ -179,16 +178,14 @@ class MaxLocalAUC(object):
         if not self.stochastic: 
             inds = numpy.arange(X.shape[1])
         else: 
-            inds = numpy.random.randint(0, X.shape[1], self.numSamples)
+            inds = numpy.random.randint(0, X.shape[1], self.numRowSamples)
         
         if self.pythonDerivative: 
             for i in inds: 
                 V[i, :] = self.derivativeVi(X, U, V, omegaList, i)
         else: 
             if self.approxDerivative: 
-                #for i in inds: 
-                #   dV[i, :] = derivativeViApprox(X, U, V, omegaList, i, self.numSamples, self.k, self.lmbda, self.r)
-                dV[inds, :] = derivativeVApprox(X, U, V, omegaList, inds, self.numSamples, self.k, self.lmbda, self.r)
+                dV[inds, :] = derivativeVApprox(X, U, V, omegaList, inds, self.numAucSamples, self.k, self.lmbda, self.r)
             else: 
                 for i in inds: 
                     dV[i, :] = derivativeVi(X, U, V, omegaList, i, self.k, self.lmbda, self.r)
@@ -296,7 +293,6 @@ class MaxLocalAUC(object):
         localAuc = 0 
         mStar = 0
         allInds = numpy.arange(X.shape[1])
-        sampleSize = self.numSamples
 
         for i in range(X.shape[0]): 
             omegai = omegaList[i]
@@ -305,7 +301,7 @@ class MaxLocalAUC(object):
             if omegai.shape[0] * omegaBari.shape[0] != 0: 
                 partialAuc = 0                
                 
-                for j in range(sampleSize):
+                for j in range(self.numAucSamples):
                     ind = numpy.random.randint(omegai.shape[0])
                     p = omegai[ind] 
                     
@@ -316,7 +312,7 @@ class MaxLocalAUC(object):
                         partialAuc += 1 
                             
                 mStar += 1
-                localAuc += partialAuc/float(sampleSize)
+                localAuc += partialAuc/float(self.numAucSamples)
         
         localAuc /= mStar        
         
@@ -377,10 +373,10 @@ class MaxLocalAUC(object):
             if omegai.shape[0] * omegaBari.shape[0] != 0: 
                 partialAuc = 0                
                 
-                indsP = numpy.random.randint(0, omegai.shape[0], self.numSamples)  
-                indsQ = numpy.random.randint(0, omegaBari.shape[0], self.numSamples)
+                indsP = numpy.random.randint(0, omegai.shape[0], self.numAucSamples)  
+                indsQ = numpy.random.randint(0, omegaBari.shape[0], self.numAucSamples)
                 
-                for j in range(self.numSamples):
+                for j in range(self.numAucSamples):
                     
                     p = omegai[indsP[j]] 
                     q = omegaBari[indsQ[j]]                  
@@ -395,7 +391,7 @@ class MaxLocalAUC(object):
                     partialAuc += 1/((1+gamma) * onePlusKappa)
                             
                 mStar += 1
-                obj += partialAuc/float(self.numSamples)
+                obj += partialAuc/float(self.numAucSamples)
         
         obj /= mStar       
         obj = 0.5*self.lmbda * (numpy.sum(U**2) + numpy.sum(V**2)) - obj
