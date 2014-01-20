@@ -4,10 +4,33 @@ import cython
 cimport numpy
 import numpy
 
-
 cdef extern from "math.h":
     double exp(double x)
 
+@cython.profile(False)
+cdef inline double square(double d):
+    return d*d    
+
+@cython.boundscheck(False) 
+@cython.wraparound(False) 
+cdef inline double dot(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, numpy.ndarray[double, ndim = 2, mode="c"] V, unsigned int j, unsigned int k):
+    cdef double result = 0
+    cdef unsigned int s = 0
+    for s in range(k):
+        result += U[i, s]*V[j, s]
+    return result
+
+@cython.boundscheck(False) 
+@cython.wraparound(False) 
+cdef inline numpy.ndarray[double, ndim = 1, mode="c"] scale(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, double d, unsigned int k):
+    cdef numpy.ndarray[double, ndim = 1, mode="c"] ui = numpy.empty(k)
+    cdef unsigned int s = 0
+    for s in range(k):
+        ui[s] = U[i, s]*d
+    return ui
+
+
+@cython.boundscheck(False)
 @cython.boundscheck(False)
 def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, omegaList, unsigned int i, unsigned int mStar, unsigned int sampleSize, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
@@ -20,23 +43,17 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaAlpha = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] ui = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] vp = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] vq = numpy.zeros(k, numpy.float)
-    #cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] uiV = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP = numpy.zeros(k, numpy.int)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
     
-    deltaPhi = lmbda * U[i, :]
+    deltaPhi = scale(U, i, lmbda, k)
     
     omegai = omegaList[i]
     omegaBari = numpy.setdiff1d(numpy.arange(X.shape[1], dtype=numpy.uint), omegai, assume_unique=True)
     
     deltaAlpha = numpy.zeros(k)
     
-    #ui = U[i, :]
     ri = r[i]
-    #uiV = ui.dot(V.T)
     
     if omegai.shape[0] * omegaBari.shape[0] != 0: 
         indsP = numpy.random.randint(0, omegai.shape[0], sampleSize)
@@ -47,15 +64,11 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             p = omegai[indsP[j]] 
             q = omegaBari[indsQ[j]]  
         
-            vp = V[p, :]
-            #uivp = uiV[p]
             uivp = dot(U, i, V, p, k)
             kappa = exp(-uivp +ri)
             onePlusKappa = 1+kappa
             onePlusKappaSq = square(onePlusKappa)
             
-            vq = V[q, :]
-            #uivq = uiV[q]
             uivq = dot(U, i, V, q, k)
             gamma = exp(-uivp+uivq)
             onePlusGamma = 1+gamma
@@ -63,7 +76,7 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             
             denom = onePlusGammaSq * onePlusKappaSq
             denom2 = onePlusGammaSq * onePlusKappa
-            deltaAlpha += vp*((gamma+kappa+2*gamma*kappa)/denom) - vq*(gamma/denom2) 
+            deltaAlpha += scale(V, p, ((gamma+kappa+2*gamma*kappa)/denom), k) - scale(V, q, (gamma/denom2), k) 
                 
         deltaAlpha /= float(sampleSize*mStar)
         deltaPhi -= deltaAlpha
@@ -290,19 +303,6 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     
     return deltaPhi
    
-@cython.profile(False)
-cdef inline double square(double d):
-    return d*d    
-
-@cython.boundscheck(False) 
-@cython.wraparound(False) 
-cdef inline double dot(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, numpy.ndarray[double, ndim = 2, mode="c"] V, unsigned int j, unsigned int k):
-    cdef double result = 0
-    cdef unsigned int s = 0
-    for s in range(k):
-        result += U[i, s]*V[j, s]
-    return result
-  
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[long, ndim=1, mode="c"] indsJ, unsigned int sampleSize, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
@@ -326,7 +326,6 @@ def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarra
     
     for t in xrange(indsJ.shape[0]):
         j = indsJ[t]
-        
         indsI = numpy.random.randint(0, m, sampleSize)
     
         for s in xrange(sampleSize): 
@@ -336,7 +335,6 @@ def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarra
             
             indP = numpy.random.randint(0, omegai.shape[0])
             
-            ui = U[i, :]
             riExp = exp(r[i])
             
             if X[i, j] != 0: 
@@ -355,7 +353,7 @@ def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarra
                 gamma = exp(uivq)/uivpExp
                 
                 denom = square(1+gamma) * square(1+kappa) 
-                deltaBeta = ui*((gamma+kappa+ 2*gamma*kappa)/(denom*numOmegai))
+                deltaBeta = scale(U, i, ((gamma+kappa+ 2*gamma*kappa)/(denom*numOmegai)), k)
                 deltaAlpha += deltaBeta
             else:
                 q = j 
@@ -370,7 +368,7 @@ def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarra
                 
                 numOmegaBari = n-numOmegai
                 denom = square(1+gamma) * (1+kappa) 
-                deltaBeta = ui* (gamma/(denom * float(numOmegaBari)))
+                deltaBeta = scale(U, i, gamma/(denom * float(numOmegaBari)), k)
                 deltaAlpha -= deltaBeta
         
         deltaAlpha /= float(sampleSize)
