@@ -6,7 +6,7 @@ import sppy
 import time
 from math import exp
 from sandbox.util.SparseUtils import SparseUtils
-from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, derivativeVApprox, derivativeUApprox, objectiveApprox
+from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, derivativeVApprox, derivativeUApprox, objectiveApprox, localAUCApprox
 from apgl.util.Sampling import Sampling 
 from apgl.util.Util import Util 
 
@@ -21,6 +21,11 @@ class MaxLocalAUC(object):
         self.sigma = sigma
         self.eps = eps 
         self.stochastic = stochastic
+        
+        #Optimal rate doesn't seem to work 
+        self.rate = "constant"
+        self.alpha = 0.000002
+        self.t0 = 100
         
         self.recordStep = 10
 
@@ -37,6 +42,8 @@ class MaxLocalAUC(object):
         self.folds = 3 
         self.ks = numpy.array([10, 20, 50])
         self.lmbdas = numpy.array([10**-7, 10**-6, 10**-5, 10**-4]) 
+    
+
     
     def getOmegaList(self, X): 
         """
@@ -103,6 +110,14 @@ class MaxLocalAUC(object):
             deltaU, indsU = self.derivativeU(X, U, V, omegaList, mStar)
             deltaV, indsV = self.derivativeV(X, U, V, omegaList)
             
+            if self.rate == "constant": 
+                sigma = self.sigma 
+            elif self.rate == "optimal":
+                sigma = 1/(self.alpha*(self.t0 + ind))
+                logging.debug("sigma=" + str(sigma))
+            else: 
+                raise ValueError("Invalid rate: " + self.rate)
+            
             U[indsU, :] = U[indsU, :] - self.sigma*deltaU
             V[indsV, :] = V[indsV, :] - self.sigma*deltaV
 
@@ -112,7 +127,7 @@ class MaxLocalAUC(object):
             if ind % self.recordStep == 0: 
                 objs.append(objectiveApprox(X, U, V, omegaList, self.numAucSamples, self.lmbda, self.r))
                 #objs.append(self.objectiveApprox(X, U, V, omegaList)) 
-                aucs.append(self.localAUCApprox(X, U, V, omegaList))
+                aucs.append(localAUCApprox(X, U, V, omegaList, self.numAucSamples, self.lmbda, self.r))
                 printStr = "Iteration: " + str(ind)
                 printStr += " local AUC~" + str(aucs[-1]) + " objective~" + str(objs[-1])
                 printStr += " ||dU||=" + str(normDeltaU) + " " + "||dV||=" + str(normDeltaV)
@@ -124,7 +139,7 @@ class MaxLocalAUC(object):
         logging.debug("Total time taken " + str(totalTime))
                         
         if verbose:     
-            return U, V, numpy.array(objs), numpy.array(aucs), ind
+            return U, V, numpy.array(objs), numpy.array(aucs), ind, totalTime
         else: 
             return U, V
         
