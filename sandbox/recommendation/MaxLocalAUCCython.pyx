@@ -296,3 +296,48 @@ def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarra
         dV[t, :] -= deltaAlpha
     
     return dV
+    
+def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):         
+    cdef double obj = 0 
+    cdef unsigned int mStar = 0
+    cdef unsigned int i, j, k, p, q
+    cdef double kappa, onePlusKappa, uivp, uivq, gamma, partialAuc
+    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] allInds = numpy.arange(X.shape[1])   
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(10, numpy.uint)
+    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] omegaBari    
+    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP
+    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ
+    
+    k = U.shape[1]
+    
+    for i in range(X.shape[0]): 
+        omegai = omegaList[i]
+        omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
+        
+        ri = r[i]
+        
+        if omegai.shape[0] * omegaBari.shape[0] != 0: 
+            partialAuc = 0                
+            
+            indsP = numpy.random.randint(0, omegai.shape[0], numAucSamples)  
+            indsQ = numpy.random.randint(0, omegaBari.shape[0], numAucSamples)
+            
+            for j in range(numAucSamples):
+                p = omegai[indsP[j]] 
+                q = omegaBari[indsQ[j]]                  
+            
+                uivp = dot(U, i, V, p, k)
+                kappa = exp(-uivp+ri)
+                
+                uivq = dot(U, i, V, q, k)
+                gamma = exp(-uivp+uivq)
+
+                partialAuc += 1/((1+gamma) * (1+kappa))
+                        
+            mStar += 1
+            obj += partialAuc/float(numAucSamples)
+    
+    obj /= mStar       
+    obj = 0.5*lmbda * (numpy.sum(U**2) + numpy.sum(V**2)) - obj
+    
+    return obj 
