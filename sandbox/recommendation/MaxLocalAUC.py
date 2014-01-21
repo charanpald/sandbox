@@ -3,6 +3,7 @@ import numpy
 import logging
 import multiprocessing 
 import sppy 
+import time
 from math import exp
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, derivativeVApprox, derivativeUApprox, objectiveApprox
@@ -81,11 +82,13 @@ class MaxLocalAUC(object):
         eps = self.eps 
 
         #Convert to a csarray for faster access 
-        logging.debug("Converting in csarray")
+        logging.debug("Converting to csarray")
         X2 = sppy.csarray(X.shape, storagetype="row")
         X2[X.nonzero()] = X.data
         X2.compress()
         X = X2
+        
+        startTime = time.time()
     
         while (normDeltaU > eps or normDeltaV > eps) and ind < self.maxIterations: 
             lastU = U.copy() 
@@ -110,6 +113,9 @@ class MaxLocalAUC(object):
                 logging.debug(printStr)
             
             ind += 1
+            
+        totalTime = time.time() - startTime
+        logging.debug("Total time taken " + str(totalTime))
                         
         if verbose:     
             return U, V, numpy.array(objs), numpy.array(aucs), ind
