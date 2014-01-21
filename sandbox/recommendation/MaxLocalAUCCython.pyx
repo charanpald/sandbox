@@ -341,3 +341,42 @@ def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[
     obj = 0.5*lmbda * (numpy.sum(U**2) + numpy.sum(V**2)) - obj
     
     return obj 
+    
+def localAUCApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
+    """
+    Compute the estimated local AUC for the score functions UV^T relative to X with 
+    quantile vector r. 
+    """
+    cdef double localAuc = 0 
+    cdef unsigned int mStar = 0
+    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] allInds = numpy.arange(X.shape[1]) 
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(10, numpy.uint)
+    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] omegaBari 
+    cdef unsigned int i, j, k, ind, p, q
+    cdef double partialAuc
+    
+    k = U.shape[1]
+
+    for i in range(X.shape[0]): 
+        omegai = omegaList[i]
+        omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
+        
+        if omegai.shape[0] * omegaBari.shape[0] != 0: 
+            partialAuc = 0                
+            
+            for j in range(numAucSamples):
+                ind = numpy.random.randint(omegai.shape[0])
+                p = omegai[ind] 
+                
+                ind = numpy.random.randint(omegaBari.shape[0])
+                q = omegaBari[ind]   
+                
+                if dot(U, i, V, p, k) > dot(U, i, V, q, k) and dot(U, i, V, p, k) > r[i]: 
+                    partialAuc += 1 
+                        
+            mStar += 1
+            localAuc += partialAuc/float(numAucSamples)
+    
+    localAuc /= mStar        
+    
+    return localAuc
