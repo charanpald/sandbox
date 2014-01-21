@@ -33,8 +33,8 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         U, V = maxLocalAuc.learnModel(X)
         
-        print(U)
-        print(V)
+        #print(U)
+        #print(V)
 
     #@unittest.skip("")
     def testDerivativeU(self): 
@@ -57,7 +57,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             rowInds, colInds = X.nonzero()
             mStar = numpy.unique(rowInds).shape[0]
     
-            deltaU = maxLocalAuc.derivativeU(X, U, V, omegaList, mStar)
+            deltaU, inds = maxLocalAuc.derivativeU(X, U, V, omegaList, mStar)
             
             deltaU2 = numpy.zeros(U.shape)    
             
@@ -99,7 +99,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             rowInds, colInds = X.nonzero()
             mStar = numpy.unique(rowInds).shape[0]
     
-            deltaV = maxLocalAuc.derivativeV(X, U, V, omegaList)
+            deltaV, inds = maxLocalAuc.derivativeV(X, U, V, omegaList)
             
             deltaV2 = numpy.zeros(V.shape)    
             
@@ -120,6 +120,23 @@ class MaxLocalAUCTest(unittest.TestCase):
             #print(deltaV.T*10)
             #print(deltaV2.T*10)                   
             nptst.assert_almost_equal(deltaV, deltaV2, 2)
+
+    #@unittest.skip("")
+    def testModelSelect(self): 
+        m = 10 
+        n = 20 
+        k = 2 
+        numInds = 100
+        X = SparseUtils.generateSparseLowRank((m, n), k, numInds)
+        
+        X = X/X
+        
+        r = numpy.ones(m)*0.0
+        lmbda = 0.001
+        eps = 0.001
+        maxLocalAuc = MaxLocalAUC(lmbda, k, r, eps=eps)
+        
+        maxLocalAuc.modelSelect(X)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

@@ -7,7 +7,8 @@ import time
 from math import exp
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, derivativeVApprox, derivativeUApprox, objectiveApprox
-
+from apgl.util.Sampling import Sampling 
+from apgl.util.Util import Util 
 
 class MaxLocalAUC(object): 
     """
@@ -31,6 +32,11 @@ class MaxLocalAUC(object):
         self.maxIterations = 100
         
         self.initialAlg = "rand"
+        
+        #Model selection parameters 
+        self.folds = 3 
+        self.ks = numpy.array([10, 20, 50])
+        self.lmbdas = numpy.array([10**-7, 10**-6, 10**-5, 10**-4]) 
     
     def getOmegaList(self, X): 
         """
@@ -415,3 +421,40 @@ class MaxLocalAUC(object):
         obj = 0.5*self.lmbda * (numpy.sum(U**2) + numpy.sum(V**2)) - obj
         
         return obj 
+        
+    def modelSelect(self, X): 
+        """
+        Perform model selection on X and return the best parameters. 
+        """
+        cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
+        localAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(cvInds)))
+        
+        logging.debug("Performing model selection")
+        for icv, (trainInds, testInds) in enumerate(cvInds):
+            Util.printIteration(icv, 1, self.folds, "Fold: ")
+
+            trainX = SparseUtils.submatrix(X, trainInds)
+            testX = SparseUtils.submatrix(X, testInds)
+            
+            for i, k in enumerate(self.ks): 
+                for j, lmbda in enumerate(self.lmbdas): 
+                    self.k = k 
+                    self.lmbda = lmbda 
+                    
+                    U, V = self.learnModel(trainX)
+                    
+                    omegaList = self.getOmegaList(testX)
+                    localAucs[i, j, icv] = self.localAUCApprox(testX, U, V, omegaList)
+        
+        meanLocalAucs = numpy.mean(localAucs, 2)
+        stdLocalAucs = numpy.std(localAucs, 2)
+        
+        logging.debug(meanLocalAucs)
+        
+        k = self.ks[numpy.unravel_index(numpy.argmax(meanLocalAucs), meanLocalAucs.shape)[0]]
+        lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanLocalAucs), meanLocalAucs.shape)[1]]
+        
+        logging.debug("Model parameters: k=" + str(k) + " lambda=" + str(lmbda))
+        
+        self.k = k 
+        self.lmbda = lmbda 
