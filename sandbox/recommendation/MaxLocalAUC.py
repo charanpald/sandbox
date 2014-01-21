@@ -2,9 +2,10 @@
 import numpy 
 import logging
 import multiprocessing 
+import sppy 
 from math import exp
 from sandbox.util.SparseUtils import SparseUtils
-from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, derivativeVApprox, derivativeUApprox
+from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, derivativeVApprox, derivativeUApprox, objectiveApprox
 
 
 class MaxLocalAUC(object): 
@@ -44,7 +45,7 @@ class MaxLocalAUC(object):
     def learnModel(self, X, verbose=False): 
         """
         Max local AUC with Frobenius norm penalty. Solve with gradient descent. 
-        The input is a sppy.csarray object 
+        The input is a sparse array. 
         """
         
         m = X.shape[0]
@@ -77,9 +78,15 @@ class MaxLocalAUC(object):
         aucs = []
         
         ind = 0
-        
         eps = self.eps 
-        
+
+        #Convert to a csarray for faster access 
+        logging.debug("Converting in csarray")
+        X2 = sppy.csarray(X.shape, storagetype="row")
+        X2[X.nonzero()] = X.data
+        X2.compress()
+        X = X2
+    
         while (normDeltaU > eps or normDeltaV > eps) and ind < self.maxIterations: 
             lastU = U.copy() 
             lastV = V.copy() 
@@ -94,7 +101,8 @@ class MaxLocalAUC(object):
             normDeltaV = numpy.linalg.norm(V - lastV)               
                 
             if ind % self.recordStep == 0: 
-                objs.append(self.objectiveApprox(X, U, V, omegaList)) 
+                objs.append(objectiveApprox(X, U, V, omegaList, self.numAucSamples, self.lmbda, self.r))
+                #objs.append(self.objectiveApprox(X, U, V, omegaList)) 
                 aucs.append(self.localAUCApprox(X, U, V, omegaList))
                 printStr = "Iteration: " + str(ind)
                 printStr += " local AUC~" + str(aucs[-1]) + " objective~" + str(objs[-1])
@@ -153,16 +161,18 @@ class MaxLocalAUC(object):
             uivp = ui.dot(vp)
             kappa = exp(-uivp +self.r[i])
             onePlusKappa = 1+kappa
-            onePlusKappSq = onePlusKappa**2
+            onePlusKappaSq = onePlusKappa**2
             
             for q in omegaBari: 
                 vq = V[q, :]
                 uivq = ui.dot(vq)
                 gamma = exp(-uivp+uivq)
                 onePlusGamma = 1+gamma
+                onePlusGammaSq = onePlusGamma**2
                 
-                denom = onePlusGamma**2 * onePlusKappSq
-                deltaAlpha += (vp*gamma*onePlusKappa + vq*(kappa-gamma))/denom 
+                denom = onePlusGammaSq * onePlusKappaSq
+                denom2 = onePlusGammaSq * onePlusKappa
+                deltaAlpha += vp*((gamma+kappa+2*gamma*kappa)/denom) - vq*(gamma/denom2) 
                 
         if omegai.shape[0] * omegaBari.shape[0] != 0: 
             deltaAlpha /= float(omegai.shape[0] * omegaBari.shape[0]*mStar)
@@ -380,19 +390,17 @@ class MaxLocalAUC(object):
                 indsP = numpy.random.randint(0, omegai.shape[0], self.numAucSamples)  
                 indsQ = numpy.random.randint(0, omegaBari.shape[0], self.numAucSamples)
                 
-                for j in range(self.numAucSamples):
-                    
+                for j in range(self.numAucSamples):                    
                     p = omegai[indsP[j]] 
                     q = omegaBari[indsQ[j]]                  
                 
                     uivp = uiV[p]
-                    kappa = numpy.exp(-uivp+ri)
-                    onePlusKappa = 1+kappa
+                    kappa = exp(-uivp+ri)
                     
                     uivq = uiV[q]
                     gamma = exp(-uivp+uivq)
 
-                    partialAuc += 1/((1+gamma) * onePlusKappa)
+                    partialAuc += 1/((1+gamma) * 1+kappa)
                             
                 mStar += 1
                 obj += partialAuc/float(self.numAucSamples)
