@@ -77,7 +77,10 @@ class MaxLocalAUC(object):
             V = numpy.ones((n, self.k))
         elif self.initialAlg == "svd":
             logging.debug("Initialising with SVD")
-            U, s, V = SparseUtils.svdPropack(X, self.k)
+            try: 
+                U, s, V = SparseUtils.svdPropack(X, self.k)
+            except ImportError: 
+                U, s, V = SparseUtils.svdArpack(X, self.k)
             U = numpy.ascontiguousarray(U)
             V = numpy.ascontiguousarray(V)
         else:
