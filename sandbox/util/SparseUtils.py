@@ -10,7 +10,7 @@ import logging
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
 from apgl.util.Util import Util 
 from sandbox.util.LinOperatorUtils import LinOperatorUtils 
-from pypropack import svdp
+
 
 class SparseUtils(object): 
     def __init__(self): 
@@ -178,6 +178,8 @@ class SparseUtils(object):
         
         :param kmax: The maximal number of iterations / maximal dimension of Krylov subspace.
         """
+        from pypropack import svdp        
+        
         if k==None: 
             k = min(X.shape[0], X.shape[1])
         if kmax==None: 
