@@ -32,11 +32,11 @@ cdef inline numpy.ndarray[double, ndim = 1, mode="c"] scale(numpy.ndarray[double
 
 
 @cython.boundscheck(False)
-def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int mStar, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
+def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
     delta phi/delta u_i
     """
-    cdef unsigned int p, q
+    cdef unsigned int p, q, m 
     cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappaSq, gamma, onePlusGamma
     cdef double denom, denom2
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaPhi = numpy.zeros(k, numpy.float)
@@ -48,6 +48,7 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] vq = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] uiV = numpy.zeros(k, numpy.float)
     
+    m = X.shape[0]
     deltaPhi = lmbda * U[i, :]
     
     omegai = omegaList[i]
@@ -78,21 +79,21 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
             deltaAlpha += vp*((gamma+kappa+2*gamma*kappa)/denom) - vq*(gamma/denom2) 
             
     if omegai.shape[0] * omegaBari.shape[0] != 0: 
-        deltaAlpha /= float(omegai.shape[0] * omegaBari.shape[0]*mStar)
+        deltaAlpha /= float(omegai.shape[0] * omegaBari.shape[0]*m)
         
     deltaPhi -= deltaAlpha
     
     return deltaPhi
 
 
-def derivativeUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[long, ndim=1, mode="c"] indsI, unsigned int mStar, unsigned int sampleSize, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):
+def derivativeUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[long, ndim=1, mode="c"] indsI, unsigned int sampleSize, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):
     """
     delta phi/delta U
     """
     cdef unsigned int p, q, ind, j, s
     cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappaSq, gamma, onePlusGamma
     cdef double denom, denom2
-    cdef unsigned int n, numOmegai, numOmegaBari
+    cdef unsigned int n, m, numOmegai, numOmegaBari
     cdef numpy.ndarray[numpy.float_t, ndim=2, mode="c"] deltaPhi = numpy.zeros((indsI.shape[0], k), numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
@@ -100,6 +101,7 @@ def derivativeUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarra
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP = numpy.zeros(k, numpy.int)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
     
+    m = X.shape[0]
     n = X.shape[1]
     deltaPhi = U[indsI, :]*lmbda    
     
@@ -138,7 +140,7 @@ def derivativeUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarra
                 denom2 = onePlusGammaSq * onePlusKappa
                 deltaAlpha += scale(V, p, ((gamma+kappa+2*gamma*kappa)/denom), k) - scale(V, q, (gamma/denom2), k) 
                     
-            deltaAlpha /= float(sampleSize*mStar)
+            deltaAlpha /= float(sampleSize*m)
             deltaPhi[s, :] -= deltaAlpha
     
     return deltaPhi
@@ -149,7 +151,6 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     """
     delta phi/delta v_j
     """
-    cdef unsigned int mStar = 0
     cdef unsigned int i = 0
     cdef unsigned int p, q, numOmegai, numOmegaBari
     cdef unsigned int m = X.shape[0]
@@ -215,11 +216,10 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
         
         if numOmegai*numOmegaBari != 0: 
             deltaBeta /= float(numOmegai*numOmegaBari)
-            mStar += 1
             
         deltaAlpha += deltaBeta 
     
-    deltaAlpha /= float(mStar)
+    deltaAlpha /= float(m)
     deltaPhi -= deltaAlpha
     
     return deltaPhi
@@ -230,7 +230,6 @@ def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarra
     """
     delta phi/delta V using a few randomly selected rows of V
     """
-    cdef unsigned int mStar = 0
     cdef unsigned int i = 0
     cdef unsigned int p, q, numOmegai, numOmegaBari, indP, indQ, t
     cdef unsigned int m = X.shape[0]
@@ -299,7 +298,7 @@ def derivativeVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarra
     
 def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):         
     cdef double obj = 0 
-    cdef unsigned int mStar = 0
+    cdef unsigned int m = X.shape[0]
     cdef unsigned int i, j, k, p, q
     cdef double kappa, onePlusKappa, uivp, uivq, gamma, partialAuc
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] allInds = numpy.arange(X.shape[1])   
@@ -334,24 +333,22 @@ def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[
 
                 partialAuc += 1/((1+gamma) * (1+kappa))
                         
-            mStar += 1
             obj += partialAuc/float(numAucSamples)
     
-    obj /= mStar       
+    obj /= m       
     obj = 0.5*lmbda * (numpy.sum(U**2) + numpy.sum(V**2)) - obj
     
     return obj 
     
-def localAUCApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
+def localAUCApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
     Compute the estimated local AUC for the score functions UV^T relative to X with 
     quantile vector r. 
     """
-    cdef double localAuc = 0 
-    cdef unsigned int mStar = 0
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] allInds = numpy.arange(X.shape[1]) 
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(10, numpy.uint)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] omegaBari 
+    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] localAucArr = numpy.zeros(X.shape[0])
     cdef unsigned int i, j, k, ind, p, q
     cdef double partialAuc
     
@@ -374,9 +371,6 @@ def localAUCApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
                 if dot(U, i, V, p, k) > dot(U, i, V, q, k) and dot(U, i, V, p, k) > r[i]: 
                     partialAuc += 1 
                         
-            mStar += 1
-            localAuc += partialAuc/float(numAucSamples)
+            localAucArr[i] = partialAuc/float(numAucSamples)     
     
-    localAuc /= mStar        
-    
-    return localAuc
+    return localAucArr.mean()
