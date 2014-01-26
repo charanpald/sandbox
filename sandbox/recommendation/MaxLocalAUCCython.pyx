@@ -294,7 +294,7 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
         deltaAlpha /= float(numRowSamples)
         dV -= deltaAlpha
         
-        V[j, :] -= dV
+        V[j, :] -= sigma*dV
     
 
     
