@@ -14,6 +14,9 @@ cdef inline double square(double d):
 @cython.boundscheck(False) 
 @cython.wraparound(False) 
 cdef inline double dot(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, numpy.ndarray[double, ndim = 2, mode="c"] V, unsigned int j, unsigned int k):
+    """
+    Compute the dot product between U[i, :] and V[j, :]
+    """
     cdef double result = 0
     cdef unsigned int s = 0
     for s in range(k):
@@ -23,13 +26,24 @@ cdef inline double dot(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int
 @cython.boundscheck(False) 
 @cython.wraparound(False) 
 cdef inline numpy.ndarray[double, ndim = 1, mode="c"] scale(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, double d, unsigned int k):
+    """
+    Computes U[i, :] * d where k is U.shape[1]
+    """
     cdef numpy.ndarray[double, ndim = 1, mode="c"] ui = numpy.empty(k)
     cdef unsigned int s = 0
     for s in range(k):
         ui[s] = U[i, s]*d
     return ui
 
-
+@cython.boundscheck(False) 
+@cython.wraparound(False) 
+cdef inline numpy.ndarray[double, ndim = 1, mode="c"] plusEquals(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, numpy.ndarray[double, ndim = 1, mode="c"] d, unsigned int k):
+    """
+    Computes U[i, :] += d where k is U.shape[1]
+    """
+    cdef unsigned int s = 0
+    for s in range(k):
+        U[i, s] = U[i, s] + d[s]
 
 @cython.boundscheck(False)
 def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
@@ -88,7 +102,7 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
 
 def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double sigma, unsigned int numIterations, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):
     """
-    delta phi/delta U
+    Find an approximation of delta phi/delta u_i
     """
     cdef unsigned int p, q, ind, j, s
     cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappaSq, gamma, onePlusGamma
@@ -106,7 +120,7 @@ def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
     
     for s in range(numIterations): 
         i = numpy.random.randint(m)  
-        deltaPhi = U[i, :]*lmbda    
+        deltaPhi = scale(U, i, lmbda, k)    
          
         omegai = omegaList[i]
         omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
@@ -141,9 +155,9 @@ def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
                     
             deltaAlpha /= float(numAucSamples)
             deltaPhi -= deltaAlpha
-    
-        #Could do this in Cython 
-        U[i,:] -= deltaPhi*sigma 
+
+        plusEquals(U, i, -sigma*deltaPhi, k)
+        #U[i,:] -= deltaPhi*sigma 
 
 
 @cython.boundscheck(False)
@@ -230,7 +244,7 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
     """
     delta phi/delta V using a few randomly selected rows of V
     """
-    cdef unsigned int i = 0
+    cdef unsigned int i = 0, j
     cdef unsigned int p, q, numOmegai, numOmegaBari, indP, indQ, t
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1], ind
@@ -244,7 +258,7 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
     
     for t in xrange(numIterations):
         j = numpy.random.randint(n)
-        dV = lmbda * V[j, :]
+        dV = scale(V, j, lmbda, k) 
         indsI = numpy.random.randint(0, m, numRowSamples)
     
         for s in xrange(numRowSamples): 
