@@ -117,8 +117,9 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
 
-            updateUApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r)
-            updateVApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r)
+            #updateUApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r)
+            #updateVApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r)
+            self.updateV(X, U, V, omegaList)
 
             normDeltaU = numpy.linalg.norm(U - lastU)
             normDeltaV = numpy.linalg.norm(V - lastV)               
@@ -208,31 +209,20 @@ class MaxLocalAUC(object):
         
         return deltaPhi
         
-    def derivativeV(self, X, U, V, omegaList): 
+    def updateV(self, X, U, V, omegaList): 
         """
-        Find the derivative for all of V. 
+        Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic: 
             inds = numpy.arange(X.shape[1])
         else: 
             inds = numpy.random.randint(0, X.shape[1], self.numRowSamples)
-        
-        dV = numpy.zeros((inds.shape[0], self.k))        
-        
-        if self.pythonDerivative: 
-            for j in range(inds.shape[0]): 
-                i = inds[j]
-                dV[j, :] = self.derivativeVi(X, U, V, omegaList, i)
-        else: 
-            if self.approxDerivative: 
-                dV = derivativeVApprox(X, U, V, omegaList, inds, self.numAucSamples, self.k, self.lmbda, self.r)
-            else: 
-                for j in range(inds.shape[0]):  
-                    i = inds[j]
-                    dV[j, :] = derivativeVi(X, U, V, omegaList, i, self.k, self.lmbda, self.r)
-            
-        return dV, inds    
-      
+                    
+        for j in range(inds.shape[0]): 
+            i = inds[j]
+            dV = self.derivativeVi(X, U, V, omegaList, i)
+            V[i, :] -= self.sigma*dV
+
     #@profile    
     def derivativeVi(self, X, U, V, omegaList, j): 
         """
@@ -289,6 +279,10 @@ class MaxLocalAUC(object):
         deltaPhi -= deltaAlpha
         
         return deltaPhi
+
+
+
+        
         
     def localAUC(self, X, U, V, omegaList): 
         """
