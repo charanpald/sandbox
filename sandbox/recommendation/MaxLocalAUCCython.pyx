@@ -254,60 +254,59 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
     cdef double uivp, kappa, onePlusKappa, uivq, gamma, onePlusGamma, denom, riExp, uivpExp
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaAlpha = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
+    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     
-    for t in xrange(numIterations):
-        i = numpy.random.randint(m)
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] allInds = numpy.arange(n, dtype=numpy.uint)
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
+    
+    #Write exact computation of dtheta/dvj 
+    
+    for s in range(numIterations): 
         j = numpy.random.randint(n)
+        deltaTheta = numpy.zeros(k, numpy.float)
         
-        omegai = omegaList[i]
-        numOmegai = omegai.shape[0]     
-        riExp = exp(r[i])  
-        
-        deltaBeta = scale(V, j, lmbda*m, k) 
-        deltaAlpha = numpy.zeros(k, numpy.float)
-        
-        for s in range(numAucSamples): 
+        for i in range(m): 
+            omegai = omegaList[i]
+            omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
+            numOmegai = omegai.shape[0]     
+            riExp = exp(r[i])  
             
+            deltaBeta = scale(V, j, lmbda*m, k) 
+            deltaAlpha = numpy.zeros(k, numpy.float)
+                
             if X[i, j] != 0: 
-                #if j in omega:
-                q = numpy.random.randint(0, n)
-                while X[i, q] != 0: 
-                    q = numpy.random.randint(0, n)
-                
-                p = j 
-                
-                uivp = dot(U, i, V, p, k)
-                uivpExp = exp(uivp)            
-                kappa = riExp/uivpExp
-
-                uivq = dot(U, i, V, q, k)
-                gamma = exp(uivq)/uivpExp
-                
-                denom = square(1+gamma) * square(1+kappa) 
-                deltaAlpha += scale(U, i, (gamma+kappa+ 2*gamma*kappa)/denom, k)
+                for q in omegaBari:
+                    p = j 
+                    
+                    uivp = dot(U, i, V, p, k)
+                    uivpExp = exp(uivp)            
+                    kappa = riExp/uivpExp
+    
+                    uivq = dot(U, i, V, q, k)
+                    gamma = exp(uivq)/uivpExp
+                    
+                    denom = square(1+gamma) * square(1+kappa) 
+                    deltaAlpha += scale(U, i, (gamma+kappa+ 2*gamma*kappa)/denom, k)
             else:
-                indP = numpy.random.randint(0, omegai.shape[0])                    
-                
-                q = j 
-                uivq = dot(U, i, V, q, k)
-                
-                p = omegai[indP] 
-                uivp = dot(U, i, V, p, k)
-                uivpExp = exp(uivp)
-                
-                #print(V[p, :], uivpExp)
-                gamma = exp(uivq)/uivpExp
-                kappa = riExp/uivpExp
-                
-                denom = square(1+gamma) * (1+kappa) 
-                deltaAlpha -= scale(U, i, gamma/denom, k)
-        
-        deltaAlpha /= float(numAucSamples)
-        deltaBeta -= deltaAlpha
-        
-        #V[i, :] -= sigma*deltaBeta
-        plusEquals(V, j, -sigma*deltaBeta, k)
+                for p in omegai:                    
+                    q = j 
+                    uivq = dot(U, i, V, q, k)
+                    
+                    uivp = dot(U, i, V, p, k)
+                    uivpExp = exp(uivp)
+                    
+                    #print(V[p, :], uivpExp)
+                    gamma = exp(uivq)/uivpExp
+                    kappa = riExp/uivpExp
+                    
+                    denom = square(1+gamma) * (1+kappa) 
+                    deltaAlpha -= scale(U, i, gamma/denom, k)
+            
+            deltaAlpha /= float(numOmegai*omegaBari.shape[0])
+            deltaBeta -= deltaAlpha
+        deltaTheta += deltaBeta/float(m)
+        plusEquals(V, j, -sigma*deltaTheta, k)
     
     
 def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):         
