@@ -51,6 +51,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         for lmbda in [0.0, 0.01, 0.1]: 
             r = numpy.ones(m)*0.0
             maxLocalAuc = MaxLocalAUC(lmbda, k, r)
+            maxLocalAuc.approxDerivative = False
             omegaList = maxLocalAuc.getOmegaList(X)
     
             U = numpy.random.rand(m, k)
@@ -92,6 +93,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         for lmbda in [0.0, 0.01, 0.1]: 
             r = numpy.ones(m)*0.0
             maxLocalAuc = MaxLocalAUC(lmbda, k, r)
+            maxLocalAuc.approxDerivative = False
             omegaList = maxLocalAuc.getOmegaList(X)
     
             U = numpy.random.rand(m, k)
