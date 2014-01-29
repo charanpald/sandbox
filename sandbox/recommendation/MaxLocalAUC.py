@@ -36,6 +36,8 @@ class MaxLocalAUC(object):
         self.numAucSamples = 100
         self.maxIterations = 100
         
+        self.iterationsPerUpdate = 10
+        
         self.initialAlg = "rand"
         
         #Model selection parameters 
@@ -107,8 +109,6 @@ class MaxLocalAUC(object):
             lastU = U.copy() 
             lastV = V.copy() 
             
-
-            
             if self.rate == "constant": 
                 sigma = self.sigma 
             elif self.rate == "optimal":
@@ -117,14 +117,8 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
 
-            #deltaU, indsU = self.derivativeU(X, U, V, omegaList)
-            #deltaV, indsV = self.derivativeV(X, U, V, omegaList)
-            
-            #U[indsU, :] = U[indsU, :] - self.sigma*deltaU
-            iterations = 10
-            updateUApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, iterations, self.k, self.lmbda, self.r)
-            updateVApprox(X, U, V, omegaList, self.numRowSamples, self.numAucSamples, self.sigma, iterations, self.k, self.lmbda, self.r)
-            #V[indsV, :] = V[indsV, :] - self.sigma*deltaV
+            updateUApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r)
+            updateVApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r)
 
             normDeltaU = numpy.linalg.norm(U - lastU)
             normDeltaV = numpy.linalg.norm(V - lastV)               
