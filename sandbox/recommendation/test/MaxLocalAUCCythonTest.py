@@ -1,6 +1,6 @@
 
 import sys
-from sandbox.recommendation.MaxLocalAUCCython import localAUCApprox 
+from sandbox.recommendation.MaxLocalAUCCython import localAUCApprox, updateUApprox 
 from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC 
 from sandbox.util.SparseUtils import SparseUtils
 import numpy
@@ -65,7 +65,39 @@ class MaxLocalAUCTest(unittest.TestCase):
         sampleSize = 1000
         localAuc2 = localAUCApprox(X, U, V, omegaList, sampleSize, r)
         self.assertAlmostEqual(localAuc2, localAuc, 2)
+       
+    #@unittest.skip("")
+    def testUpdateUApprox(self): 
+        m = 20 
+        n = 30 
+        k = 2 
+        numInds = 50
+        X, U, s, V = SparseUtils.generateSparseLowRank((m, n), k, numInds, verbose=True)
+        
+        X = X/X
+
+        r = numpy.ones(m)*0
+        lmbda = 0.0
+        eps = 0.001
+        maxLocalAuc = MaxLocalAUC(lmbda, k, r, eps=eps)
+        maxLocalAuc.numAucSamples = 10
+        maxLocalAuc.sigma = 10
+        
+        omegaList = maxLocalAuc.getOmegaList(X) 
+        
+        U = numpy.random.rand(X.shape[0], k)
+        V = numpy.random.rand(X.shape[1], k)   
+        iterations = 20
+        
+        lastU = U.copy()        
+        
+        updateUApprox(X, U, V, omegaList, maxLocalAuc.numAucSamples, maxLocalAuc.sigma, iterations, maxLocalAuc.k, maxLocalAuc.lmbda, maxLocalAuc.r)
+        
+        #TODO: A lot more testing 
+        
+
             
+    
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()
