@@ -259,53 +259,61 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
     
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] allInds = numpy.arange(n, dtype=numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
-    
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] inds = numpy.zeros(k, numpy.uint)
     #Write exact computation of dtheta/dvj 
     
-    for s in range(numIterations): 
-        j = numpy.random.randint(n)
-        deltaTheta = numpy.zeros(k, numpy.float)
-        
-        for i in range(m): 
-            omegai = omegaList[i]
-            omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
-            numOmegai = omegai.shape[0]     
-            riExp = exp(r[i])  
-            
-            deltaBeta = scale(V, j, lmbda*m, k) 
-            deltaAlpha = numpy.zeros(k, numpy.float)
-                
-            if X[i, j] != 0: 
-                for q in omegaBari:
-                    p = j 
-                    
-                    uivp = dot(U, i, V, p, k)
-                    uivpExp = exp(uivp)            
-                    kappa = riExp/uivpExp
     
-                    uivq = dot(U, i, V, q, k)
-                    gamma = exp(uivq)/uivpExp
-                    
-                    denom = square(1+gamma) * square(1+kappa) 
-                    deltaAlpha += scale(U, i, (gamma+kappa+ 2*gamma*kappa)/denom, k)
-            else:
-                for p in omegai:                    
-                    q = j 
-                    uivq = dot(U, i, V, q, k)
-                    
-                    uivp = dot(U, i, V, p, k)
-                    uivpExp = exp(uivp)
-                    
-                    #print(V[p, :], uivpExp)
-                    gamma = exp(uivq)/uivpExp
-                    kappa = riExp/uivpExp
-                    
-                    denom = square(1+gamma) * (1+kappa) 
-                    deltaAlpha -= scale(U, i, gamma/denom, k)
+    for s in range(numIterations): 
+        j = numpy.random.randint(m)
+        
+        deltaTheta = scale(V, j, lmbda*m, k)
+        inds = numpy.array(numpy.unique(numpy.random.randint(m, size=100)), numpy.uint)
+         
+        for i in inds: 
+            omegai = omegaList[i]
+            numOmegai = omegai.shape[0]       
+            numOmegaBari = X.shape[1]-numOmegai
             
-            deltaAlpha /= float(numOmegai*omegaBari.shape[0])
-            deltaBeta -= deltaAlpha
-        deltaTheta += deltaBeta/float(m)
+            deltaBeta = numpy.zeros(k) 
+            ui = U[i, :]
+            
+            if X[i, j] != 0: 
+                omegaBari = numpy.setdiff1d(allInds, omegai)
+                omegaBari = numpy.random.choice(omegaBari, numAucSamples)
+                
+                p = j 
+                vp = V[p, :]
+                uivp = ui.dot(vp)
+                kappa = exp(-uivp + r[i])
+                onePlusKappa = 1+kappa
+                
+                for q in omegaBari: 
+                    uivq = ui.dot(V[q, :])
+                    gamma = exp(-uivp+uivq)
+                    onePlusGamma = 1+gamma
+                    
+                    denom = onePlusGamma**2 * onePlusKappa**2
+                    deltaBeta += ui*(gamma+kappa+2*gamma*kappa)/denom
+                    deltaBeta /= float(numAucSamples*numOmegai)
+            else:
+                q = j 
+                vq = V[q, :]
+                uivq = ui.dot(vq)
+                
+                omegai2 = numpy.random.choice(omegai, numAucSamples)                
+                
+                for p in omegai2: 
+                    uivp = ui.dot(V[p, :])
+                    
+                    gamma = exp(-uivp+uivq)
+                    kappa = exp(-uivp+r[i])
+                    
+                    deltaBeta += -ui* gamma/((1+gamma)**2 * (1+kappa))
+                    deltaBeta /= float(numAucSamples*(X.shape[1]-numOmegai))
+                
+            deltaTheta -= deltaBeta 
+        deltaTheta /= float(inds.shape[0])
+        
         plusEquals(V, j, -sigma*deltaTheta, k)
     
     
