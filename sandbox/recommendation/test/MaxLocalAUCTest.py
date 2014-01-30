@@ -17,7 +17,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         numpy.seterr(all="raise")
         numpy.random.seed(21)
     
-    #@unittest.skip("")
+    @unittest.skip("")
     def testLearnModel(self): 
         m = 50 
         n = 20 
@@ -207,6 +207,25 @@ class MaxLocalAUCTest(unittest.TestCase):
 
             self.assertAlmostEqual(localAuc2, localAuc, 1)
             
+
+    #@unittest.skip("")
+    def testLearningRateSelect(self): 
+        m = 10 
+        n = 20 
+        k = 2 
+        numInds = 100
+        X = SparseUtils.generateSparseLowRank((m, n), k, numInds)
+        
+        X = X/X
+        
+        r = numpy.ones(m)*0.0
+        lmbda = 0.001
+        eps = 0.001
+        maxLocalAuc = MaxLocalAUC(lmbda, k, r, eps=eps)
+        maxLocalAuc.rate = "optimal"
+        maxLocalAuc.maxIterations = 200
+        
+        maxLocalAuc.learningRateSelect(X)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

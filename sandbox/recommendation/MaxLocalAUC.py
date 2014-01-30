@@ -25,7 +25,7 @@ class MaxLocalAUC(object):
         #Optimal rate doesn't seem to work 
         self.rate = "constant"
         self.alpha = 0.000002
-        self.t0 = 100
+        self.t0 = 0.1
         
         self.recordStep = 10
         
@@ -39,6 +39,9 @@ class MaxLocalAUC(object):
         self.folds = 3 
         self.ks = numpy.array([10, 20, 50])
         self.lmbdas = numpy.array([10**-7, 10**-6, 10**-5, 10**-4]) 
+        
+        #Learning rate selection 
+        self.alphas = numpy.arange(0.1, 1.0, 0.2)
     
     def getOmegaList(self, X): 
         """
@@ -105,8 +108,8 @@ class MaxLocalAUC(object):
             if self.rate == "constant": 
                 sigma = self.sigma 
             elif self.rate == "optimal":
-                sigma = 1/(self.alpha*(self.t0 + ind))
-                logging.debug("sigma=" + str(sigma))
+                sigma = self.alpha/((1 + self.alpha*self.t0*ind))
+                #logging.debug("sigma=" + str(sigma))
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
 
@@ -307,6 +310,39 @@ class MaxLocalAUC(object):
         obj = 0.5*self.lmbda * (numpy.sum(U**2) + numpy.sum(V**2)) - obj
         
         return obj 
+        
+    def learningRateSelect(self, X): 
+        """
+        Let's set the initial learning rate. 
+        """        
+        cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
+        localAucs = numpy.zeros((self.alphas.shape[0], len(cvInds)))
+        
+        logging.debug("Performing alpha selection")
+        for icv, (trainInds, testInds) in enumerate(cvInds):
+            Util.printIteration(icv, 1, self.folds, "Fold: ")
+
+            trainX = SparseUtils.submatrix(X, trainInds)
+            testX = SparseUtils.submatrix(X, testInds)
+            
+            for i, alpha in enumerate(self.alphas): 
+                    self.alpha = alpha 
+                    
+                    U, V = self.learnModel(trainX)
+                    
+                    omegaList = self.getOmegaList(testX)
+                    localAucs[i, icv] = self.localAUCApprox(testX, U, V, omegaList)
+        
+        meanLocalAucs = numpy.mean(localAucs, 1)
+        stdLocalAucs = numpy.std(localAucs, 1)
+        
+        logging.debug(meanLocalAucs)
+        
+        alpha = self.alphas[numpy.argmax(meanLocalAucs)]
+        
+        logging.debug("Selected alpha =" + str(alpha))
+        
+        self.alpha = alpha 
         
     def modelSelect(self, X): 
         """
