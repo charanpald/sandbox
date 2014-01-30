@@ -177,6 +177,7 @@ def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
             deltaAlpha /= float(numAucSamples)
             deltaBeta -= deltaAlpha
 
+        deltaBeta = deltaBeta/numpy.linalg.norm(deltaBeta)
         plusEquals(U, i, -sigma*deltaBeta, k)
 
 @cython.boundscheck(False)
@@ -312,7 +313,7 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
                     
                     denom = square(1+gamma)
                     betaScale += (kappa+gamma*onePlusTwoKappa)/denom
-                #Note we don't use numAucSamples*numOmegai to normalise
+                #Note we  use numAucSamples*numOmegai to normalise
                 deltaBeta = scale(U, i, betaScale/(numAucSamples*numOmegai*square(onePlusKappa)), k)
             else:
                 q = j 
@@ -326,12 +327,14 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
                     kappa = exp(ri - uivp)
                     
                     betaScale += gamma/(square(1+gamma) * (1+kappa))
-                #Note we don't use numOmegaBari*numOmegai to normalise
+                #Note we use numOmegaBari*numOmegai to normalise
                 deltaBeta = scale(U, i, -betaScale/(numOmegai*numOmegaBari), k)             
             
             plusEquals1d(deltaTheta, -deltaBeta, k)
-                
-        plusEquals(V, j, -(sigma/numRowSamples)*deltaTheta, k)
+        
+        #Normalise gradient vector 
+        deltaTheta = deltaTheta/numpy.linalg.norm(deltaTheta)
+        plusEquals(V, j, -sigma*deltaTheta, k)
     
 def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):         
     cdef double obj = 0 
