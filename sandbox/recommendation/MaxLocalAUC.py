@@ -60,7 +60,7 @@ class MaxLocalAUC(object):
         m = X.shape[0]
         n = X.shape[1]
         omegaList = self.getOmegaList(X)
-  
+
         if self.initialAlg == "rand": 
             U = numpy.random.rand(m, self.k)
             V = numpy.random.rand(n, self.k)
@@ -70,7 +70,7 @@ class MaxLocalAUC(object):
         elif self.initialAlg == "svd":
             logging.debug("Initialising with SVD")
             try: 
-                U, s, V = SparseUtils.svdPropack(X, self.k)
+                U, s, V = SparseUtils.svdPropack(X, self.k, kmax=self.k*20)
             except ImportError: 
                 U, s, V = SparseUtils.svdArpack(X, self.k)
             U = numpy.ascontiguousarray(U)
