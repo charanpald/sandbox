@@ -12,10 +12,10 @@ class MaxLocalAUCProfile(object):
         numpy.random.seed(21)        
         
         #Create a low rank matrix  
-        m = 50 
-        n = 20 
+        m = 500 
+        n = 200 
         self.k = 5 
-        numInds = 500
+        numInds = int(m*n*0.1)
         self.X = SparseUtils.generateSparseLowRank((m, n), self.k, numInds)
         
         self.X = self.X/self.X
@@ -32,7 +32,7 @@ class MaxLocalAUCProfile(object):
 
     def profileLearnModel2(self):
         #Profile stochastic case 
-        lmbda = 0.01
+        lmbda = 0.00
         r = numpy.ones(self.X.shape[0])*0.0
         eps = 0.001
         sigma = 10
@@ -41,5 +41,5 @@ class MaxLocalAUCProfile(object):
         ProfileUtils.profile('maxLocalAuc.learnModel(self.X)', globals(), locals())
 
 profiler = MaxLocalAUCProfile()
-profiler.profileLearnModel()  
-#profiler.profileLearnModel2()
+#profiler.profileLearnModel()  
+profiler.profileLearnModel2()
