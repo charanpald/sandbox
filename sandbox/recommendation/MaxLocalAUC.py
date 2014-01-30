@@ -31,7 +31,7 @@ class MaxLocalAUC(object):
         
         self.numRowSamples = 10
         self.numAucSamples = 100
-        self.maxIterations = 100
+        self.maxIterations = 1000
         self.iterationsPerUpdate = 10
         self.initialAlg = "rand"
         
