@@ -58,7 +58,11 @@ class MaxLocalAUCTest(unittest.TestCase):
             V = numpy.random.rand(n, k)
             rowInds, colInds = X.nonzero()
     
-            deltaU, inds = maxLocalAuc.derivativeU(X, U, V, omegaList)
+            deltaU = numpy.zeros(U.shape)
+            for i in range(X.shape[0]): 
+                deltaU[i, :] = maxLocalAuc.derivativeUi(X, U, V, omegaList, i)    
+    
+            #deltaU, inds = maxLocalAuc.derivativeU(X, U, V, omegaList)
             
             deltaU2 = numpy.zeros(U.shape)    
             
@@ -100,7 +104,11 @@ class MaxLocalAUCTest(unittest.TestCase):
             V = numpy.random.rand(n, k)
             rowInds, colInds = X.nonzero()
     
-            deltaV, inds = maxLocalAuc.derivativeV(X, U, V, omegaList)
+            deltaV = numpy.zeros(V.shape)
+            for i in range(X.shape[1]): 
+                deltaV[i, :] = maxLocalAuc.derivativeVi(X, U, V, omegaList, i)    
+    
+            #deltaV, inds = maxLocalAuc.derivativeV(X, U, V, omegaList)
             
             deltaV2 = numpy.zeros(V.shape)    
             
@@ -122,7 +130,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             #print(deltaV2.T*10)                   
             nptst.assert_almost_equal(deltaV, deltaV2, 2)
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testModelSelect(self): 
         m = 10 
         n = 20 

@@ -28,24 +28,17 @@ class MaxLocalAUC(object):
         self.t0 = 100
         
         self.recordStep = 10
-
-        self.pythonDerivative = False 
-        self.approxDerivative = True 
         
         self.numRowSamples = 10
         self.numAucSamples = 100
         self.maxIterations = 100
-        
         self.iterationsPerUpdate = 10
-        
         self.initialAlg = "rand"
         
         #Model selection parameters 
         self.folds = 3 
         self.ks = numpy.array([10, 20, 50])
         self.lmbdas = numpy.array([10**-7, 10**-6, 10**-5, 10**-4]) 
-    
-
     
     def getOmegaList(self, X): 
         """
@@ -117,9 +110,8 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
 
-            updateUApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r)
-            updateVApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r)
-            #self.updateV2(X, U, V, omegaList)
+            self.updateU(X, U, V, omegaList)            
+            self.updateV(X, U, V, omegaList)
 
             normDeltaU = numpy.linalg.norm(U - lastU)
             normDeltaV = numpy.linalg.norm(V - lastV)               
@@ -143,201 +135,42 @@ class MaxLocalAUC(object):
         else: 
             return U, V
         
-    def derivativeU(self, X, U, V, omegaList): 
+    def updateU(self, X, U, V, omegaList): 
         """
-        Find the derivative for all of U. 
+        Find the derivative with respect to V or part of it. 
         """
-        
         if not self.stochastic: 
-            inds = numpy.arange(X.shape[0])
+            dU = numpy.zeros(U.shape)
+            for i in range(X.shape[0]): 
+                dU[i, :] = self.derivativeUi(X, U, V, omegaList, i)
+            U -= self.sigma*dU
+            return dU
         else: 
-            inds = numpy.random.randint(0, X.shape[0], self.numRowSamples)
-        
-        dU = numpy.zeros((inds.shape[0], self.k))        
-        
-        if self.pythonDerivative: 
-            for j in range(inds.shape[0]): 
-                i = inds[j]
-                dU[j, :] = self.derivativeUi(X, U, V, omegaList, i)
-        else:
-            if self.approxDerivative: 
-                dU = derivativeUApprox(X, U, V, omegaList, inds, self.numAucSamples, self.k, self.lmbda, self.r) 
-            else:    
-                for j in range(inds.shape[0]): 
-                    i = inds[j]
-                    dU[j, :] = derivativeUi(X, U, V, omegaList, i, self.k, self.lmbda, self.r)
-            
-        return dU, inds 
+            updateUApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r) 
         
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i): 
         """
         delta phi/delta u_i
         """
-        m = X.shape[0]
-        deltaPhi = self.lmbda * U[i, :]
-        
-        omegai = omegaList[i]
-        omegaBari = numpy.setdiff1d(numpy.arange(X.shape[1]), omegai)
-        
-        deltaAlpha = numpy.zeros(self.k)
-        
-        ui = U[i, :]
-        
-        for p in omegai: 
-            vp = V[p, :]
-            uivp = ui.dot(vp)
-            kappa = exp(-uivp +self.r[i])
-            onePlusKappa = 1+kappa
-            onePlusKappaSq = onePlusKappa**2
-            
-            for q in omegaBari: 
-                vq = V[q, :]
-                uivq = ui.dot(vq)
-                gamma = exp(-uivp+uivq)
-                onePlusGamma = 1+gamma
-                onePlusGammaSq = onePlusGamma**2
-                
-                denom = onePlusGammaSq * onePlusKappaSq
-                denom2 = onePlusGammaSq * onePlusKappa
-                deltaAlpha += vp*((gamma+kappa+2*gamma*kappa)/denom) - vq*(gamma/denom2) 
-                
-        if omegai.shape[0] * omegaBari.shape[0] != 0: 
-            deltaAlpha /= float(omegai.shape[0] * omegaBari.shape[0]*m)
-            
-        deltaPhi -= deltaAlpha
-        
-        return deltaPhi
+        return derivativeUi(X, U, V, omegaList, i, self.k, self.lmbda, self.r)
         
     def updateV(self, X, U, V, omegaList): 
         """
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic: 
-            inds = numpy.arange(X.shape[1])
+            dV = numpy.zeros(V.shape)
+            for i in range(X.shape[1]): 
+                dV[i, :] = self.derivativeVi(X, U, V, omegaList, i)
+            V -= self.sigma*dV
+            return dV 
         else: 
-            pass 
-                    
-        for j in range(inds.shape[0]): 
-            i = inds[j]
-            dV = self.derivativeVi2(X, U, V, omegaList, i)
-            V[i, :] -= self.sigma*dV
-
-    #@profile    
-    def updateV2(self, X, U, V, omegaList): 
-        """
-        delta phi/delta v_j
-        """
-        inds = numpy.random.randint(0, X.shape[1], self.iterationsPerUpdate)
-        for j in inds:
-            m = X.shape[0]
-            deltaTheta = self.lmbda*m * V[j, :]
-             
-            for i in range(X.shape[0]): 
-                omegai = omegaList[i]
-                
-                deltaBeta = numpy.zeros(self.k) 
-                ui = U[i, :]
-                
-                if X[i, j] != 0: 
-                    omegaBari = numpy.setdiff1d(numpy.arange(X.shape[1]), omegai)
-                    
-                    p = j 
-                    vp = V[p, :]
-                    uivp = ui.dot(vp)
-                    kappa = exp(-uivp + self.r[i])
-                    onePlusKappa = 1+kappa
-                    
-                    for q in omegaBari: 
-                        uivq = ui.dot(V[q, :])
-                        gamma = exp(-uivp+uivq)
-                        onePlusGamma = 1+gamma
-                        
-                        denom = onePlusGamma**2 * onePlusKappa**2
-                        deltaBeta += ui*(gamma+kappa+2*gamma*kappa)/denom
-                else:
-                    q = j 
-                    vq = V[q, :]
-                    uivq = ui.dot(vq)
-                    
-                    for p in omegai: 
-                        uivp = ui.dot(V[p, :])
-                        
-                        gamma = exp(-uivp+uivq)
-                        kappa = exp(-uivp+self.r[i])
-                        
-                        deltaBeta += -ui* gamma/((1+gamma)**2 * (1+kappa))
-                
-                numOmegai = omegai.shape[0]       
-                numOmegaBari = X.shape[1]-numOmegai
-                
-                if numOmegai*numOmegaBari != 0: 
-                    deltaBeta /= float(numOmegai*numOmegaBari)
-                    
-                deltaTheta -= deltaBeta 
-            
-            deltaTheta /= float(m)
-            
-            V[j, :] -= self.sigma*deltaTheta
-
-
-    def derivativeVi2(self, X, U, V, omegaList, j): 
-        """
-        delta phi/delta v_j
-        """
-        m = X.shape[0]
-        deltaTheta = self.lmbda*m * V[j, :]
-        
-        inds = numpy.unique(numpy.random.randint(m, size=100))
-        numAucSamples = 5
-         
-        for i in inds: 
-            omegai = omegaList[i]
-            numOmegai = omegai.shape[0]       
-            numOmegaBari = X.shape[1]-numOmegai
-            
-            deltaBeta = numpy.zeros(self.k) 
-            ui = U[i, :]
-            
-            if X[i, j] != 0: 
-                omegaBari = numpy.setdiff1d(numpy.arange(X.shape[1]), omegai)
-                omegaBari = numpy.random.choice(omegaBari, numAucSamples)
-                
-                p = j 
-                vp = V[p, :]
-                uivp = ui.dot(vp)
-                kappa = exp(-uivp + self.r[i])
-                onePlusKappa = 1+kappa
-                
-                for q in omegaBari: 
-                    uivq = ui.dot(V[q, :])
-                    gamma = exp(-uivp+uivq)
-                    onePlusGamma = 1+gamma
-                    
-                    denom = onePlusGamma**2 * onePlusKappa**2
-                    deltaBeta += ui*(gamma+kappa+2*gamma*kappa)/denom
-                    deltaBeta /= float(numAucSamples*numOmegai)
-            else:
-                q = j 
-                vq = V[q, :]
-                uivq = ui.dot(vq)
-                
-                omegai2 = numpy.random.choice(omegai, numAucSamples)                
-                
-                for p in omegai2: 
-                    uivp = ui.dot(V[p, :])
-                    
-                    gamma = exp(-uivp+uivq)
-                    kappa = exp(-uivp+self.r[i])
-                    
-                    deltaBeta += -ui* gamma/((1+gamma)**2 * (1+kappa))
-                    deltaBeta /= float(numAucSamples*(X.shape[1]-numOmegai))
-                
-            deltaTheta -= deltaBeta 
-        deltaTheta /= float(inds.shape[0])
-        
-        return deltaTheta
-
+            updateVApprox(X, U, V, omegaList, self.numRowSamples, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r) 
+           
+    def derivativeVi(self, X, U, V, omegaList, i): 
+        return derivativeVi(X, U, V, omegaList, i, self.k, self.lmbda, self.r)           
+           
     def localAUC(self, X, U, V, omegaList): 
         """
         Compute the local AUC for the score functions UV^T relative to X with 
