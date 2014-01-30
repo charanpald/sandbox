@@ -117,9 +117,9 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
 
-            #updateUApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r)
-            #updateVApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r)
-            self.updateV2(X, U, V, omegaList)
+            updateUApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r)
+            updateVApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r)
+            #self.updateV2(X, U, V, omegaList)
 
             normDeltaU = numpy.linalg.norm(U - lastU)
             normDeltaV = numpy.linalg.norm(V - lastV)               
@@ -228,7 +228,7 @@ class MaxLocalAUC(object):
         """
         delta phi/delta v_j
         """
-        inds = numpy.random.randint(0, X.shape[1], self.numRowSamples)
+        inds = numpy.random.randint(0, X.shape[1], self.iterationsPerUpdate)
         for j in inds:
             m = X.shape[0]
             deltaTheta = self.lmbda*m * V[j, :]
@@ -259,8 +259,6 @@ class MaxLocalAUC(object):
                     q = j 
                     vq = V[q, :]
                     uivq = ui.dot(vq)
-                    
-
                     
                     for p in omegai: 
                         uivp = ui.dot(V[p, :])
