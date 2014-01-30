@@ -55,7 +55,7 @@ cdef inline numpy.ndarray[double, ndim = 1, mode="c"] plusEquals1d(numpy.ndarray
     for s in range(k):
         u[s] = u[s] + d[s]
 
-def getNonZeroRow(X, unsigned int i, unsigned int n):
+cdef unsigned int getNonZeroRow(X, unsigned int i, unsigned int n):
     """
     Find a random nonzero element in the ith row of X
     """
@@ -299,9 +299,7 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
             if X[i, j] != 0:                 
                 p = j 
                 uivp = dot(U, i, V, p, k)
-                #uivpExp = exp(uivp)
-                
-                #kappa = riExp/uivpExp
+
                 kappa = exp(ri - uivp)
                 onePlusKappa = 1+kappa
                 onePlusTwoKappa = 1+kappa*2
@@ -310,12 +308,12 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
                     q = getNonZeroRow(X, i, n)
                 
                     uivq = dot(U, i, V, q, k)
-                    #gamma = exp(uivq)/uivpExp
                     gamma = exp(uivq - uivp) #Faster to do this                     
                     
                     denom = square(1+gamma)
                     betaScale += (kappa+gamma*onePlusTwoKappa)/denom
-                deltaBeta = scale(U, i, betaScale/(numOmegai*numAucSamples*square(onePlusKappa)), k)
+                #Note we don't use numAucSamples*numOmegai to normalise
+                deltaBeta = scale(U, i, betaScale/(numAucSamples*numOmegai*square(onePlusKappa)), k)
             else:
                 q = j 
                 uivq = dot(U, i, V, q, k)
@@ -323,47 +321,45 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
                                 
                 for p in omegai: 
                     uivp = dot(U, i, V, p, k)
-                    #uivpExp = exp(uivp)
                     
                     gamma = exp(uivq - uivp)
                     kappa = exp(ri - uivp)
                     
                     betaScale += gamma/(square(1+gamma) * (1+kappa))
-                deltaBeta = scale(U, i, -betaScale/(numOmegaBari*numOmegai), k)             
+                #Note we don't use numOmegaBari*numOmegai to normalise
+                deltaBeta = scale(U, i, -betaScale/(numOmegai*numOmegaBari), k)             
             
             plusEquals1d(deltaTheta, -deltaBeta, k)
                 
         plusEquals(V, j, -(sigma/numRowSamples)*deltaTheta, k)
     
-    
 def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):         
     cdef double obj = 0 
     cdef unsigned int m = X.shape[0]
+    cdef unsigned int n=X.shape[1]
     cdef unsigned int i, j, k, p, q
     cdef double kappa, onePlusKappa, uivp, uivq, gamma, partialAuc
-    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] allInds = numpy.arange(X.shape[1])   
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(10, numpy.uint)
-    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] omegaBari    
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(10, numpy.uint)  
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP
-    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ
     
     k = U.shape[1]
     
-    for i in range(X.shape[0]): 
+    for i in range(m): 
         omegai = omegaList[i]
-        omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
+        #omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
         
         ri = r[i]
         
-        if omegai.shape[0] * omegaBari.shape[0] != 0: 
+        if omegai.shape[0] * (n-omegai.shape[0]) != 0: 
             partialAuc = 0                
             
             indsP = numpy.random.randint(0, omegai.shape[0], numAucSamples)  
-            indsQ = numpy.random.randint(0, omegaBari.shape[0], numAucSamples)
+            #indsQ = numpy.random.randint(0, omegaBari.shape[0], numAucSamples)
             
             for j in range(numAucSamples):
                 p = omegai[indsP[j]] 
-                q = omegaBari[indsQ[j]]                  
+                #q = omegaBari[indsQ[j]]
+                q = getNonZeroRow(X, i, n)                  
             
                 uivp = dot(U, i, V, p, k)
                 kappa = exp(-uivp+ri)
@@ -385,30 +381,31 @@ def localAUCApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
     Compute the estimated local AUC for the score functions UV^T relative to X with 
     quantile vector r. 
     """
-    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] allInds = numpy.arange(X.shape[1]) 
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(10, numpy.uint)
-    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] omegaBari 
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] localAucArr = numpy.zeros(X.shape[0])
     cdef unsigned int i, j, k, ind, p, q
-    cdef double partialAuc
+    cdef double partialAuc, ri
+    cdef unsigned int n = X.shape[1]
     
     k = U.shape[1]
 
     for i in range(X.shape[0]): 
         omegai = omegaList[i]
-        omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
+        #omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
+        ri = r[i]
         
-        if omegai.shape[0] * omegaBari.shape[0] != 0: 
+        if omegai.shape[0] * (n-omegai.shape[0]) != 0: 
             partialAuc = 0                
             
             for j in range(numAucSamples):
                 ind = numpy.random.randint(omegai.shape[0])
                 p = omegai[ind] 
                 
-                ind = numpy.random.randint(omegaBari.shape[0])
-                q = omegaBari[ind]   
+                #ind = numpy.random.randint(omegaBari.shape[0])
+                #q = omegaBari[ind]   
+                q = getNonZeroRow(X, i, n)                
                 
-                if dot(U, i, V, p, k) > dot(U, i, V, q, k) and dot(U, i, V, p, k) > r[i]: 
+                if dot(U, i, V, p, k) > dot(U, i, V, q, k) and dot(U, i, V, p, k) > ri: 
                     partialAuc += 1 
                         
             localAucArr[i] = partialAuc/float(numAucSamples)     
