@@ -70,7 +70,7 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     """
     delta phi/delta u_i
     """
-    cdef unsigned int p, q, m 
+    cdef unsigned int p, q, m, n 
     cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappaSq, gamma, onePlusGamma
     cdef double denom, denom2
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaPhi = numpy.zeros(k, numpy.float)
@@ -83,10 +83,11 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] uiV = numpy.zeros(k, numpy.float)
     
     m = X.shape[0]
+    n = X.shape[1]
     deltaPhi = lmbda * U[i, :]
     
     omegai = omegaList[i]
-    omegaBari = numpy.setdiff1d(numpy.arange(X.shape[1], dtype=numpy.uint), omegai, assume_unique=True)
+    omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
     
     deltaAlpha = numpy.zeros(k)
     
@@ -146,13 +147,13 @@ def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
         omegai = omegaList[i]
         omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
         numOmegai = omegai.shape[0]
-        numOmegaBari = omegaBari.shape[0]
+        numOmegaBari = n-numOmegai
         
         deltaAlpha = numpy.zeros(k)
         
         ri = r[i]
         
-        if omegai.shape[0] * omegaBari.shape[0] != 0: 
+        if numOmegai * numOmegaBari != 0: 
             indsP = numpy.random.randint(0, numOmegai, numAucSamples)
             indsQ = numpy.random.randint(0, numOmegaBari, numAucSamples)        
             
@@ -277,11 +278,10 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] inds = numpy.array(numpy.random.randint(0, X.shape[1], iterationsPerUpdate), numpy.uint)
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] inds = numpy.array(numpy.random.randint(0, n, iterationsPerUpdate), numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] inds2 
-    #Write exact computation of dtheta/dvj 
-
-    
+        
+    #Write exact computation of dtheta/dvj     
     for t in range(iterationsPerUpdate):
         j = inds[t]
         deltaTheta = scale(V, j, lmbda*m, k)
@@ -290,7 +290,7 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
         for i in inds2: 
             omegai = omegaList[i]
             numOmegai = omegai.shape[0]       
-            numOmegaBari = X.shape[1]-numOmegai
+            numOmegaBari = n-numOmegai
             
             ri = r[i]
             #riExp = exp(r[i])
@@ -339,7 +339,7 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
 def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):         
     cdef double obj = 0 
     cdef unsigned int m = X.shape[0]
-    cdef unsigned int n=X.shape[1]
+    cdef unsigned int n = X.shape[1]
     cdef unsigned int i, j, k, p, q
     cdef double kappa, onePlusKappa, uivp, uivq, gamma, partialAuc
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(10, numpy.uint)  
@@ -384,15 +384,18 @@ def localAUCApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
     Compute the estimated local AUC for the score functions UV^T relative to X with 
     quantile vector r. 
     """
+    
+    cdef unsigned int m = X.shape[0]
+    cdef unsigned int n = X.shape[1]
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(10, numpy.uint)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] localAucArr = numpy.zeros(X.shape[0])
+    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] localAucArr = numpy.zeros(m)
     cdef unsigned int i, j, k, ind, p, q
     cdef double partialAuc, ri
-    cdef unsigned int n = X.shape[1]
+
     
     k = U.shape[1]
 
-    for i in range(X.shape[0]): 
+    for i in range(m): 
         omegai = omegaList[i]
         #omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
         ri = r[i]
