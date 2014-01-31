@@ -11,20 +11,36 @@ from apgl.util.Sampling import Sampling
 from apgl.util.Util import Util 
 
 class MaxLocalAUC(object): 
-    """
-    Let's try different ways of maximising the local AUC with a penalty term. 
-    """
-    def __init__(self, lmbda, k, r, sigma=0.05, eps=0.1, stochastic=False): 
+    def __init__(self, lmbda, k, u, sigma=0.05, eps=0.1, stochastic=False, numProcesses=None): 
+        """
+        Create an object for  maximising the local AUC with a penalty term using the matrix
+        decomposition UV.T 
+        
+        :param lmbda: The regularisation parameter 
+        
+        :param k: The rank of matrices U and V
+        
+        :param u: The quantile for the local AUC 
+        
+        :param sigma: The learning rate 
+        
+        :param eps: The termination threshold for ||dU|| and ||dV||
+        
+        :stochastic: Whether to use stochastic gradient descent or gradient descent 
+        """
         self.lmbda = lmbda
         self.k = k 
-        self.r = r
+        self.u = u
         self.sigma = sigma
         self.eps = eps 
         self.stochastic = stochastic
+
+        if numProcesses == None: 
+            self.numProcesses = multiprocessing.cpu_count()
         
         #Optimal rate doesn't seem to work 
         self.rate = "constant"
-        self.alpha = 0.000002
+        self.alpha = 1.0
         self.t0 = 0.1
         
         self.recordStep = 10
@@ -33,7 +49,6 @@ class MaxLocalAUC(object):
         self.numColSamples = 20
         self.numAucSamples = 100
         self.maxIterations = 1000
-        self.iterationsPerUpdate = 10
         self.initialAlg = "rand"
         
         #Model selection parameters 
@@ -54,6 +69,14 @@ class MaxLocalAUC(object):
         for i in range(X.shape[0]): 
             omegaList.append(numpy.array(X[i, :].nonzero()[1], numpy.uint))
         return omegaList 
+    
+    def computeR(self, U, V): 
+        normU = numpy.sqrt(numpy.sum(U**2, 1))
+        normV = numpy.sqrt(numpy.sum(V**2, 1))
+        maxVj = numpy.max(normV)
+        
+        r = normU*maxVj - 2*normU*maxVj*self.u
+        return r 
     
     def learnModel(self, X, verbose=False): 
         """
@@ -107,22 +130,24 @@ class MaxLocalAUC(object):
             lastV = V.copy() 
             
             if self.rate == "constant": 
-                sigma = self.sigma 
+                pass
             elif self.rate == "optimal":
-                sigma = self.alpha/((1 + self.alpha*self.t0*ind))
-                #logging.debug("sigma=" + str(sigma))
+                self.sigma = self.alpha/((1 + self.alpha*self.t0*ind))
+                logging.debug("sigma=" + str(self.sigma))
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
 
-            self.updateU(X, U, V, omegaList)            
-            self.updateV(X, U, V, omegaList)
+            r = self.computeR(U, V)
+
+            self.updateU(X, U, V, omegaList, r)            
+            self.updateV(X, U, V, omegaList, r)
 
             normDeltaU = numpy.linalg.norm(U - lastU)
             normDeltaV = numpy.linalg.norm(V - lastV)               
                 
             if ind % self.recordStep == 0: 
-                objs.append(objectiveApprox(X, U, V, omegaList, self.numAucSamples, self.lmbda, self.r))
-                aucs.append(localAUCApprox(X, U, V, omegaList, self.numAucSamples, self.r))
+                objs.append(objectiveApprox(X, U, V, omegaList, self.numAucSamples, self.lmbda, r))
+                aucs.append(localAUCApprox(X, U, V, omegaList, self.numAucSamples, r))
                 printStr = "Iteration: " + str(ind)
                 printStr += " local AUC~" + str(aucs[-1]) + " objective~" + str(objs[-1])
                 printStr += " ||dU||=" + str(normDeltaU) + " " + "||dV||=" + str(normDeltaV)
@@ -139,46 +164,47 @@ class MaxLocalAUC(object):
         else: 
             return U, V
         
-    def updateU(self, X, U, V, omegaList): 
+    def updateU(self, X, U, V, omegaList, r): 
         """
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic: 
             dU = numpy.zeros(U.shape)
             for i in range(X.shape[0]): 
-                dU[i, :] = self.derivativeUi(X, U, V, omegaList, i)
+                dU[i, :] = self.derivativeUi(X, U, V, omegaList, i, r)
             U -= self.sigma*dU
             return dU
         else: 
             rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
-            updateUApprox(X, U, V, omegaList, rowInds, self.numAucSamples, self.sigma, self.lmbda, self.r)
+            updateUApprox(X, U, V, omegaList, rowInds, self.numAucSamples, self.sigma, self.lmbda, r)
         
     #@profile
-    def derivativeUi(self, X, U, V, omegaList, i): 
+    def derivativeUi(self, X, U, V, omegaList, i, r): 
         """
         delta phi/delta u_i
         """
-        return derivativeUi(X, U, V, omegaList, i, self.k, self.lmbda, self.r)
+        return derivativeUi(X, U, V, omegaList, i, self.k, self.lmbda, r)
         
-    def updateV(self, X, U, V, omegaList): 
+    def updateV(self, X, U, V, omegaList, r): 
         """
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic: 
             dV = numpy.zeros(V.shape)
             for i in range(X.shape[1]): 
-                dV[i, :] = self.derivativeVi(X, U, V, omegaList, i)
+                dV[i, :] = self.derivativeVi(X, U, V, omegaList, i, r)
             V -= self.sigma*dV
             return dV 
         else: 
             rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
             colInds = numpy.array(numpy.random.randint(X.shape[1], size=self.numColSamples), numpy.uint)
-            updateVApprox(X, U, V, omegaList, rowInds, colInds, self.numAucSamples, self.sigma, self.lmbda, self.r)
+            updateVApprox(X, U, V, omegaList, rowInds, colInds, self.numAucSamples, self.sigma, self.lmbda, r)
+
+                
+    def derivativeVi(self, X, U, V, omegaList, i, r): 
+        return derivativeVi(X, U, V, omegaList, i, self.k, self.lmbda, r)           
            
-    def derivativeVi(self, X, U, V, omegaList, i): 
-        return derivativeVi(X, U, V, omegaList, i, self.k, self.lmbda, self.r)           
-           
-    def localAUC(self, X, U, V, omegaList): 
+    def localAUC(self, X, U, V, omegaList, r): 
         """
         Compute the local AUC for the score functions UV^T relative to X with 
         quantile vector r. 
@@ -198,7 +224,7 @@ class MaxLocalAUC(object):
                 
                 for p in omegai: 
                     for q in omegaBari: 
-                        if Z[i, p] > Z[i, q] and Z[i, p] > self.r[i]: 
+                        if Z[i, p] > Z[i, q] and Z[i, p] > r[i]: 
                             partialAuc += 1 
                             
                 localAuc[i] = partialAuc/float(omegai.shape[0] * omegaBari.shape[0])
@@ -207,7 +233,7 @@ class MaxLocalAUC(object):
         
         return localAuc
 
-    def localAUCApprox(self, X, U, V, omegaList): 
+    def localAUCApprox(self, X, U, V, omegaList, r): 
         """
         Compute the estimated local AUC for the score functions UV^T relative to X with 
         quantile vector r. 
@@ -230,7 +256,7 @@ class MaxLocalAUC(object):
                     p = omegai[int(ind/omegaBari.shape[0])] 
                     q = omegaBari[ind % omegaBari.shape[0]]   
                     
-                    if Z[i, p] > Z[i, q] and Z[i, p] > self.r[i]: 
+                    if Z[i, p] > Z[i, q] and Z[i, p] > r[i]: 
                         partialAuc += 1 
                             
                 localAuc[i] = partialAuc/float(self.numAucSamples)
@@ -240,7 +266,7 @@ class MaxLocalAUC(object):
         return localAuc
     
     #@profile
-    def objective(self, X, U, V, omegaList):         
+    def objective(self, X, U, V, omegaList, r):         
         obj = 0 
         m = X.shape[0]
         
@@ -252,7 +278,7 @@ class MaxLocalAUC(object):
             
             ui = U[i, :]       
             uiV = ui.dot(V.T)
-            ri = self.r[i]
+            ri = r[i]
             
             if omegai.shape[0] * omegaBari.shape[0] != 0: 
                 partialAuc = 0                
@@ -333,9 +359,10 @@ class MaxLocalAUC(object):
                     self.alpha = alpha 
                     
                     U, V = self.learnModel(trainX)
+                    r = self.computeR(U, V)
                     
                     omegaList = self.getOmegaList(testX)
-                    localAucs[i, icv] = self.localAUCApprox(testX, U, V, omegaList)
+                    localAucs[i, icv] = self.localAUCApprox(testX, U, V, omegaList, r)
         
         meanLocalAucs = numpy.mean(localAucs, 1)
         stdLocalAucs = numpy.std(localAucs, 1)
