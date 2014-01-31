@@ -1,6 +1,6 @@
 # cython: profile=True 
 import cython
-#from math import exp 
+from cython.parallel import parallel, prange
 cimport numpy
 import numpy
 
@@ -11,6 +11,7 @@ cdef extern from "math.h":
 cdef inline double square(double d):
     return d*d    
 
+@cython.nonecheck(False)
 @cython.boundscheck(False) 
 @cython.wraparound(False) 
 cdef inline double dot(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, numpy.ndarray[double, ndim = 2, mode="c"] V, unsigned int j, unsigned int k):
