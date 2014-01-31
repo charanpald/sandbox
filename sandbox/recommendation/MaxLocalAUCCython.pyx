@@ -121,11 +121,12 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     return deltaPhi
 
 
-def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double sigma, unsigned int numIterations, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):
+def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned long, ndim=1, mode="c"] rowInds, unsigned int numAucSamples, double sigma,  double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):
     """
     Find an approximation of delta phi/delta u_i
     """
     cdef unsigned int p, q, ind, j, s
+    cdef unsigned int k = U.shape[1]
     cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappaSq, gamma, onePlusGamma
     cdef double denom, denom2
     cdef unsigned int n, m, numOmegai, numOmegaBari
@@ -139,8 +140,8 @@ def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
     m = X.shape[0]
     n = X.shape[1]
     
-    for s in range(numIterations): 
-        i = numpy.random.randint(m)  
+    for i in rowInds: 
+        #i = numpy.random.randint(m)  
         #print(i)
         deltaBeta = scale(U, i, lmbda*m, k)    
          
@@ -264,11 +265,12 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
    
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numRowSamples, unsigned int numAucSamples, double sigma, unsigned int iterationsPerUpdate, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
+def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned long, ndim=1, mode="c"] rowInds, numpy.ndarray[unsigned long, ndim=1, mode="c"] colInds, unsigned int numAucSamples, double sigma, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
     delta phi/delta V using a few randomly selected rows of V 
     """
     cdef unsigned int i = 0, j
+    cdef unsigned int k = U.shape[1]
     cdef unsigned int p, q, numOmegai, numOmegaBari, t
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1], ind
@@ -278,16 +280,15 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] inds = numpy.array(numpy.random.randint(0, n, iterationsPerUpdate), numpy.uint)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] inds2 
+    #cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] inds2 
         
     #Write exact computation of dtheta/dvj     
-    for t in range(iterationsPerUpdate):
-        j = inds[t]
+    for j in colInds:
         deltaTheta = scale(V, j, lmbda*m, k)
-        inds2 = numpy.array(numpy.random.randint(0, m, numRowSamples), numpy.uint)
+        #inds2 = numpy.array(numpy.unique(numpy.random.randint(0, m, numRowSamples)), numpy.uint)
+        #inds2 = numpy.array(numpy.arange(m), numpy.uint)
          
-        for i in inds2: 
+        for i in rowInds: 
             omegai = omegaList[i]
             numOmegai = omegai.shape[0]       
             numOmegaBari = n-numOmegai
