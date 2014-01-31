@@ -29,7 +29,8 @@ class MaxLocalAUC(object):
         
         self.recordStep = 10
         
-        self.numRowSamples = 10
+        self.numRowSamples = 20
+        self.numColSamples = 20
         self.numAucSamples = 100
         self.maxIterations = 1000
         self.iterationsPerUpdate = 10
@@ -149,7 +150,8 @@ class MaxLocalAUC(object):
             U -= self.sigma*dU
             return dU
         else: 
-            updateUApprox(X, U, V, omegaList, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r) 
+            rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
+            updateUApprox(X, U, V, omegaList, rowInds, self.numAucSamples, self.sigma, self.lmbda, self.r)
         
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i): 
@@ -169,7 +171,9 @@ class MaxLocalAUC(object):
             V -= self.sigma*dV
             return dV 
         else: 
-            updateVApprox(X, U, V, omegaList, self.numRowSamples, self.numAucSamples, self.sigma, self.iterationsPerUpdate, self.k, self.lmbda, self.r) 
+            rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
+            colInds = numpy.array(numpy.random.randint(X.shape[1], size=self.numColSamples), numpy.uint)
+            updateVApprox(X, U, V, omegaList, rowInds, colInds, self.numAucSamples, self.sigma, self.lmbda, self.r)
            
     def derivativeVi(self, X, U, V, omegaList, i): 
         return derivativeVi(X, U, V, omegaList, i, self.k, self.lmbda, self.r)           
