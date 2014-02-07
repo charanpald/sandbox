@@ -135,7 +135,7 @@ class MaxLocalAUC(object):
                 pass
             elif self.rate == "optimal":
                 self.sigma = self.alpha/((1 + self.alpha*self.t0*ind))
-                logging.debug("sigma=" + str(self.sigma))
+                #logging.debug("sigma=" + str(self.sigma))
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
 
@@ -399,7 +399,8 @@ class MaxLocalAUC(object):
                     U, V = self.learnModel(trainX)
                     
                     omegaList = self.getOmegaList(testX)
-                    localAucs[i, j, icv] = self.localAUCApprox(testX, U, V, omegaList)
+                    r = self.computeR(U, V)
+                    localAucs[i, j, icv] = self.localAUCApprox(testX, U, V, omegaList, r)
         
         meanLocalAucs = numpy.mean(localAucs, 2)
         stdLocalAucs = numpy.std(localAucs, 2)
