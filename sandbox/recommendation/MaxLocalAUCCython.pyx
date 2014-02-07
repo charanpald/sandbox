@@ -298,6 +298,7 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
             #riExp = exp(r[i])
             
             betaScale = 0
+            deltaBeta = numpy.zeros(k, numpy.float)
             
             if X[i, j] != 0:                 
                 p = j 
@@ -330,7 +331,8 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
                     
                     betaScale += gamma/(square(1+gamma) * (1+kappa))
                 #Note we use numOmegaBari*numOmegai to normalise
-                deltaBeta = scale(U, i, -betaScale/(numOmegai*numOmegaBari), k)             
+                if numOmegai != 0:
+                    deltaBeta = scale(U, i, -betaScale/(numOmegai*numOmegaBari), k)             
             
             plusEquals1d(deltaTheta, -deltaBeta, k)
         
