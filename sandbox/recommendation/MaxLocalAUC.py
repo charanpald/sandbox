@@ -4,6 +4,7 @@ import logging
 import multiprocessing 
 import sppy 
 import time
+import scipy.sparse
 from math import exp
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, updateVApprox, updateUApprox, objectiveApprox, localAUCApprox
@@ -117,11 +118,12 @@ class MaxLocalAUC(object):
         eps = self.eps 
 
         #Convert to a csarray for faster access 
-        logging.debug("Converting to csarray")
-        X2 = sppy.csarray(X.shape, storagetype="row")
-        X2[X.nonzero()] = X.data
-        X2.compress()
-        X = X2
+        if scipy.sparse.issparse(X):
+            logging.debug("Converting to csarray")
+            X2 = sppy.csarray(X.shape, storagetype="row")
+            X2[X.nonzero()] = X.data
+            X2.compress()
+            X = X2
         
         startTime = time.time()
     
