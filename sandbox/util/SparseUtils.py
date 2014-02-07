@@ -383,13 +383,25 @@ class SparseUtils(object):
         if type(inds) != numpy.ndarray: 
             inds = numpy.random.permutation(X.nnz)[0:inds]
         
-        rowInds, colInds = X.nonzero() 
-        rowInds = rowInds[inds]
-        colInds = colInds[inds]
-        vals = X.data[inds]
-        
-        return scipy.sparse.csc_matrix((vals, (rowInds, colInds)), X.shape)
-      
+        if scipy.sparse.issparse(X):
+            rowInds, colInds = X.nonzero() 
+            rowInds = rowInds[inds]
+            colInds = colInds[inds]
+            vals = X.data[inds]
+            
+            return scipy.sparse.csc_matrix((vals, (rowInds, colInds)), X.shape)
+        else: 
+            #Assume a sppy array 
+            rowInds, colInds = X.nonzero() 
+            rowInds = rowInds[inds]
+            colInds = colInds[inds]
+            vals = X.values()[inds]
+            
+            import sppy
+            Y = sppy.csarray(X.shape, storagetype=X.storagetype, dtype=X.dtype)
+            Y.put(vals, rowInds, colInds, init=True)
+            return Y
+            
     @staticmethod 
     def cscToArrays(X): 
         """
