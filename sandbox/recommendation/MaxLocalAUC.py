@@ -12,12 +12,12 @@ from apgl.util.Sampling import Sampling
 from apgl.util.Util import Util 
 
 class MaxLocalAUC(object): 
-    def __init__(self, lmbda, k, u, sigma=0.05, eps=0.1, stochastic=False, numProcesses=None): 
+    def __init__(self, rho, k, u, sigma=0.05, eps=0.1, stochastic=False, numProcesses=None): 
         """
         Create an object for  maximising the local AUC with a penalty term using the matrix
         decomposition UV.T 
         
-        :param lmbda: The regularisation parameter 
+        :param rho: The regularisation parameter 
         
         :param k: The rank of matrices U and V
         
@@ -29,7 +29,7 @@ class MaxLocalAUC(object):
         
         :stochastic: Whether to use stochastic gradient descent or gradient descent 
         """
-        self.lmbda = lmbda
+        self.rho = rho
         self.k = k 
         self.u = u
         self.sigma = sigma
@@ -54,8 +54,8 @@ class MaxLocalAUC(object):
         
         #Model selection parameters 
         self.folds = 3 
-        self.ks = numpy.array([10, 20, 50])
-        self.lmbdas = numpy.array([10**-7, 10**-6, 10**-5, 10**-4]) 
+        self.ks = numpy.array([10, 20, 50, 100])
+        self.rhos = numpy.array([10**-4, 10**-3, 10**-2, 10**-1]) 
         
         #Learning rate selection 
         self.alphas = numpy.arange(0.1, 1.0, 0.2)
@@ -78,6 +78,9 @@ class MaxLocalAUC(object):
         
         r = normU*maxVj - 2*normU*maxVj*self.u
         return r 
+    
+    def getLambda(self, X): 
+        return self.rho/X.shape[0]
     
     def learnModel(self, X, verbose=False): 
         """
@@ -148,7 +151,7 @@ class MaxLocalAUC(object):
             normDeltaV = numpy.linalg.norm(V - lastV)               
                 
             if ind % self.recordStep == 0: 
-                objs.append(objectiveApprox(X, U, V, omegaList, self.numAucSamples, self.lmbda, r))
+                objs.append(objectiveApprox(X, U, V, omegaList, self.numAucSamples, self.getLambda(X), r))
                 aucs.append(localAUCApprox(X, U, V, omegaList, self.numAucSamples, r))
                 printStr = "Iteration: " + str(ind)
                 printStr += " local AUC~" + str(aucs[-1]) + " objective~" + str(objs[-1])
@@ -178,14 +181,14 @@ class MaxLocalAUC(object):
             return dU
         else: 
             rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
-            updateUApprox(X, U, V, omegaList, rowInds, self.numAucSamples, self.sigma, self.lmbda, r)
+            updateUApprox(X, U, V, omegaList, rowInds, self.numAucSamples, self.sigma, self.getLambda(X), r)
         
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, r): 
         """
         delta phi/delta u_i
         """
-        return derivativeUi(X, U, V, omegaList, i, self.k, self.lmbda, r)
+        return derivativeUi(X, U, V, omegaList, i, self.k, self.getLambda(X), r)
         
     def updateV(self, X, U, V, omegaList, r): 
         """
@@ -200,11 +203,11 @@ class MaxLocalAUC(object):
         else: 
             rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
             colInds = numpy.array(numpy.random.randint(X.shape[1], size=self.numColSamples), numpy.uint)
-            updateVApprox(X, U, V, omegaList, rowInds, colInds, self.numAucSamples, self.sigma, self.lmbda, r)
+            updateVApprox(X, U, V, omegaList, rowInds, colInds, self.numAucSamples, self.sigma, self.getLambda(X), r)
 
                 
     def derivativeVi(self, X, U, V, omegaList, i, r): 
-        return derivativeVi(X, U, V, omegaList, i, self.k, self.lmbda, r)           
+        return derivativeVi(X, U, V, omegaList, i, self.k, self.getLambda(X), r)           
            
     def localAUC(self, X, U, V, omegaList, r): 
         """
@@ -299,7 +302,7 @@ class MaxLocalAUC(object):
                 obj += partialAuc/float(omegai.shape[0] * omegaBari.shape[0])
         
         obj /= m       
-        obj = 0.5*self.lmbda * (numpy.sum(U**2) + numpy.sum(V**2)) - obj
+        obj = 0.5*self.getLambda(X) * (numpy.sum(U**2) + numpy.sum(V**2)) - obj
         
         return obj 
 
@@ -339,7 +342,7 @@ class MaxLocalAUC(object):
                 obj += partialAuc/float(self.numAucSamples)
         
         obj /= m       
-        obj = 0.5*self.lmbda * (numpy.sum(U**2) + numpy.sum(V**2)) - obj
+        obj = 0.5*self.getLambda(X) * (numpy.sum(U**2) + numpy.sum(V**2)) - obj
         
         return obj 
         
@@ -382,7 +385,7 @@ class MaxLocalAUC(object):
         Perform model selection on X and return the best parameters. 
         """
         cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
-        localAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(cvInds)))
+        localAucs = numpy.zeros((self.ks.shape[0], self.rhos.shape[0], len(cvInds)))
         
         logging.debug("Performing model selection")
         for icv, (trainInds, testInds) in enumerate(cvInds):
@@ -392,9 +395,9 @@ class MaxLocalAUC(object):
             testX = SparseUtils.submatrix(X, testInds)
             
             for i, k in enumerate(self.ks): 
-                for j, lmbda in enumerate(self.lmbdas): 
+                for j, rho in enumerate(self.rhos): 
                     self.k = k 
-                    self.lmbda = lmbda 
+                    self.rho = rho 
                     
                     U, V = self.learnModel(trainX)
                     
@@ -413,4 +416,4 @@ class MaxLocalAUC(object):
         logging.debug("Model parameters: k=" + str(k) + " lambda=" + str(lmbda))
         
         self.k = k 
-        self.lmbda = lmbda 
+        self.rho = rho 
