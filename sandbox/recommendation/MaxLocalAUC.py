@@ -361,13 +361,13 @@ class MaxLocalAUC(object):
             testX = SparseUtils.submatrix(X, testInds)
             
             for i, alpha in enumerate(self.alphas): 
-                    self.alpha = alpha 
-                    
-                    U, V = self.learnModel(trainX)
-                    r = self.computeR(U, V)
-                    
-                    omegaList = self.getOmegaList(testX)
-                    localAucs[i, icv] = self.localAUCApprox(testX, U, V, omegaList, r)
+                self.alpha = alpha 
+                
+                U, V = self.learnModel(trainX)
+                r = self.computeR(U, V)
+                
+                omegaList = self.getOmegaList(testX)
+                localAucs[i, icv] = self.localAUCApprox(testX, U, V, omegaList, r)
         
         meanLocalAucs = numpy.mean(localAucs, 1)
         stdLocalAucs = numpy.std(localAucs, 1)
@@ -403,7 +403,8 @@ class MaxLocalAUC(object):
                     
                     omegaList = self.getOmegaList(testX)
                     r = self.computeR(U, V)
-                    localAucs[i, j, icv] = self.localAUCApprox(testX, U, V, omegaList, r)
+                    #Note we use X here since if we used testX then we could positives as negatives 
+                    localAucs[i, j, icv] = self.localAUCApprox(X, U, V, omegaList, r)
         
         meanLocalAucs = numpy.mean(localAucs, 2)
         stdLocalAucs = numpy.std(localAucs, 2)
