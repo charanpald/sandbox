@@ -129,7 +129,7 @@ def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
     cdef unsigned int p, q, ind, j, s
     cdef unsigned int k = U.shape[1]
     cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappaSq, gamma, onePlusGamma
-    cdef double denom, denom2
+    cdef double denom, denom2, normDeltaBeta
     cdef unsigned int n, m, numOmegai, numOmegaBari
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
@@ -175,12 +175,16 @@ def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
                 
                 denom = onePlusGammaSq * onePlusKappaSq
                 denom2 = onePlusGammaSq * onePlusKappa
-                deltaAlpha += scale(V, p, ((gamma+kappa+2*gamma*kappa)/denom), k) - scale(V, q, (gamma/denom2), k) 
+                if denom != 0 and denom2 != 0: 
+                    deltaAlpha += scale(V, p, ((gamma+kappa+2*gamma*kappa)/denom), k) - scale(V, q, (gamma/denom2), k) 
                     
             deltaAlpha /= float(numAucSamples)
             deltaBeta -= deltaAlpha
-
-        deltaBeta = deltaBeta/numpy.linalg.norm(deltaBeta)
+        
+        normDeltaBeta = numpy.linalg.norm(deltaBeta)
+        
+        if normDeltaBeta != 0: 
+            deltaBeta = deltaBeta/normDeltaBeta
         plusEquals(U, i, -sigma*deltaBeta, k)
 
 @cython.boundscheck(False)
