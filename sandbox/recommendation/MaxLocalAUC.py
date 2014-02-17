@@ -105,7 +105,7 @@ class MaxLocalAUC(object):
         elif self.initialAlg == "svd":
             logging.debug("Initialising with SVD")
             try: 
-                U, s, V = SparseUtils.svdPropack(X, self.k, kmax=self.k*20)
+                U, s, V = SparseUtils.svdPropack(X, self.k, kmax=numpy.min([self.k*15, m-1, n-1]))
             except ImportError: 
                 U, s, V = SparseUtils.svdArpack(X, self.k)
             U = numpy.ascontiguousarray(U)
@@ -122,7 +122,6 @@ class MaxLocalAUC(object):
         aucs = []
         
         ind = 0
-        eps = self.eps 
 
         #Convert to a csarray for faster access 
         if scipy.sparse.issparse(X):
@@ -132,7 +131,7 @@ class MaxLocalAUC(object):
         
         startTime = time.time()
     
-        while (normDeltaU > eps or normDeltaV > eps) and ind < self.maxIterations: 
+        while (normDeltaU > self.eps or normDeltaV > self.eps) and ind < self.maxIterations: 
             lastU = U.copy() 
             lastV = V.copy() 
             
