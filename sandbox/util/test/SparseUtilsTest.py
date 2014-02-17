@@ -408,5 +408,33 @@ class SparseUtilsCythonTest(unittest.TestCase):
         X2.data = X2.data**2
         nptst.assert_array_almost_equal(numpy.array(X2.sum(0)).ravel(), numpy.ones(n)) 
      
+    def testGenerateSparseBinaryMatrix(self):
+        m = 5 
+        n = 10 
+        k = 3
+        quantile = 0.3
+        numpy.random.seed(21)
+        X = SparseUtils.generateSparseBinaryMatrix((m,n), k, quantile)
+        Xscipy = numpy.array(X.todense()) 
+        
+        nptst.assert_array_equal(numpy.array(X.sum(1)).flatten(), numpy.ones(m)*3)
+        
+        quantile = 1.0 
+        X = SparseUtils.generateSparseBinaryMatrix((m,n), k, quantile)
+        nptst.assert_array_almost_equal(X.todense(), numpy.ones((m,n)))
+        
+        quantile = 0.3
+        numpy.random.seed(21)
+        X = SparseUtils.generateSparseBinaryMatrix((m,n), k, quantile, csarray=True)
+        Xcsarray = X.toarray()
+        
+        nptst.assert_array_equal(numpy.array(X.sum(1)).flatten(), numpy.ones(m)*3)
+        
+        quantile = 1.0 
+        X = SparseUtils.generateSparseBinaryMatrix((m,n), k, quantile, csarray=True)
+        nptst.assert_array_almost_equal(X.toarray(), numpy.ones((m,n)))
+        
+        nptst.assert_array_equal(Xcsarray, Xscipy)
+     
 if __name__ == '__main__':
     unittest.main()
