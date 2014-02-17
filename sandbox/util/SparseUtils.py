@@ -179,6 +179,7 @@ class SparseUtils(object):
         :param kmax: The maximal number of iterations / maximal dimension of Krylov subspace.
         """
         from pypropack import svdp
+        import sppy 
 
         if k==None:
             k = min(X.shape[0], X.shape[1])
@@ -187,6 +188,8 @@ class SparseUtils(object):
 
         if scipy.sparse.isspmatrix(X):
             L = scipy.sparse.linalg.aslinearoperator(X)
+        elif type(X) == sppy.csarray: 
+            L = sppy.linalg.GeneralLinearOperator.asLinearOperator(X)
         else:
             L = X
 
