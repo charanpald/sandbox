@@ -67,8 +67,12 @@ class MaxLocalAUC(object):
         """
         omegaList = []
         
-        for i in range(X.shape[0]): 
-            omegaList.append(numpy.array(X[i, :].nonzero()[1], numpy.uint))
+        if scipy.sparse.isspmatrix(X):
+            for i in range(X.shape[0]): 
+                omegaList.append(numpy.array(X[i, :].nonzero()[1], numpy.uint))
+        else: 
+            for i in range(X.shape[0]): 
+                omegaList.append(numpy.array(X[i, :].nonzero()[0], numpy.uint))
         return omegaList 
     
     def computeR(self, U, V): 
@@ -123,9 +127,7 @@ class MaxLocalAUC(object):
         #Convert to a csarray for faster access 
         if scipy.sparse.issparse(X):
             logging.debug("Converting to csarray")
-            X2 = sppy.csarray(X.shape, storagetype="row")
-            X2[X.nonzero()] = X.data
-            X2.compress()
+            X2 = sppy.csarray(X, storagetype="row")
             X = X2
         
         startTime = time.time()
@@ -163,6 +165,7 @@ class MaxLocalAUC(object):
         totalTime = time.time() - startTime
         logging.debug("||dU||=" + str(normDeltaU) + " " + "||dV||=" + str(normDeltaV))
         logging.debug("Total time taken " + str(totalTime))
+        logging.debug("Number of iterations: " + str(ind))
                         
         if verbose:     
             return U, V, numpy.array(objs), numpy.array(aucs), ind, totalTime
