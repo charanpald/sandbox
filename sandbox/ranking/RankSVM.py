@@ -2,9 +2,9 @@
 A wrapper for rank svm code.
 """
 from sandbox.predictors.AbstractPredictor import AbstractPredictor
-from apgl.util.Parameter import Parameter
+from sandbox.util.Parameter import Parameter
 import sklearn.cross_validation as cross_val
-from apgl.util.Evaluator import Evaluator
+from sandbox.util.Evaluator import Evaluator
 import svmlight
 import numpy
 import logging

@@ -1,6 +1,6 @@
 from apgl.graph import *
-from apgl.util.Util import Util
-from apgl.util.Parameter import Parameter
+from sandbox.util.Util import Util
+from sandbox.util.Parameter import Parameter
 from apgl.predictors.edge.AbstractEdgePredictor import AbstractEdgePredictor
 import numpy
 import logging

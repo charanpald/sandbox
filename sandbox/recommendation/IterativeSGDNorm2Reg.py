@@ -7,7 +7,7 @@ import scipy
 import numpy
 import itertools
 import numpy.testing as nptst 
-from apgl.util.Sampling import Sampling 
+from sandbox.util.Sampling import Sampling 
 from apgl.util import Util
 from sandbox.util.SparseUtils import SparseUtils 
 from sandbox.util.MCEvaluator import MCEvaluator

@@ -4,7 +4,7 @@ using a subset of the edges.
 """
 import numpy 
 from apgl.viroscopy.model.HIVGraph import HIVGraph
-from apgl.util.Util import Util
+from sandbox.util.Util import Util
 
 numpy.set_printoptions(linewidth=200, threshold=10000)
 

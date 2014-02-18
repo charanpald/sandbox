@@ -1,9 +1,9 @@
 import numpy
 import logging
 import sys
-from apgl.util.ProfileUtils import ProfileUtils
+from sandbox.util.ProfileUtils import ProfileUtils
 from apgl.predictors.LibSVM import LibSVM
-from apgl.util.Sampling import Sampling 
+from sandbox.util.Sampling import Sampling 
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 

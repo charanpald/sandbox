@@ -4,7 +4,7 @@ import logging
 import sys
 import time 
 import scipy.sparse
-from apgl.util.ProfileUtils import ProfileUtils
+from sandbox.util.ProfileUtils import ProfileUtils
 from exp.sandbox.SVDUpdate import SVDUpdate
 from exp.util.SparseUtils import SparseUtils 
 

@@ -5,12 +5,12 @@ import numpy
 import logging
 import sklearn.cross_validation as cross_val
 from apgl.graph.DictTree import DictTree
-from apgl.util.Parameter import Parameter
-from apgl.util.Util import Util
+from sandbox.util.Parameter import Parameter
+from sandbox.util.Util import Util
 from sandbox.ranking.RankNode import RankNode
 from sandbox.ranking.AbstractTreeRank import AbstractTreeRank
 from sandbox.ranking.leafrank.MajorityPredictor import MajorityPredictor
-from apgl.util.Evaluator import Evaluator 
+from sandbox.util.Evaluator import Evaluator 
 
 class TreeRank(AbstractTreeRank):
     def __init__(self, leafRanklearner, numProcesses=1):

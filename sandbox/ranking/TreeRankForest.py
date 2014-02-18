@@ -6,8 +6,8 @@ import numpy
 import logging
 from sandbox.ranking.AbstractTreeRank import AbstractTreeRank
 from sandbox.ranking.TreeRank import TreeRank
-from apgl.util.Parameter import Parameter
-from apgl.util.Util import Util
+from sandbox.util.Parameter import Parameter
+from sandbox.util.Util import Util
 
 class TreeRankForest(AbstractTreeRank):
     def __init__(self, leafRanklearner, numProcesses=1):

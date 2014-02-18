@@ -8,10 +8,10 @@ import math
 import logging
 import scipy.linalg
 import scipy.sparse.linalg 
-from apgl.util.Util import Util
+from sandbox.util.Util import Util
 import scipy.cluster.vq as vq 
 from apgl.util.VqUtils import VqUtils
-from apgl.util.SparseUtils import SparseUtils
+from sandbox.util.SparseUtils import SparseUtils
 from apgl.graph import GraphUtils 
 
 class NingSpectralClustering(object):

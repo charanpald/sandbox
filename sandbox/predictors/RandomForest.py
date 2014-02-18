@@ -6,9 +6,9 @@ functionality.
 import numpy
 import logging 
 
-from apgl.util.Evaluator import Evaluator 
-from apgl.util.Parameter import Parameter
-from apgl.util.Util import Util 
+from sandbox.util.Evaluator import Evaluator 
+from sandbox.util.Parameter import Parameter
+from sandbox.util.Util import Util 
 from sandbox.predictors.AbstractWeightedPredictor import AbstractWeightedPredictor
 
 

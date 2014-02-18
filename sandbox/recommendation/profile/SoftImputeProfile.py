@@ -3,7 +3,7 @@ import logging
 import sys
 from apgl.graph import *
 from apgl.generator import *
-from apgl.util.ProfileUtils import ProfileUtils
+from sandbox.util.ProfileUtils import ProfileUtils
 from exp.sandbox.recommendation.SoftImpute import SoftImpute
 import scipy.sparse
 from exp.util.SparseUtils import SparseUtils

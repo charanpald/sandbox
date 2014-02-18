@@ -1,6 +1,6 @@
 
 import numpy
-from apgl.util.Parameter import Parameter
+from sandbox.util.Parameter import Parameter
 
 
 class FeatureGenerator(object):

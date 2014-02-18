@@ -3,7 +3,7 @@ import logging
 import sys
 import scipy 
 import scipy.sparse 
-from apgl.util.ProfileUtils import ProfileUtils
+from sandbox.util.ProfileUtils import ProfileUtils
 from exp.sandbox.Nystrom import Nystrom 
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)

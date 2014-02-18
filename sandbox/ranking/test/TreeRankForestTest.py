@@ -7,8 +7,8 @@ from sandbox.ranking.TreeRankForest import TreeRankForest
 from sandbox.ranking.RankNode import RankNode
 from sandbox.ranking.leafrank.SVMLeafRank import SVMLeafRank
 from sandbox.ranking.leafrank.DecisionTree import DecisionTree
-from apgl.util.PathDefaults import PathDefaults
-from apgl.util.Evaluator import Evaluator
+from sandbox.util.PathDefaults import PathDefaults
+from sandbox.util.Evaluator import Evaluator
 from sandbox.data.Standardiser import Standardiser
 from sandbox.data.ExamplesGenerator import ExamplesGenerator
 

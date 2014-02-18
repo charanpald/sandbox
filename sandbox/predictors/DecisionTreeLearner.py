@@ -7,9 +7,9 @@ from apgl.graph.DictTree import DictTree
 from sandbox.predictors.TreeCriterion import findBestSplit
 from sandbox.predictors.TreeCriterionPy import findBestSplit2
 from sandbox.predictors.DecisionNode import DecisionNode
-from apgl.util.Sampling import Sampling
-from apgl.util.Parameter import Parameter
-from apgl.util.Evaluator import Evaluator
+from sandbox.util.Sampling import Sampling
+from sandbox.util.Parameter import Parameter
+from sandbox.util.Evaluator import Evaluator
 
 def computeVFPenTree(args): 
     """

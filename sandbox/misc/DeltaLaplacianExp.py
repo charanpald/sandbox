@@ -1,7 +1,7 @@
 import numpy 
 import scipy.sparse 
 from apgl.graph import GraphUtils 
-from apgl.util.Util import Util 
+from sandbox.util.Util import Util 
 
 numpy.set_printoptions(suppress=True, precision=3)
 n = 10

@@ -7,7 +7,7 @@ from sandbox.kernel.PermutationGraphKernel import PermutationGraphKernel
 from sandbox.kernel.LinearKernel import LinearKernel
 from apgl.graph.SparseGraph import SparseGraph
 from apgl.graph.VertexList import VertexList
-from apgl.util.Util import Util
+from sandbox.util.Util import Util
 
 class  PermutationGraphKernelTest(unittest.TestCase):
     def setUp(self):

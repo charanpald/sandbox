@@ -3,8 +3,8 @@
 import unittest
 import logging
 from exp.sandbox.predictors.edge.EgoEdgeLabelPredictor import EgoEdgeLabelPredictor
-from apgl.util.PathDefaults import PathDefaults
-from apgl.util.Evaluator import Evaluator
+from sandbox.util.PathDefaults import PathDefaults
+from sandbox.util.Evaluator import Evaluator
 from apgl.graph.VertexList import VertexList
 from apgl.graph.SparseGraph import SparseGraph
 from apgl.predictors import * 

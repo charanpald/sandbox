@@ -3,7 +3,7 @@ import numpy
 import sys
 import logging
 from sandbox.predictors.leafrank.SVMLeafRank import SVMLeafRank
-from apgl.util.Evaluator import Evaluator 
+from sandbox.util.Evaluator import Evaluator 
 
 class SVMLeafRankTest(unittest.TestCase):
     def setUp(self):

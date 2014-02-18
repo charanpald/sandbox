@@ -3,9 +3,9 @@ import unittest
 import numpy
 import logging
 from sandbox.predictors.RandomForest import RandomForest
-from apgl.util.PathDefaults import PathDefaults
-from apgl.util.Evaluator import Evaluator
-from apgl.util.Sampling import Sampling
+from sandbox.util.PathDefaults import PathDefaults
+from sandbox.util.Evaluator import Evaluator
+from sandbox.util.Sampling import Sampling
 
 @apgl.skipIf(not apgl.checkImport('sklearn'), 'Module sklearn is required')
 class  RandomForestTest(unittest.TestCase):

@@ -1,4 +1,4 @@
-from apgl.util.Parameter import Parameter
+from sandbox.util.Parameter import Parameter
 from sandbox.predictors.AbstractPredictor import AbstractPredictor
 
 class AbstractWeightedPredictor(AbstractPredictor):

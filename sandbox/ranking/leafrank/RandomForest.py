@@ -4,7 +4,7 @@ import orange
 import orngTree
 import orngEnsemble
 import numpy
-from apgl.util.Parameter import Parameter
+from sandbox.util.Parameter import Parameter
 from sandbox.predictors.leafrank.AbstractOrangePredictor import AbstractOrangePredictor
 
 class RandomForest(AbstractOrangePredictor):

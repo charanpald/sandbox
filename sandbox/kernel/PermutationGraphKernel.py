@@ -6,8 +6,8 @@ Created on 26 Jun 2009
 import scipy.sparse.lil
 import numpy
 from sandbox.kernel.GraphKernel import GraphKernel
-from apgl.util.Parameter import Parameter
-from apgl.util.Util import Util
+from sandbox.util.Parameter import Parameter
+from sandbox.util.Util import Util
 
 class PermutationGraphKernel(GraphKernel):
     def __init__(self, tau, vertexKernel):

@@ -4,8 +4,8 @@ import numpy
 import logging
 from sandbox.predictors.leafrank.DecisionTree import DecisionTree
 import orngTree
-from apgl.util.PathDefaults import PathDefaults
-from apgl.util.Evaluator import Evaluator
+from sandbox.util.PathDefaults import PathDefaults
+from sandbox.util.Evaluator import Evaluator
 
 class  DecisionTreeTestCase(unittest.TestCase):
     def setUp(self):

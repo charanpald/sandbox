@@ -1,9 +1,9 @@
 import numpy
 import logging 
 import sklearn.cross_validation as cross_val
-from apgl.util.Parameter import Parameter
-from apgl.util.Util import Util
-from apgl.util.Evaluator import Evaluator
+from sandbox.util.Parameter import Parameter
+from sandbox.util.Util import Util
+from sandbox.util.Evaluator import Evaluator
 from sandbox.predictors.AbstractPredictor import AbstractPredictor
 
 class AbstractTreeRank(AbstractPredictor):

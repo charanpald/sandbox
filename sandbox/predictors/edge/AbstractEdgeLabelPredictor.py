@@ -2,7 +2,7 @@
 import numpy
 import logging
 import pickle 
-from apgl.util.Sampling import Sampling
+from sandbox.util.Sampling import Sampling
 from apgl.graph.SparseGraph import SparseGraph
 
 class AbstractEdgeLabelPredictor(object):

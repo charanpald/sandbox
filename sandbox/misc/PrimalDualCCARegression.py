@@ -7,8 +7,8 @@ import numpy
 from apgl.predictors.AbstractPredictor import AbstractPredictor
 from apgl.features.PrimalDualCCA import PrimalDualCCA
 from apgl.kernel import *
-from apgl.util.Util import Util
-from apgl.util.Parameter import Parameter
+from sandbox.util.Util import Util
+from sandbox.util.Parameter import Parameter
 
 class PrimalDualCCARegression(AbstractPredictor):
     def __init__(self, kernel, tau1, tau2):

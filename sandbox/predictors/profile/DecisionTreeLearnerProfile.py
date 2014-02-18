@@ -2,11 +2,11 @@
 import numpy
 import logging
 import sys
-from apgl.util.ProfileUtils import ProfileUtils 
+from sandbox.util.ProfileUtils import ProfileUtils 
 from exp.sandbox.predictors.DecisionTreeLearner import DecisionTreeLearner
 from apgl.data.ExamplesGenerator import ExamplesGenerator  
 from sklearn.tree import DecisionTreeRegressor 
-from apgl.util.Sampling import Sampling 
+from sandbox.util.Sampling import Sampling 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 numpy.random.seed(22)

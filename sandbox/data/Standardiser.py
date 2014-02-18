@@ -7,7 +7,7 @@ Created on 3 Aug 2009
 import numpy
 import logging 
 from sandbox.data.AbstractPreprocessor import AbstractPreprocessor
-from apgl.util.Parameter import Parameter
+from sandbox.util.Parameter import Parameter
 
 
 class Standardiser(AbstractPreprocessor):

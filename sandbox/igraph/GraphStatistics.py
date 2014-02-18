@@ -9,8 +9,8 @@ import numpy
 import logging 
 import igraph 
 
-from apgl.util.Util import Util
-from apgl.util.Parameter import Parameter 
+from sandbox.util.Util import Util
+from sandbox.util.Parameter import Parameter 
 
 class GraphStatistics(object):
     def __init__(self):

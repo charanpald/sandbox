@@ -1,7 +1,7 @@
 
 import numpy 
 import scipy.sparse.linalg 
-from apgl.util import Parameter 
+from sandbox.util.Parameter import Parameter 
 
 class EfficientNystrom(object): 
     def __init__(self): 

@@ -2,7 +2,7 @@
 
 from sandbox.kernel.AbstractKernel import AbstractKernel 
 from sandbox.predictors.AbstractKernelPredictor import AbstractKernelPredictor
-from apgl.util.Parameter import Parameter
+from sandbox.util.Parameter import Parameter
 import numpy
 
 class KernelRidgeRegression(AbstractKernelPredictor):

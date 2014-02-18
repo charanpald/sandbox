@@ -9,8 +9,8 @@ import tempfile
 import logging 
 from os.path import expanduser
 from apgl.graph import SparseGraph, VertexList
-from apgl.util.Parameter import Parameter
-from apgl.util.Util import Util
+from sandbox.util.Parameter import Parameter
+from sandbox.util.Util import Util
 from sandbox.data.Standardiser import Standardiser 
 
 class GraphMatch(object): 

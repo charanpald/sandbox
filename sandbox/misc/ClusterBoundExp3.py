@@ -2,7 +2,7 @@
 We test the cluster bound on the spectral clustering approach 
 """ 
 import numpy 
-from apgl.util import Util 
+from sandbox.util.Util import Util 
 from apgl.graph import SparseGraph, GeneralVertexList 
 from apgl.generator import ErdosRenyiGenerator 
 

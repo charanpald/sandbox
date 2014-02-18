@@ -3,7 +3,7 @@ import unittest
 import logging
 import sys 
 from sandbox.ranking.RankBoost import RankBoost
-from apgl.util.Evaluator import Evaluator
+from sandbox.util.Evaluator import Evaluator
 from sandbox.data.Standardiser import Standardiser
 
 class RankBoostTest(unittest.TestCase):

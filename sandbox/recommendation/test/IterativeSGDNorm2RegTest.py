@@ -1,6 +1,6 @@
 
-from apgl.util.Util import Util
-from apgl.util.Sampling import Sampling 
+from sandbox.util.Util import Util
+from sandbox.util.Sampling import Sampling 
 from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.recommendation.IterativeSGDNorm2Reg import IterativeSGDNorm2Reg
 import sys

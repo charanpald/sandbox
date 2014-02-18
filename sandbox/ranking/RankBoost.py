@@ -4,8 +4,8 @@ import tempfile
 import numpy
 import logging 
 from sandbox.predictors.AbstractPredictor import AbstractPredictor
-from apgl.util.Parameter import Parameter
-from apgl.util.Evaluator import Evaluator
+from sandbox.util.Parameter import Parameter
+from sandbox.util.Evaluator import Evaluator
 from sklearn.cross_validation import StratifiedKFold
 """
 A wrapper for the RankBoost code written in RankLib. Note that RankLib must

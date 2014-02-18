@@ -11,10 +11,10 @@ import scipy.sparse
 from sandbox.misc.NingSpectralClustering import NingSpectralClustering
 from apgl.graph import *
 from apgl.generator import *
-from apgl.util.Util import Util 
+from sandbox.util.Util import Util 
 from sandbox.sandbox.GraphIterators import toSparseGraphListIterator
 from apgl.util.VqUtils import VqUtils
-from apgl.util.SparseUtils import SparseUtils
+from sandbox.util.SparseUtils import SparseUtils
 import scipy.cluster.vq as vq 
 
 class NingSpectralClusteringTest(unittest.TestCase):

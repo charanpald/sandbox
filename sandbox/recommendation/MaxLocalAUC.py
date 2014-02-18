@@ -8,8 +8,8 @@ import scipy.sparse
 from math import exp
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, updateVApprox, updateUApprox, objectiveApprox, localAUCApprox
-from apgl.util.Sampling import Sampling 
-from apgl.util.Util import Util 
+from sandbox.util.Sampling import Sampling 
+from sandbox.util.Util import Util 
 
 def updateUV(args): 
     X, U, V, omegaList, numRowSamples, numColSamples, numAucSamples, sigma, lmbda, r  = args   

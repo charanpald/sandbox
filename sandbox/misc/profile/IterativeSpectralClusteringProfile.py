@@ -4,10 +4,10 @@ import sys
 from apgl.graph.SparseGraph import SparseGraph
 from apgl.graph.GeneralVertexList import GeneralVertexList
 from apgl.generator.ErdosRenyiGenerator import ErdosRenyiGenerator
-from apgl.util.ProfileUtils import ProfileUtils
+from sandbox.util.ProfileUtils import ProfileUtils
 from exp.sandbox.IterativeSpectralClustering import IterativeSpectralClustering
 from exp.sandbox.GraphIterators import IncreasingSubgraphListIterator, toDenseGraphListIterator
-from apgl.util.PathDefaults import PathDefaults
+from sandbox.util.PathDefaults import PathDefaults
 from exp.clusterexp.BemolData import BemolData
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)

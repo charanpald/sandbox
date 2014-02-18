@@ -11,8 +11,8 @@ import apgl
 import sys 
 from sandbox.predictors.AbstractPredictor import computeTestError, computeIdealPenalty, computeBootstrapError
 from sandbox.data.ExamplesGenerator import ExamplesGenerator 
-from apgl.util.Evaluator import Evaluator
-from apgl.util.Sampling import Sampling
+from sandbox.util.Evaluator import Evaluator
+from sandbox.util.Sampling import Sampling
 from sandbox.data.Standardiser import Standardiser
 
 try: 

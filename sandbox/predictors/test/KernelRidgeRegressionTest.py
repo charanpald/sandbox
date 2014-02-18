@@ -2,7 +2,7 @@
 import unittest
 from sandbox.predictors.KernelRidgeRegression import KernelRidgeRegression
 from sandbox.kernel.LinearKernel import LinearKernel
-from apgl.util.Util import Util
+from sandbox.util.Util import Util
 from sandbox.data.Standardiser import Standardiser
 import numpy
 import logging

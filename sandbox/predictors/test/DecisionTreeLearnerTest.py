@@ -5,11 +5,11 @@ import logging
 from sandbox.predictors.DecisionTreeLearner import DecisionTreeLearner
 from sandbox.data.ExamplesGenerator import ExamplesGenerator
 from sandbox.data.Standardiser import Standardiser    
-from apgl.util.Sampling import Sampling
+from sandbox.util.Sampling import Sampling
 from sklearn.tree import DecisionTreeRegressor 
 from sandbox.predictors.LibSVM import LibSVM
 import sklearn.datasets as data 
-from apgl.util.Evaluator import Evaluator
+from sandbox.util.Evaluator import Evaluator
 from sklearn import linear_model
 
 

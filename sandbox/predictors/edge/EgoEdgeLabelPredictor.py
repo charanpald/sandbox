@@ -5,8 +5,8 @@ import gc
 
 from apgl.predictors.AbstractPredictor import AbstractPredictor
 from exp.sandbox.predictors.edge.AbstractEdgeLabelPredictor import AbstractEdgeLabelPredictor
-from apgl.util.Util import Util
-from apgl.util.Parameter import Parameter
+from sandbox.util.Util import Util
+from sandbox.util.Parameter import Parameter
 from apgl.data import * 
 import numpy
 

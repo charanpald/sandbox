@@ -8,7 +8,7 @@ import logging
 
 from apgl.graph.SparseGraph import SparseGraph
 from apgl.graph.GeneralVertexList import GeneralVertexList
-from apgl.util.Parameter import Parameter
+from sandbox.util.Parameter import Parameter
 
 class IterativeModularityClustering(object):
     def __init__(self, k):

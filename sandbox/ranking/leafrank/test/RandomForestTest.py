@@ -6,7 +6,7 @@ from sandbox.predictors.leafrank.DecisionTree import DecisionTree
 import orngTree
 import orange
 import orngEnsemble
-from apgl.util.PathDefaults import PathDefaults
+from sandbox.util.PathDefaults import PathDefaults
 
 class  RandomForestTestCase(unittest.TestCase):
     def setUp(self):

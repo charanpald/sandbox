@@ -8,7 +8,7 @@ import numpy
 from apgl.data.Preprocessor import Preprocessor
 from apgl.kernel.LinearKernel import LinearKernel
 from apgl.data.SparseCenterer import SparseCenterer
-from apgl.util.Util import Util 
+from sandbox.util.Util import Util 
 
 numpy.random.seed(21)
 

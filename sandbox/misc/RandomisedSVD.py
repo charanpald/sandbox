@@ -2,7 +2,7 @@ import numpy
 import scipy.sparse 
 import gc 
 from sppy.linalg.GeneralLinearOperator import GeneralLinearOperator
-from apgl.util.Parameter import Parameter 
+from sandbox.util.Parameter import Parameter 
 import sppy.linalg 
 
 class RandomisedSVD(object): 

@@ -3,8 +3,8 @@ import logging
 import scipy.sparse.linalg
 import exp.util.SparseUtils as ExpSU
 from exp.util.MCEvaluator import MCEvaluator
-from apgl.util.Util import Util
-from apgl.util.Parameter import Parameter
+from sandbox.util.Util import Util
+from sandbox.util.Parameter import Parameter
 from exp.sandbox.recommendation.AbstractMatrixCompleter import AbstractMatrixCompleter
 
 

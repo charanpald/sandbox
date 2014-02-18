@@ -1,6 +1,6 @@
 
 import sys
-from apgl.util.Util import Util
+from sandbox.util.Util import Util
 from exp.sandbox.recommendation.SGDNorm2Reg import SGDNorm2Reg 
 import numpy
 import numpy.random

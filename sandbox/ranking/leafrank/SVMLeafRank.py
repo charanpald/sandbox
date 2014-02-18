@@ -1,6 +1,6 @@
 import numpy
 import logging
-from apgl.util.Sampling import Sampling
+from sandbox.util.Sampling import Sampling
 from sandbox.predictors.LibSVM import LibSVM
 
 class SVMLeafRank(LibSVM):

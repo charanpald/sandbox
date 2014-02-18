@@ -5,7 +5,7 @@ A functional version of the Decision Tree Leaf Rank.
 
 import numpy
 import logging
-from apgl.util.Evaluator import Evaluator
+from sandbox.util.Evaluator import Evaluator
 from exp.metabolomics.leafrank.DecisionTree import DecisionTree
 from exp.metabolomics.leafrank.AbstractFunctionalPredictor import AbstractFunctionalPredictor
 from apgl.data.Standardiser import Standardiser

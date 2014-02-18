@@ -3,7 +3,7 @@ import logging
 import sys
 from apgl.graph import *
 from apgl.generator import *
-from apgl.util.ProfileUtils import ProfileUtils
+from sandbox.util.ProfileUtils import ProfileUtils
 from exp.metabolomics.TreeRankForestR import TreeRankForestR
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)

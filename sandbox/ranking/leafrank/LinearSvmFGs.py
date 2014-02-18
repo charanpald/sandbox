@@ -6,8 +6,8 @@ A functional version of the linear SVM leaf rank.
 import numpy
 import logging
 import sklearn.svm as svm
-from apgl.util.Parameter import Parameter
-from apgl.util.Evaluator import Evaluator
+from sandbox.util.Parameter import Parameter
+from sandbox.util.Evaluator import Evaluator
 from sandbox.ranking.leafrank.AbstractFunctionalPredictor import AbstractFunctionalPredictor
 from sandbox.ranking.leafrank.LinearSVM import LinearSVM
 from apgl.data.Standardiser import Standardiser

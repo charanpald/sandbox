@@ -2,9 +2,9 @@
 import orange
 import orngTree
 import numpy
-from apgl.util.Parameter import Parameter
-from apgl.util.Evaluator import Evaluator 
-from apgl.util.Sampling import Sampling 
+from sandbox.util.Parameter import Parameter
+from sandbox.util.Evaluator import Evaluator 
+from sandbox.util.Sampling import Sampling 
 from sandbox.ranking.leafrank.AbstractOrangePredictor import AbstractOrangePredictor
 
 class DecisionTree(AbstractOrangePredictor):

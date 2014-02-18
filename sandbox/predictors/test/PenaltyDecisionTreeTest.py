@@ -3,9 +3,9 @@ import unittest
 import numpy.testing as nptst
 from sandbox.predictors.PenaltyDecisionTree import PenaltyDecisionTree
 from sandbox.data.ExamplesGenerator import ExamplesGenerator
-from apgl.util.Evaluator import Evaluator    
+from sandbox.util.Evaluator import Evaluator    
 import sklearn.datasets as data 
-from apgl.util.Util import Util
+from sandbox.util.Util import Util
 from apgl.graph.DictTree import DictTree 
 from sandbox.predictors.DecisionNode import DecisionNode
 

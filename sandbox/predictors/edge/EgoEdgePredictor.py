@@ -1,8 +1,8 @@
 
 from apgl.predictors.edge.AbstractEdgePredictor import AbstractEdgePredictor 
 from apgl.predictors.AbstractPredictor import AbstractPredictor
-from apgl.util.Util import Util
-from apgl.util.Parameter import Parameter
+from sandbox.util.Util import Util
+from sandbox.util.Parameter import Parameter
 import numpy
 import logging
 

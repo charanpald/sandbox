@@ -1,7 +1,7 @@
 
 from sandbox.predictors.AbstractPredictor import AbstractPredictor
-from apgl.util.Parameter import Parameter
-from apgl.util.Evaluator import Evaluator
+from sandbox.util.Parameter import Parameter
+from sandbox.util.Evaluator import Evaluator
 import numpy
 import scipy
 import scipy.sparse

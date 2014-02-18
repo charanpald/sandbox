@@ -3,7 +3,7 @@ A wrapper for the matrix factorisation in Nimfa.
 """
 
 import nimfa
-from apgl.util.Parameter import Parameter 
+from sandbox.util.Parameter import Parameter 
 from apgl.util.MCEvaluator import MCEvaluator 
 from exp.sandbox.recommendation.AbstractMatrixCompleter import AbstractMatrixCompleter
 

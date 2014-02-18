@@ -2,9 +2,9 @@ import numpy
 import scipy
 import scipy.linalg
 import logging
-from apgl.util.Parameter import Parameter
-from apgl.util.Util import Util
-from apgl.util.ProfileUtils import ProfileUtils
+from sandbox.util.Parameter import Parameter
+from sandbox.util.Util import Util
+from sandbox.util.ProfileUtils import ProfileUtils
 
 class EigenUpdater(object):
     """

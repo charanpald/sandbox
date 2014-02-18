@@ -5,7 +5,7 @@ import numpy
 import unittest
 import scipy.stats 
 from sandbox.predictors.ABCSMC import ABCSMC
-from apgl.util.PathDefaults import PathDefaults 
+from sandbox.util.PathDefaults import PathDefaults 
 
 class NormalModel(object):
     def __init__(self, metrics):

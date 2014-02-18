@@ -4,7 +4,7 @@ import numpy
 import logging
 import sys
 
-from apgl.util.ProfileUtils import ProfileUtils
+from sandbox.util.ProfileUtils import ProfileUtils
 from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.SparseUtils import SparseUtils 
 

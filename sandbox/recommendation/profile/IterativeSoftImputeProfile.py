@@ -2,8 +2,8 @@ import numpy
 import logging
 import sys
 import scipy.sparse
-from apgl.util.Sampling import Sampling 
-from apgl.util.ProfileUtils import ProfileUtils
+from sandbox.util.Sampling import Sampling 
+from sandbox.util.ProfileUtils import ProfileUtils
 from exp.sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute
 from exp.util.SparseUtils import SparseUtils
 

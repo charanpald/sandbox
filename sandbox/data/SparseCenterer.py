@@ -1,6 +1,6 @@
 import numpy
-from apgl.util.Parameter import Parameter 
-from apgl.util.Util import Util 
+from sandbox.util.Parameter import Parameter 
+from sandbox.util.Util import Util 
 
 class SparseCenterer():
     def __init__(self):

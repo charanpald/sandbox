@@ -1,4 +1,4 @@
-from apgl.util.Util import Util
+from sandbox.util.Util import Util
 from sandbox.predictors.AbstractPredictor import AbstractPredictor
 
 class AbstractKernelPredictor(AbstractPredictor):

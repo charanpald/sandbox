@@ -9,8 +9,8 @@ import multiprocessing
 import zipfile 
 import shutil 
 from datetime import datetime
-from apgl.util.Util import Util 
-from apgl.util.Parameter import Parameter 
+from sandbox.util.Util import Util 
+from sandbox.util.Parameter import Parameter 
 
 def loadThetaArray(N, thetaDir, t): 
     """

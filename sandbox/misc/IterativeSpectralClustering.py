@@ -14,10 +14,10 @@ from sandbox.misc.EigenUpdater import EigenUpdater
 from sandbox.misc.Nystrom import Nystrom
 from sandbox.data.Standardiser import Standardiser
 from apgl.graph.GraphUtils import GraphUtils
-from apgl.util.Parameter import Parameter
-from apgl.util.ProfileUtils import ProfileUtils
-from apgl.util.VqUtils import VqUtils
-from apgl.util.Util import Util
+from sandbox.util.Parameter import Parameter
+from sandbox.util.ProfileUtils import ProfileUtils
+from sandbox.util.VqUtils import VqUtils
+from sandbox.util.Util import Util
 from sandbox.misc.EfficientNystrom import EfficientNystrom
 from sandbox.misc.RandomisedSVD import RandomisedSVD
 
@@ -192,7 +192,7 @@ class IterativeSpectralClustering(object):
 
             #logging.debug("subW.shape: " + str(subW.shape))
             #logging.debug("len(clusters): " + str(len(clusters)))
-            #from apgl.util.ProfileUtils import ProfileUtils
+            #from sandbox.util.ProfileUtils import ProfileUtils
             #logging.debug("Total memory usage: " + str(ProfileUtils.memory()/10**6) + "MB")
             if ProfileUtils.memory() > 10**9:
                 ProfileUtils.memDisplay(locals())

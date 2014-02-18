@@ -3,7 +3,7 @@ import logging
 import sys
 from apgl.graph import *
 from apgl.generator import *
-from apgl.util.ProfileUtils import ProfileUtils
+from sandbox.util.ProfileUtils import ProfileUtils
 from exp.sandbox.predictors.leafrank.SVMLeafRank import SVMLeafRank
 from exp.sandbox.predictors.TreeRank import TreeRank
 

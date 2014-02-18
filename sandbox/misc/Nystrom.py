@@ -3,7 +3,7 @@ import logging
 import scipy.sparse
 import scipy.sparse.linalg
 import scipy.linalg
-from apgl.util.Util import Util 
+from sandbox.util.Util import Util 
 
 class Nystrom(object):
     """

@@ -6,7 +6,7 @@ import scipy.linalg
 from sandbox.misc.PrimalDualCCA import PrimalDualCCA
 from sandbox.features.KernelCCA import KernelCCA
 from sandbox.kernel import *
-from apgl.util.Util import Util
+from sandbox.util.Util import Util
 import logging
 
 

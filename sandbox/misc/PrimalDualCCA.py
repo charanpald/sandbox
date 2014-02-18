@@ -2,9 +2,9 @@
 
 import numpy
 import scipy.linalg
-from apgl.util.Parameter import Parameter
+from sandbox.util.Parameter import Parameter
 from apgl.kernel import *
-from apgl.util.Util import Util 
+from sandbox.util.Util import Util 
 
 """
 An implementation of the primal-dual Canonincal Correlation Analysis algorithm.

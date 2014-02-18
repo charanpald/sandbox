@@ -4,7 +4,7 @@ Created on 2 Jul 2009
 @author: charanpal
 '''
 
-from apgl.util.Parameter import Parameter
+from sandbox.util.Parameter import Parameter
 from sandbox.kernel.KernelUtils import KernelUtils
 from apgl.generator.ErdosRenyiGenerator import ErdosRenyiGenerator
 import numpy

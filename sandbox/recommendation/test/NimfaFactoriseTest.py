@@ -1,9 +1,9 @@
 
 import sys
-from apgl.util.Util import Util
-from apgl.util.Sampling import Sampling 
+from sandbox.util.Util import Util
+from sandbox.util.Sampling import Sampling 
 from sandbox.recommendation.NimfaFactorise import NimfaFactorise 
-from apgl.util.MCEvaluator import MCEvaluator 
+from sandbox.util.MCEvaluator import MCEvaluator 
 import numpy
 import unittest
 import logging

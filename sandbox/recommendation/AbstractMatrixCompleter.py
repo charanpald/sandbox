@@ -1,4 +1,4 @@
-from apgl.util.Parameter import Parameter 
+from sandbox.util.Parameter import Parameter 
 import numpy 
 import multiprocessing
 import itertools 

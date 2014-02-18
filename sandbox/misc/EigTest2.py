@@ -2,7 +2,7 @@ import scipy.sparse
 import scipy.sparse.linalg 
 import time
 import numpy 
-from apgl.util.Util import Util 
+from sandbox.util.Util import Util 
 
 #Now test using scipy.sparse.linalg.lobpcg
 #First compute the eigenvectors of a matrix, then modify it slightly and

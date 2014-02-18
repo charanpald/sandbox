@@ -4,7 +4,7 @@ import unittest
 import numpy
 import scipy.sparse 
 from sandbox.misc.RandomisedSVD import RandomisedSVD
-from apgl.util.Util import Util
+from sandbox.util.Util import Util
 import numpy.testing as nptst 
 from sppy.linalg.GeneralLinearOperator import GeneralLinearOperator
 

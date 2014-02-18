@@ -1,7 +1,7 @@
 
 import sys
-from apgl.util.Util import Util
-from apgl.util.Sampling import Sampling 
+from sandbox.util.Util import Util
+from sandbox.util.Sampling import Sampling 
 from sandbox.recommendation.SoftImpute import SoftImpute 
 import numpy
 import unittest

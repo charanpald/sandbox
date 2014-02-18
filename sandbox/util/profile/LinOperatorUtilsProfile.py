@@ -3,8 +3,8 @@ import numpy
 import logging
 import sys
 import scipy.sparse.linalg
-from apgl.util.Sampling import Sampling 
-from apgl.util.ProfileUtils import ProfileUtils
+from sandbox.util.Sampling import Sampling 
+from sandbox.util.ProfileUtils import ProfileUtils
 from exp.util.SparseUtils import SparseUtils
 from exp.util.LinOperatorUtils import LinOperatorUtils
 

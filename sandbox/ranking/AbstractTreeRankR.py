@@ -5,9 +5,9 @@ import rpy2.robjects as robjects
 from rpy2.robjects.packages import importr
 from rpy2.robjects.numpy2ri import numpy2ri
 from apgl.predictors.AbstractPredictor import AbstractPredictor
-from apgl.util.Parameter import Parameter
-from apgl.util.PathDefaults import PathDefaults
-from apgl.util.ProfileUtils import ProfileUtils
+from sandbox.util.Parameter import Parameter
+from sandbox.util.PathDefaults import PathDefaults
+from sandbox.util.ProfileUtils import ProfileUtils
 
 """
 Abstract out some of the common functionality between TreeRankR and TreeRankForestR

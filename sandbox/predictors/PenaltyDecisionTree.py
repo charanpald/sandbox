@@ -1,8 +1,8 @@
 import numpy 
 from apgl.graph.DictTree import DictTree 
-from apgl.util.Util import Util 
-from apgl.util.Evaluator import Evaluator 
-from apgl.util.Parameter import Parameter 
+from sandbox.util.Util import Util 
+from sandbox.util.Evaluator import Evaluator 
+from sandbox.util.Parameter import Parameter 
 from sandbox.predictors.DecisionNode import DecisionNode
 from sandbox.predictors.TreeCriterionPy import findBestSplit2, findBestSplitRisk
 from sandbox.predictors.AbstractPredictor import AbstractPredictor

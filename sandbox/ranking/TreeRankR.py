@@ -4,9 +4,9 @@ import numpy
 import logging 
 import rpy2.robjects as robjects
 import sklearn.cross_val as cross_val
-from apgl.util.Util import Util
-from apgl.util.Parameter import Parameter
-from apgl.util.Evaluator import Evaluator
+from sandbox.util.Util import Util
+from sandbox.util.Parameter import Parameter
+from sandbox.util.Evaluator import Evaluator
 from exp.metabolomics.AbstractTreeRankR import AbstractTreeRankR
 
 class TreeRankR(AbstractTreeRankR):

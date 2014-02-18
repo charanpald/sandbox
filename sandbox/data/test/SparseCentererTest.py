@@ -5,7 +5,7 @@ Created on 3 Aug 2009
 '''
 import unittest
 import numpy
-from apgl.util.Util import Util
+from sandbox.util.Util import Util
 from sandbox.data.SparseCenterer import SparseCenterer
 from sandbox.data.ExamplesList import ExamplesList
 from sandbox.kernel.LinearKernel import LinearKernel

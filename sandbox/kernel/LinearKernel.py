@@ -1,6 +1,6 @@
 import numpy
 from sandbox.kernel.AbstractKernel import AbstractKernel
-from apgl.util.Parameter import Parameter 
+from sandbox.util.Parameter import Parameter 
 
 class LinearKernel(AbstractKernel):
     """
