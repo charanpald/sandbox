@@ -445,17 +445,17 @@ class MaxLocalAUC(object):
                     
                     r = self.computeR(U, V)
                     #Note we use X here since if we used testX then we could positives as negatives 
-                    localAucs[i, j, icv] = self.localAUCApprox(X, U, V, omegaList, r)
+                    localAucs[i, j, icv] = self.localAUCApprox(testX, U, V, omegaList, r)
         
         meanLocalAucs = numpy.mean(localAucs, 2)
-        stdLocalAucs = numpy.std(localAucs, 2)
+        #stdLocalAucs = numpy.std(localAucs, 2)
         
         logging.debug(meanLocalAucs)
         
         k = self.ks[numpy.unravel_index(numpy.argmax(meanLocalAucs), meanLocalAucs.shape)[0]]
-        lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanLocalAucs), meanLocalAucs.shape)[1]]
+        rho = self.rhos[numpy.unravel_index(numpy.argmax(meanLocalAucs), meanLocalAucs.shape)[1]]
         
-        logging.debug("Model parameters: k=" + str(k) + " lambda=" + str(lmbda))
+        logging.debug("Model parameters: k=" + str(k) + " rho=" + str(rho))
         
         self.k = k 
         self.rho = rho 
