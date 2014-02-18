@@ -444,8 +444,10 @@ class MaxLocalAUC(object):
                     U, V = self.learnModel(trainX, U=U, V=V)
                     
                     r = self.computeR(U, V)
-                    #Note we use X here since if we used testX then we could positives as negatives 
+
                     localAucs[i, j, icv] = self.localAUCApprox(testX, U, V, omegaList, r)
+                    
+                    logging.debug("Local AUC: " + str(localAucs[i, j, icv]) + " with k = " + str(k) + " and rho= " + str(rho))
         
         meanLocalAucs = numpy.mean(localAucs, 2)
         #stdLocalAucs = numpy.std(localAucs, 2)
