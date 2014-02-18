@@ -104,7 +104,7 @@ class MaxLocalAUC(object):
     def getLambda(self, X): 
         return self.rho/X.shape[0]
     
-    def learnModel(self, X, verbose=False): 
+    def learnModel(self, X, verbose=False, U=None, V=None): 
         """
         Max local AUC with Frobenius norm penalty. Solve with gradient descent. 
         The input is a sparse array. 
@@ -114,22 +114,23 @@ class MaxLocalAUC(object):
         n = X.shape[1]
         omegaList = self.getOmegaList(X)
 
-        if self.initialAlg == "rand": 
-            U = numpy.random.rand(m, self.k)
-            V = numpy.random.rand(n, self.k)
-        elif self.initialAlg == "ones": 
-            U = numpy.ones((m, self.k))
-            V = numpy.ones((n, self.k))
-        elif self.initialAlg == "svd":
-            logging.debug("Initialising with SVD")
-            try: 
-                U, s, V = SparseUtils.svdPropack(X, self.k, kmax=numpy.min([self.k*15, m-1, n-1]))
-            except ImportError: 
-                U, s, V = SparseUtils.svdArpack(X, self.k)
-            U = numpy.ascontiguousarray(U)
-            V = numpy.ascontiguousarray(V)
-        else:
-            raise ValueError("Unknown initialisation: " + str(self.initialAlg))
+        if U==None or V==None:
+            if self.initialAlg == "rand": 
+                U = numpy.random.rand(m, self.k)
+                V = numpy.random.rand(n, self.k)
+            elif self.initialAlg == "ones": 
+                U = numpy.ones((m, self.k))
+                V = numpy.ones((n, self.k))
+            elif self.initialAlg == "svd":
+                logging.debug("Initialising with SVD")
+                try: 
+                    U, s, V = SparseUtils.svdPropack(X, self.k, kmax=numpy.min([self.k*15, m-1, n-1]))
+                except ImportError: 
+                    U, s, V = SparseUtils.svdArpack(X, self.k)
+                U = numpy.ascontiguousarray(U)
+                V = numpy.ascontiguousarray(V)
+            else:
+                raise ValueError("Unknown initialisation: " + str(self.initialAlg))
         
         lastU = U+numpy.ones((m, self.k))*self.eps
         lastV = V+numpy.ones((n, self.k))*self.eps 
@@ -419,6 +420,7 @@ class MaxLocalAUC(object):
         """
         Perform model selection on X and return the best parameters. 
         """
+        m, n = X.shape
         cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
         localAucs = numpy.zeros((self.ks.shape[0], self.rhos.shape[0], len(cvInds)))
         
@@ -432,11 +434,14 @@ class MaxLocalAUC(object):
             omegaList = self.getOmegaList(testX)
             
             for i, k in enumerate(self.ks): 
+                U = numpy.random.rand(m, k)
+                V = numpy.random.rand(n, k)                
+                
                 for j, rho in enumerate(self.rhos): 
                     self.k = k 
                     self.rho = rho 
                     
-                    U, V = self.learnModel(trainX)
+                    U, V = self.learnModel(trainX, U=U, V=V)
                     
                     r = self.computeR(U, V)
                     #Note we use X here since if we used testX then we could positives as negatives 
