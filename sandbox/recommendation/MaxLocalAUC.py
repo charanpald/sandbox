@@ -11,6 +11,23 @@ from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi,
 from apgl.util.Sampling import Sampling 
 from apgl.util.Util import Util 
 
+def updateUV(args): 
+    X, U, V, omegaList, numRowSamples, numColSamples, numAucSamples, sigma, lmbda, r  = args   
+    
+    lastU = U.copy()
+    lastV = V.copy()
+    
+    rowInds = numpy.array(numpy.random.randint(X.shape[0], size=numRowSamples), numpy.uint)
+    updateUApprox(X, U, V, omegaList, rowInds, numAucSamples, sigma, lmbda, r)
+    deltaU = U - lastU
+
+    rowInds = numpy.array(numpy.random.randint(X.shape[0], size=numRowSamples), numpy.uint)
+    colInds = numpy.array(numpy.random.randint(X.shape[1], size=numColSamples), numpy.uint)
+    updateVApprox(X, U, V, omegaList, rowInds, colInds, numAucSamples, sigma, lmbda, r)
+    deltaV = V - lastV
+    
+    return deltaU, deltaV
+    
 class MaxLocalAUC(object): 
     def __init__(self, rho, k, u, sigma=0.05, eps=0.1, stochastic=False, numProcesses=None): 
         """
@@ -38,6 +55,8 @@ class MaxLocalAUC(object):
 
         if numProcesses == None: 
             self.numProcesses = multiprocessing.cpu_count()
+
+        self.chunkSize = 1        
         
         #Optimal rate doesn't seem to work 
         self.rate = "constant"
@@ -45,7 +64,6 @@ class MaxLocalAUC(object):
         self.t0 = 0.1
         
         self.recordStep = 10
-        
         self.numRowSamples = 20
         self.numColSamples = 20
         self.numAucSamples = 100
@@ -144,7 +162,22 @@ class MaxLocalAUC(object):
                 raise ValueError("Invalid rate: " + self.rate)
 
             r = self.computeR(U, V)
-
+            
+            #paramList = []
+            #for j in range(self.numProcesses): 
+            #    paramList.append((X, U, V, omegaList, self.numRowSamples, self.numColSamples, self.numAucSamples, self.sigma, self.getLambda(X), r))
+                
+            #pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
+            #resultsIterator = pool.imap(updateUV, paramList, self.chunkSize)
+            #import itertools
+            #resultsIterator = itertools.imap(updateUV, paramList)
+            
+            #for deltaU, deltaV in resultsIterator: 
+            #    U -= deltaU
+            #    V -= deltaV
+                
+            #pool.terminate()
+            
             self.updateU(X, U, V, omegaList, r)            
             self.updateV(X, U, V, omegaList, r)
 
@@ -396,6 +429,8 @@ class MaxLocalAUC(object):
             trainX = SparseUtils.submatrix(X, trainInds)
             testX = SparseUtils.submatrix(X, testInds)
             
+            omegaList = self.getOmegaList(testX)
+            
             for i, k in enumerate(self.ks): 
                 for j, rho in enumerate(self.rhos): 
                     self.k = k 
@@ -403,7 +438,6 @@ class MaxLocalAUC(object):
                     
                     U, V = self.learnModel(trainX)
                     
-                    omegaList = self.getOmegaList(testX)
                     r = self.computeR(U, V)
                     #Note we use X here since if we used testX then we could positives as negatives 
                     localAucs[i, j, icv] = self.localAUCApprox(X, U, V, omegaList, r)
