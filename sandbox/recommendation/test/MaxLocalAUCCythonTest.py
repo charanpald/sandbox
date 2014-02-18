@@ -99,7 +99,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         #print(U)
         #print(V)
         rowInds = numpy.arange(m, dtype=numpy.uint)
-        updateUApprox(X, U, V, omegaList, rowInds, maxLocalAuc.numAucSamples, maxLocalAuc.sigma, maxLocalAuc.lmbda, r)
+        updateUApprox(X, U, V, omegaList, rowInds, maxLocalAuc.numAucSamples, maxLocalAuc.sigma, maxLocalAuc.getLambda(X), r)
 
         dU = U-lastU        
         dU = numpy.diag(1/numpy.sqrt(numpy.diag(dU.dot(dU.T)))).dot(dU)
@@ -152,7 +152,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             colInds = numpy.array([i], numpy.uint)
             rowInds = numpy.arange(m, dtype=numpy.uint)
-            updateVApprox(X, U, V, omegaList, rowInds, colInds, maxLocalAuc.numAucSamples, maxLocalAuc.sigma, maxLocalAuc.lmbda, r) 
+            updateVApprox(X, U, V, omegaList, rowInds, colInds, maxLocalAuc.numAucSamples, maxLocalAuc.sigma, maxLocalAuc.getLambda(X), r) 
 
             dV = V[i, :] - lastV[i, :]   
             dV2 = -maxLocalAuc.derivativeVi(X, U, lastV, omegaList, i, r)

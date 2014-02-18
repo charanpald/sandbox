@@ -6,7 +6,7 @@ import sys
 import numpy
 import scipy.sparse 
 from sandbox.misc.Nystrom import Nystrom
-from apgl.util.SparseUtils import SparseUtils
+from sandbox.util.SparseUtils import SparseUtils
 
 
 class  NystromTestCase(unittest.TestCase):
