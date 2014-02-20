@@ -27,9 +27,10 @@ def updateUV(args):
     deltaV = V - lastV
     
     return deltaU, deltaV
-    
+  
+  
 class MaxLocalAUC(object): 
-    def __init__(self, rho, k, u, sigma=0.05, eps=0.1, stochastic=False, numProcesses=None): 
+    def __init__(self, rho, k, u, sigma=0.05, eps=0.01, stochastic=False, numProcesses=None): 
         """
         Create an object for  maximising the local AUC with a penalty term using the matrix
         decomposition UV.T 
@@ -60,12 +61,12 @@ class MaxLocalAUC(object):
         
         #Optimal rate doesn't seem to work 
         self.rate = "constant"
-        self.alpha = 1.0
+        self.alpha = 0.1
         self.t0 = 0.1
         
         self.recordStep = 10
-        self.numRowSamples = 20
-        self.numColSamples = 20
+        self.numRowSamples = 50
+        self.numColSamples = 50
         self.numAucSamples = 100
         self.maxIterations = 1000
         self.initialAlg = "rand"
@@ -450,7 +451,7 @@ class MaxLocalAUC(object):
                     logging.debug("Local AUC: " + str(localAucs[i, j, icv]) + " with k = " + str(k) + " and rho= " + str(rho))
         
         meanLocalAucs = numpy.mean(localAucs, 2)
-        #stdLocalAucs = numpy.std(localAucs, 2)
+        stdLocalAucs = numpy.std(localAucs, 2)
         
         logging.debug(meanLocalAucs)
         
@@ -461,3 +462,5 @@ class MaxLocalAUC(object):
         
         self.k = k 
         self.rho = rho 
+        
+        return meanLocalAucs, stdLocalAucs
