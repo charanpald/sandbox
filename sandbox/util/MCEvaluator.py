@@ -107,7 +107,7 @@ class MCEvaluator(object):
         return localAuc
 
     @staticmethod
-    def localAUCApprox(X, U, V, u, numAucSamples, omegaList=None): 
+    def localAUCApprox(X, U, V, u, numAucSamples=100, omegaList=None): 
         """
         Compute the estimated local AUC for the score functions UV^T relative to X with 
         quantile 1-u. 
