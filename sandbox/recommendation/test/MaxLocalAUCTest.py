@@ -52,7 +52,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             r = numpy.ones(m)*0.0
             maxLocalAuc = MaxLocalAUC(lmbda, k, r)
             maxLocalAuc.approxDerivative = False
-            omegaList = maxLocalAuc.getOmegaList(X)
+            omegaList = SparseUtils.getOmegaList(X)
     
             U = numpy.random.rand(m, k)
             V = numpy.random.rand(n, k)
@@ -98,7 +98,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             r = numpy.ones(m)*0.0
             maxLocalAuc = MaxLocalAUC(lmbda, k, r)
             maxLocalAuc.approxDerivative = False
-            omegaList = maxLocalAuc.getOmegaList(X)
+            omegaList = SparseUtils.getOmegaList(X)
     
             U = numpy.random.rand(m, k)
             V = numpy.random.rand(n, k)
@@ -146,66 +146,6 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc = MaxLocalAUC(lmbda, k, r, eps=eps)
         
         maxLocalAuc.modelSelect(X)
-
-    def testLocalAUC(self): 
-        m = 10 
-        n = 20 
-        k = 2 
-        numInds = 100
-        X, U, s, V = SparseUtils.generateSparseLowRank((m, n), k, numInds, verbose=True)
-        
-        X = X/X
-        Z = U.dot(V.T)
-
-        r = numpy.ones(m)*-10
-        lmbda = 0.0
-        eps = 0.001
-        maxLocalAuc = MaxLocalAUC(lmbda, k, r, eps=eps)
-        
-        localAuc = numpy.zeros(m)
-        
-        for i in range(m): 
-            localAuc[i] = sklearn.metrics.roc_auc_score(numpy.ravel(X[i, :].todense()), Z[i, :])
-                    
-        localAuc = localAuc.mean()
-        
-        omegaList = maxLocalAuc.getOmegaList(X)
-        localAuc2 = maxLocalAuc.localAUC(X, U, V, omegaList, r)
-
-        self.assertEquals(localAuc, localAuc2)
-        
-        #Now try a large r 
-        r = numpy.ones(m)*10
-        maxLocalAuc.r = r 
-        localAuc2 = maxLocalAuc.localAUC(X, U, V, omegaList, r)
-        self.assertEquals(localAuc2, 0)
-        
-    def testLocalAucApprox(self): 
-        m = 100 
-        n = 200 
-        k = 2 
-        numInds = 100
-        X, U, s, V = SparseUtils.generateSparseLowRank((m, n), k, numInds, verbose=True)
-        
-        X = X/X
-        Z = U.dot(V.T)
-
-        r = numpy.ones(m)*-10
-        lmbda = 0.0
-        eps = 0.001
-        maxLocalAuc = MaxLocalAUC(lmbda, k, r, eps=eps)
-        
-        omegaList = maxLocalAuc.getOmegaList(X)
-        
-        localAuc = maxLocalAuc.localAUC(X, U, V, omegaList, r)
-        
-        samples = numpy.arange(50, 200, 10)
-        
-        for i, sampleSize in enumerate(samples): 
-            maxLocalAuc.numAucSamples = sampleSize
-            localAuc2 = maxLocalAuc.localAUCApprox(X, U, V, omegaList, r)
-
-            self.assertAlmostEqual(localAuc2, localAuc, 1)
             
 
     @unittest.skip("")
@@ -218,14 +158,23 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         X = X/X
         
-        r = numpy.ones(m)*0.0
+        u= 0.1
         lmbda = 0.001
         eps = 0.001
-        maxLocalAuc = MaxLocalAUC(lmbda, k, r, eps=eps)
+        maxLocalAuc = MaxLocalAUC(lmbda, k, u, eps=eps)
         maxLocalAuc.rate = "optimal"
         maxLocalAuc.maxIterations = 200
         
         maxLocalAuc.learningRateSelect(X)
+
+    def testStr(self): 
+        k=10
+        u= 0.1
+        lmbda = 0.001
+        eps = 0.001
+        maxLocalAuc = MaxLocalAUC(lmbda, k, u, eps=eps)    
+        
+        print(maxLocalAuc)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

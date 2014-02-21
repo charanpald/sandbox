@@ -79,29 +79,6 @@ class MaxLocalAUC(object):
         #Learning rate selection 
         self.alphas = numpy.arange(0.1, 1.0, 0.2)
     
-    def getOmegaList(self, X): 
-        """
-        Return a list such that the ith element contains an array of nonzero 
-        entries in the ith row of X. 
-        """
-        omegaList = []
-        
-        if scipy.sparse.isspmatrix(X):
-            for i in range(X.shape[0]): 
-                omegaList.append(numpy.array(X[i, :].nonzero()[1], numpy.uint))
-        else: 
-            for i in range(X.shape[0]): 
-                omegaList.append(numpy.array(X[i, :].nonzero()[0], numpy.uint))
-        return omegaList 
-    
-    def computeR(self, U, V): 
-        normU = numpy.sqrt(numpy.sum(U**2, 1))
-        normV = numpy.sqrt(numpy.sum(V**2, 1))
-        maxVj = numpy.max(normV)
-        
-        r = normU*maxVj - 2*normU*maxVj*self.u
-        return r 
-    
     def getLambda(self, X): 
         return self.rho/X.shape[0]
     
@@ -113,7 +90,7 @@ class MaxLocalAUC(object):
         
         m = X.shape[0]
         n = X.shape[1]
-        omegaList = self.getOmegaList(X)
+        omegaList = SparseUtils.getOmegaList(X)
 
         if U==None or V==None:
             if self.initialAlg == "rand": 
@@ -163,7 +140,7 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
 
-            r = self.computeR(U, V)
+            r = Util.computeR(U, V, self.u)
             
             #paramList = []
             #for j in range(self.numProcesses): 
@@ -245,68 +222,7 @@ class MaxLocalAUC(object):
                 
     def derivativeVi(self, X, U, V, omegaList, i, r): 
         return derivativeVi(X, U, V, omegaList, i, self.k, self.getLambda(X), r)           
-           
-    def localAUC(self, X, U, V, omegaList, r): 
-        """
-        Compute the local AUC for the score functions UV^T relative to X with 
-        quantile vector r. 
-        """
-        #For now let's compute the full matrix 
-        Z = U.dot(V.T)
-        
-        localAuc = numpy.zeros(X.shape[0]) 
-        allInds = numpy.arange(X.shape[1])
-        
-        for i in range(X.shape[0]): 
-            omegai = omegaList[i]
-            omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
-            
-            if omegai.shape[0] * omegaBari.shape[0] != 0: 
-                partialAuc = 0                
-                
-                for p in omegai: 
-                    for q in omegaBari: 
-                        if Z[i, p] > Z[i, q] and Z[i, p] > r[i]: 
-                            partialAuc += 1 
-                            
-                localAuc[i] = partialAuc/float(omegai.shape[0] * omegaBari.shape[0])
-        
-        localAuc = localAuc.mean()        
-        
-        return localAuc
 
-    def localAUCApprox(self, X, U, V, omegaList, r): 
-        """
-        Compute the estimated local AUC for the score functions UV^T relative to X with 
-        quantile vector r. 
-        """
-        #For now let's compute the full matrix 
-        Z = U.dot(V.T)
-        
-        localAuc = numpy.zeros(X.shape[0]) 
-        allInds = numpy.arange(X.shape[1])
-
-        for i in range(X.shape[0]): 
-            omegai = omegaList[i]
-            omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
-            
-            if omegai.shape[0] * omegaBari.shape[0] != 0: 
-                partialAuc = 0 
-
-                for j in range(self.numAucSamples):
-                    ind = numpy.random.randint(omegai.shape[0]*omegaBari.shape[0])
-                    p = omegai[int(ind/omegaBari.shape[0])] 
-                    q = omegaBari[ind % omegaBari.shape[0]]   
-                    
-                    if Z[i, p] > Z[i, q] and Z[i, p] > r[i]: 
-                        partialAuc += 1 
-                            
-                localAuc[i] = partialAuc/float(self.numAucSamples)
-            
-        localAuc = localAuc.mean()        
-        
-        return localAuc
-    
     #@profile
     def objective(self, X, U, V, omegaList, r):         
         obj = 0 
@@ -401,10 +317,10 @@ class MaxLocalAUC(object):
                 self.alpha = alpha 
                 
                 U, V = self.learnModel(trainX)
-                r = self.computeR(U, V)
+                r = Util.computeR(U, V, self.u)
                 
-                omegaList = self.getOmegaList(testX)
-                localAucs[i, icv] = self.localAUCApprox(testX, U, V, omegaList, r)
+                omegaList = SparseUtils.getOmegaList(testX)
+                localAucs[i, icv] = localAUCApprox(testX, U, V, omegaList, self.numAucSamples, r) 
         
         meanLocalAucs = numpy.mean(localAucs, 1)
         stdLocalAucs = numpy.std(localAucs, 1)
@@ -432,7 +348,7 @@ class MaxLocalAUC(object):
             trainX = SparseUtils.submatrix(X, trainInds)
             testX = SparseUtils.submatrix(X, testInds)
             
-            omegaList = self.getOmegaList(testX)
+            omegaList = SparseUtils.getOmegaList(testX)
             
             for i, k in enumerate(self.ks): 
                 U = numpy.random.rand(m, k)
@@ -444,9 +360,9 @@ class MaxLocalAUC(object):
                     
                     U, V = self.learnModel(trainX, U=U, V=V)
                     
-                    r = self.computeR(U, V)
+                    r = Util.computeR(U, V, self.u)
 
-                    localAucs[i, j, icv] = self.localAUCApprox(testX, U, V, omegaList, r)
+                    localAucs[i, j, icv] = localAUCApprox(testX, U, V, omegaList, self.numAucSamples, r) 
                     
                     logging.debug("Local AUC: " + str(localAucs[i, j, icv]) + " with k = " + str(k) + " and rho= " + str(rho))
         
@@ -464,3 +380,10 @@ class MaxLocalAUC(object):
         self.rho = rho 
         
         return meanLocalAucs, stdLocalAucs
+    
+    def __str__(self): 
+        outputStr = "MaxLocalAUC: rho=" + str(self.rho) + " k=" + str(self.k) + " sigma=" + str(self.sigma) + " eps=" + str(self.eps) 
+        outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numColSamples=" + str(self.numColSamples)
+        outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
+        
+        return outputStr 
