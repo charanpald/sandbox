@@ -1,5 +1,6 @@
 import numpy 
 from sandbox.util.Util import Util 
+from sandbox.util.SparseUtils import SparseUtils 
 from math import ceil 
 
 class MCEvaluator(object):
@@ -69,7 +70,78 @@ class MCEvaluator(object):
                 precisions[j*blocksize + i] = numpy.intersect1d(nonzeroRowi, scoreInds).shape[0]/float(k)
         
         return precisions.mean()
+      
+    @staticmethod 
+    def localAUC(X, U, V, u, omegaList=None): 
+        """
+        Compute the local AUC for the score functions UV^T relative to X with 
+        quantile vector r. 
+        """
+        #For now let's compute the full matrix 
+        Z = U.dot(V.T)
         
+        r = Util.computeR(U, V, u)
         
+        if omegaList==None: 
+            omegaList = SparseUtils.getOmegaList(X)
+        
+        localAuc = numpy.zeros(X.shape[0]) 
+        allInds = numpy.arange(X.shape[1])
+        
+        for i in range(X.shape[0]): 
+            omegai = omegaList[i]
+            omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
+            
+            if omegai.shape[0] * omegaBari.shape[0] != 0: 
+                partialAuc = 0                
+                
+                for p in omegai: 
+                    for q in omegaBari: 
+                        if Z[i, p] > Z[i, q] and Z[i, p] > r[i]: 
+                            partialAuc += 1 
+                            
+                localAuc[i] = partialAuc/float(omegai.shape[0] * omegaBari.shape[0])
+        
+        localAuc = localAuc.mean()        
+        
+        return localAuc
+
+    @staticmethod
+    def localAUCApprox(X, U, V, u, numAucSamples, omegaList=None): 
+        """
+        Compute the estimated local AUC for the score functions UV^T relative to X with 
+        quantile vector r. 
+        """
+        #For now let's compute the full matrix 
+        Z = U.dot(V.T)
+        
+        localAuc = numpy.zeros(X.shape[0]) 
+        allInds = numpy.arange(X.shape[1])
+        
+        r = Util.computeR(U, V, u)
+        
+        if omegaList==None: 
+            omegaList = SparseUtils.getOmegaList(X)
+
+        for i in range(X.shape[0]): 
+            omegai = omegaList[i]
+            omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
+            
+            if omegai.shape[0] * omegaBari.shape[0] != 0: 
+                partialAuc = 0 
+
+                for j in range(numAucSamples):
+                    ind = numpy.random.randint(omegai.shape[0]*omegaBari.shape[0])
+                    p = omegai[int(ind/omegaBari.shape[0])] 
+                    q = omegaBari[ind % omegaBari.shape[0]]   
+                    
+                    if Z[i, p] > Z[i, q] and Z[i, p] > r[i]: 
+                        partialAuc += 1 
+                            
+                localAuc[i] = partialAuc/float(numAucSamples)
+            
+        localAuc = localAuc.mean()        
+        
+        return localAuc        
         
         

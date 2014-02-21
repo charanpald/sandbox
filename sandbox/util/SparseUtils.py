@@ -602,4 +602,20 @@ class SparseUtils(object):
             
         return newX 
 
+    @staticmethod 
+    def getOmegaList(X): 
+        """
+        Return a list such that the ith element contains an array of nonzero 
+        entries in the ith row of X. X is a scipy.sparse or sppy matrix. 
+        """
+        omegaList = []
+        
+        if scipy.sparse.isspmatrix(X):
+            for i in range(X.shape[0]): 
+                omegaList.append(numpy.array(X[i, :].nonzero()[1], numpy.uint))
+        else: 
+            for i in range(X.shape[0]): 
+                omegaList.append(numpy.array(X[i, :].nonzero()[0], numpy.uint))
+        return omegaList 
+
     kmaxMultiplier = 15

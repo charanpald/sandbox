@@ -734,3 +734,16 @@ class Util(object):
             tempA[idx] = minA
             
         return b 
+      
+    @staticmethod 
+    def computeR(U, V, u): 
+        """
+        Given a matrix Z = UV.T compute a vector r such r[i] is the uth quantile 
+        of the ith row of Z. 
+        """
+        normU = numpy.sqrt(numpy.sum(U**2, 1))
+        normV = numpy.sqrt(numpy.sum(V**2, 1))
+        maxVj = numpy.max(normV)
+        
+        r = normU*maxVj - 2*normU*maxVj*u
+        return r 
