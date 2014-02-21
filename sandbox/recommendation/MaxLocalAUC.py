@@ -140,7 +140,7 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
 
-            r = Util.computeR(U, V, self.u)
+            r = Util.computeR(U, V, 1-self.u)
             
             #paramList = []
             #for j in range(self.numProcesses): 
@@ -317,7 +317,7 @@ class MaxLocalAUC(object):
                 self.alpha = alpha 
                 
                 U, V = self.learnModel(trainX)
-                r = Util.computeR(U, V, self.u)
+                r = Util.computeR(U, V, 1-self.u)
                 
                 omegaList = SparseUtils.getOmegaList(testX)
                 localAucs[i, icv] = localAUCApprox(testX, U, V, omegaList, self.numAucSamples, r) 
@@ -360,7 +360,7 @@ class MaxLocalAUC(object):
                     
                     U, V = self.learnModel(trainX, U=U, V=V)
                     
-                    r = Util.computeR(U, V, self.u)
+                    r = Util.computeR(U, V, 1-self.u)
 
                     localAucs[i, j, icv] = localAUCApprox(testX, U, V, omegaList, self.numAucSamples, r) 
                     
