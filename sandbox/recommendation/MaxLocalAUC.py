@@ -27,8 +27,28 @@ def updateUV(args):
     deltaV = V - lastV
     
     return deltaU, deltaV
-  
-  
+
+
+def localAucsRhos(args): 
+    trainX, testX, testOmegaList, maxLocalAuc  = args 
+    
+    (m, n) = trainX.shape
+    U = numpy.random.rand(m, maxLocalAuc.k)
+    V = numpy.random.rand(n, maxLocalAuc.k)                
+           
+    localAucs = numpy.zeros(maxLocalAuc.rhos.shape[0])
+
+    for j, rho in enumerate(maxLocalAuc.rhos): 
+        maxLocalAuc.rho = rho 
+        
+        U, V = maxLocalAuc.learnModel(trainX, U=U, V=V)
+        
+        r = Util.computeR(U, V, 1-maxLocalAuc.u, maxLocalAuc.numAucSamples)
+        localAucs[j] = localAUCApprox(testX, U, V, testOmegaList, maxLocalAuc.numAucSamples, r) 
+        logging.debug("Local AUC: " + str(localAucs[j]) + " with k = " + str(maxLocalAuc.k) + " and rho= " + str(maxLocalAuc.rho))
+        
+    return localAucs
+      
 class MaxLocalAUC(object): 
     def __init__(self, rho, k, u, sigma=0.05, eps=0.01, stochastic=False, numProcesses=None): 
         """
@@ -64,7 +84,7 @@ class MaxLocalAUC(object):
         self.alpha = 0.1
         self.t0 = 0.1
         
-        self.recordStep = 10
+        self.recordStep = 20
         self.numRowSamples = 50
         self.numColSamples = 50
         self.numAucSamples = 100
@@ -139,7 +159,7 @@ class MaxLocalAUC(object):
                 #logging.debug("sigma=" + str(self.sigma))
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
-
+            
             r = Util.computeR(U, V, 1-self.u, self.numAucSamples)
             
             #paramList = []
@@ -342,29 +362,32 @@ class MaxLocalAUC(object):
         localAucs = numpy.zeros((self.ks.shape[0], self.rhos.shape[0], len(cvInds)))
         
         logging.debug("Performing model selection")
+        paramList = []        
+        
         for icv, (trainInds, testInds) in enumerate(cvInds):
             Util.printIteration(icv, 1, self.folds, "Fold: ")
 
             trainX = SparseUtils.submatrix(X, trainInds)
             testX = SparseUtils.submatrix(X, testInds)
             
-            omegaList = SparseUtils.getOmegaList(testX)
+            testOmegaList = SparseUtils.getOmegaList(testX)
             
             for i, k in enumerate(self.ks): 
-                U = numpy.random.rand(m, k)
-                V = numpy.random.rand(n, k)                
-                
-                for j, rho in enumerate(self.rhos): 
-                    self.k = k 
-                    self.rho = rho 
+                maxLocalAuc = self.copy()
+                maxLocalAuc.k = k
+                paramList.append((trainX, testX, testOmegaList, maxLocalAuc))
                     
-                    U, V = self.learnModel(trainX, U=U, V=V)
-                    
-                    r = Util.computeR(U, V, 1-self.u, self.numAucSamples)
-
-                    localAucs[i, j, icv] = localAUCApprox(testX, U, V, omegaList, self.numAucSamples, r) 
-                    
-                    logging.debug("Local AUC: " + str(localAucs[i, j, icv]) + " with k = " + str(k) + " and rho= " + str(rho))
+        pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
+        resultsIterator = pool.imap(localAucsRhos, paramList, self.chunkSize)
+        #import itertools
+        #resultsIterator = itertools.imap(localAucsRhos, paramList)
+        
+        for icv, (trainInds, testInds) in enumerate(cvInds):        
+            for i, k in enumerate(self.ks): 
+                tempAucs = resultsIterator.next()
+                localAucs[i, :, icv] = tempAucs
+        
+        pool.terminate()
         
         meanLocalAucs = numpy.mean(localAucs, 2)
         stdLocalAucs = numpy.std(localAucs, 2)
@@ -387,3 +410,23 @@ class MaxLocalAUC(object):
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         
         return outputStr 
+
+    def copy(self): 
+        maxLocalAuc = MaxLocalAUC(rho=self.rho, k=self.k, u=self.u)
+        maxLocalAuc.sigma = self.sigma
+        maxLocalAuc.eps = self.eps 
+        maxLocalAuc.stochastic = self.stochastic
+     
+        maxLocalAuc.rate = self.rate
+        maxLocalAuc.alpha = self.alpha
+        maxLocalAuc.t0 = self.t0
+        
+        maxLocalAuc.recordStep = self.recordStep
+        maxLocalAuc.numRowSamples = self.numRowSamples
+        maxLocalAuc.numColSamples = self.numColSamples
+        maxLocalAuc.numAucSamples = self.numAucSamples
+        maxLocalAuc.maxIterations = self.maxIterations
+        maxLocalAuc.initialAlg = self.initialAlg
+        
+        return maxLocalAuc
+        

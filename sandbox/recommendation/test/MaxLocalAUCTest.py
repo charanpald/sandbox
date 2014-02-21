@@ -1,4 +1,4 @@
-
+import os
 import sys
 from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC 
 from sandbox.util.SparseUtils import SparseUtils
@@ -140,10 +140,13 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         X = X/X
         
-        r = numpy.ones(m)*0.0
+        os.system('taskset -p 0xffffffff %d' % os.getpid())
+        
+        u = 0.2
         lmbda = 0.001
         eps = 0.001
-        maxLocalAuc = MaxLocalAUC(lmbda, k, r, eps=eps)
+        maxLocalAuc = MaxLocalAUC(lmbda, k, u, eps=eps)
+        maxLocalAuc.maxIterations = 20
         
         maxLocalAuc.modelSelect(X)
             
