@@ -432,5 +432,8 @@ class MaxLocalAUC(object):
         maxLocalAuc.maxIterations = self.maxIterations
         maxLocalAuc.initialAlg = self.initialAlg
         
+        maxLocalAuc.rhos = self.rhos
+        maxLocalAuc.ks = self.ks
+        
         return maxLocalAuc
         
