@@ -14,8 +14,8 @@ class MaxLocalAUCProfile(object):
         
         #Create a low rank matrix  
         m = 500 
-        n = 200 
-        self.k = 5 
+        n = 1000 
+        self.k = 10 
         self.X = SparseUtils.generateSparseBinaryMatrix((m, n), self.k, csarray=True)
         
         
@@ -39,7 +39,7 @@ class MaxLocalAUCProfile(object):
         maxLocalAuc.numRowSamples = 50
         maxLocalAuc.numColSamples = 50
         maxLocalAuc.numAucSamples = 100
-        maxLocalAuc.maxIterations = 1000
+        maxLocalAuc.maxIterations = 100
         maxLocalAuc.initialAlg = "rand"
         maxLocalAuc.rate = "optimal"
                 
