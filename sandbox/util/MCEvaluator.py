@@ -72,7 +72,7 @@ class MCEvaluator(object):
         return precisions.mean()
       
     @staticmethod 
-    def localAUC(X, U, V, u, omegaList=None): 
+    def localAUC(X, U, V, u, omegaList=None, numRowInds=50): 
         """
         Compute the local AUC for the score functions UV^T relative to X with 
         quantile 1-u. 
@@ -80,7 +80,7 @@ class MCEvaluator(object):
         #For now let's compute the full matrix 
         Z = U.dot(V.T)
         
-        r = Util.computeR(U, V, 1-u)
+        r = Util.computeR(U, V, 1-u, numRowInds)
         
         if omegaList==None: 
             omegaList = SparseUtils.getOmegaList(X)
@@ -118,7 +118,7 @@ class MCEvaluator(object):
         localAuc = numpy.zeros(X.shape[0]) 
         allInds = numpy.arange(X.shape[1])
         
-        r = Util.computeR(U, V, 1-u)
+        r = Util.computeR(U, V, 1-u, numAucSamples)
         
         if omegaList==None: 
             omegaList = SparseUtils.getOmegaList(X)
