@@ -186,6 +186,9 @@ def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
         if normDeltaBeta != 0: 
             deltaBeta = deltaBeta/normDeltaBeta
         plusEquals(U, i, -sigma*deltaBeta, k)
+        
+        #Projection step 
+        U[i,:] = scale(U, i, 1/numpy.linalg.norm(U[i,:]), k)
 
 @cython.boundscheck(False)
 def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int j, unsigned int k, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
@@ -343,6 +346,9 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
         #Normalise gradient vector 
         deltaTheta = deltaTheta/numpy.linalg.norm(deltaTheta)
         plusEquals(V, j, -sigma*deltaTheta, k)
+        
+        #Projection step 
+        V[j,:] = scale(V, j, 1/numpy.linalg.norm(V[j,:]), k)
     
 def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):         
     cdef double obj = 0 

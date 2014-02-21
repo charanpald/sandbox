@@ -10,6 +10,7 @@ from sandbox.util.SparseUtils import SparseUtils
 from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, updateVApprox, updateUApprox, objectiveApprox, localAUCApprox
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.Util import Util 
+from sandbox.data.Standardiser import Standardiser 
 
 def updateUV(args): 
     X, U, V, omegaList, numRowSamples, numColSamples, numAucSamples, sigma, lmbda, r  = args   
@@ -130,8 +131,11 @@ class MaxLocalAUC(object):
             else:
                 raise ValueError("Unknown initialisation: " + str(self.initialAlg))
         
-        lastU = U+numpy.ones((m, self.k))*self.eps
-        lastV = V+numpy.ones((n, self.k))*self.eps 
+        U = Standardiser().normaliseArray(U.T).T    
+        V = Standardiser().normaliseArray(V.T).T 
+        
+        lastU = numpy.random.rand(m, self.k)
+        lastV = numpy.random.rand(n, self.k)
         
         normDeltaU = numpy.linalg.norm(U - lastU)
         normDeltaV = numpy.linalg.norm(V - lastV)
