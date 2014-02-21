@@ -325,6 +325,7 @@ class SparseUtilsCythonTest(unittest.TestCase):
         self.assertEquals(v.sum(), 1.0)
    
     def testSubmatrix(self): 
+        import sppy 
         numRuns = 100 
         
         for i in range(numRuns): 
@@ -348,6 +349,23 @@ class SparseUtilsCythonTest(unittest.TestCase):
         inds = 2
         X1 = SparseUtils.submatrix(X, inds)
         self.assertTrue(X1.nnz, 2)
+        
+        #Test with sppy 
+        for i in range(numRuns): 
+            m = numpy.random.randint(5, 50)
+            n = numpy.random.randint(5, 50)  
+            X = scipy.sparse.rand(m, n, 0.5)
+            X = X.tocsc()
+            
+            X = sppy.csarray(X)
+            
+            inds1 = numpy.arange(0, X.nnz/2)
+            inds2 = numpy.arange(X.nnz/2, X.nnz)
+            
+            X1 = SparseUtils.submatrix(X, inds1)
+            X2 = SparseUtils.submatrix(X, inds2)
+            
+            nptst.assert_array_almost_equal((X1+X2).toarray(), X.toarray()) 
     
     def testPruneMatrix(self): 
         m = 50 
@@ -529,6 +547,34 @@ class SparseUtilsCythonTest(unittest.TestCase):
         for i in range(1, numRows): 
             for j in range(numCols): 
                 self.assertEquals(newA[i, j], 0)
-     
+   
+    def testSplitNnz(self): 
+        numRuns = 100 
+        import sppy 
+        
+        for i in range(numRuns): 
+            m = numpy.random.randint(5, 50)
+            n = numpy.random.randint(5, 50)  
+            X = scipy.sparse.rand(m, n, 0.5)
+            X = X.tocsc()
+            
+            split = numpy.random.rand()
+            X1, X2 = SparseUtils.splitNnz(X, split)
+            
+            nptst.assert_array_almost_equal((X1+X2).todense(), X.todense()) 
+            
+        for i in range(numRuns): 
+            m = numpy.random.randint(5, 50)
+            n = numpy.random.randint(5, 50)  
+            X = scipy.sparse.rand(m, n, 0.5)
+            X = X.tocsc()
+            
+            X = sppy.csarray(X)
+            
+            split = numpy.random.rand()
+            X1, X2 = SparseUtils.splitNnz(X, split)
+            
+            nptst.assert_array_almost_equal((X1+X2).toarray(), X.toarray()) 
+   
 if __name__ == '__main__':
     unittest.main()
