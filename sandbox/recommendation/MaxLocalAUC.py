@@ -7,6 +7,7 @@ import time
 import scipy.sparse
 from math import exp
 from sandbox.util.SparseUtils import SparseUtils
+from sandbox.util.SparseUtilsCython import SparseUtilsCython
 from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, updateVApprox, updateUApprox, objectiveApprox, localAUCApprox
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.Util import Util 
@@ -44,7 +45,7 @@ def localAucsRhos(args):
         
         U, V = maxLocalAuc.learnModel(trainX, U=U, V=V)
         
-        r = Util.computeR(U, V, 1-maxLocalAuc.u, maxLocalAuc.numAucSamples)
+        r = SparseUtilsCython.computeR(U, V, 1-maxLocalAuc.u, maxLocalAuc.numAucSamples)
         localAucs[j] = localAUCApprox(testX, U, V, testOmegaList, maxLocalAuc.numAucSamples, r) 
         logging.debug("Local AUC: " + str(localAucs[j]) + " with k = " + str(maxLocalAuc.k) + " and rho= " + str(maxLocalAuc.rho))
         
@@ -164,7 +165,8 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
             
-            r = Util.computeR(U, V, 1-self.u, self.numAucSamples)
+            U  = numpy.ascontiguousarray(U)
+            r = SparseUtilsCython.computeR(U, V, 1-self.u, self.numAucSamples)
             
             #paramList = []
             #for j in range(self.numProcesses): 
@@ -341,7 +343,7 @@ class MaxLocalAUC(object):
                 self.alpha = alpha 
                 
                 U, V = self.learnModel(trainX)
-                r = Util.computeR(U, V, 1-self.u, self.numAucSamples)
+                r = SparseUtilsCython.computeR(U, V, 1-self.u, self.numAucSamples)
                 
                 omegaList = SparseUtils.getOmegaList(testX)
                 localAucs[i, icv] = localAUCApprox(testX, U, V, omegaList, self.numAucSamples, r) 
