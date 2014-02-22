@@ -735,19 +735,3 @@ class Util(object):
             
         return b 
       
-    @staticmethod 
-    def computeR(U, V, u, indsPerRow=50): 
-        """
-        Given a matrix Z = UV.T compute a vector r such r[i] is the uth quantile 
-        of the ith row of Z. We sample indsPerRow elements in each row and use that 
-        for computing quantiles. Thus u=0 implies the smallest element and u=1 implies 
-        the largest. 
-        """
-        from sandbox.util.SparseUtilsCython import SparseUtilsCython
-        indsPerRow = numpy.min(numpy.array([indsPerRow, V.shape[0]*2]))
-        rowInds = numpy.repeat(numpy.arange(U.shape[0], dtype=numpy.int32), indsPerRow)
-        colInds = numpy.array(numpy.random.randint(0, V.shape[0], indsPerRow*U.shape[0]), numpy.int32)
-        
-        values = SparseUtilsCython.partialReconstructValsPQ(rowInds, colInds, U, V)
-        values = values.reshape((U.shape[0], indsPerRow))
-        return numpy.percentile(values, u*100.0, 1) 

@@ -400,21 +400,6 @@ class UtilTest(unittest.TestCase):
             except AssertionError: 
                 nptst.assert_array_almost_equal(V[:, 0], -v, 2)
         
-    def testComputeR(self): 
-        U = numpy.random.rand(10, 5)
-        V = numpy.random.rand(15, 5)
-        
-        Z = U.dot(V.T)
-        
-        u = 1.0
-        r = Util.computeR(U, V, u)
-               
-        tol = 0.1
-        self.assertTrue(numpy.linalg.norm(Z.max(1) - r)/numpy.linalg.norm(Z.max(1)) < tol)
-        
-        u = 0.0
-        r = Util.computeR(U, V, u)
-        self.assertTrue(numpy.linalg.norm(Z.min(1) - r)/numpy.linalg.norm(Z.min(1)) < tol)
 
         
 if __name__ == "__main__":
