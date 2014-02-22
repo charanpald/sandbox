@@ -509,29 +509,33 @@ class SparseUtils(object):
 
 
     @staticmethod
-    def generateSparseBinaryMatrix(shape, r, quantile=0.1, csarray=False):
+    def generateSparseBinaryMatrix(shape, p, u=0.9, csarray=False, verbose=False, indsPerRow=50):
         """
-        Create an underlying matrix UsV.T of rank r and then go through each row 
-        and threshold so that a proportion quantile numbers are kepy. The final matrix 
-        is a 0/1 matrix 
+        Create an underlying matrix Z = UsV.T of rank p and then go through each row 
+        and threshold so that a proportion quantile numbers are kept. The final matrix 
+        is a 0/1 matrix. We order each row of Z in ascending order and then keep those bigger 
+        than u. In other words u=0 keeps all numbers and u=1.0 keeps none. 
         """
         m, n = shape
-        U, s, V = SparseUtils.generateLowRank(shape, r)
+        U, s, V = SparseUtils.generateLowRank(shape, p)
         
         X = (U*s).dot(V.T)
+        r = SparseUtilsCython.computeR((U*s), V, u, indsPerRow=indsPerRow)
         
         for i in range(m):
-            sortedRow = numpy.flipud(numpy.sort(X[i, :]))
-            threshold = sortedRow[int((n-1)*quantile)]
-            X[i, X[i, :] >= threshold] = 1
-            X[i, X[i, :] < threshold] = 0
+            X[i, X[i, :] >= r[i]] = 1
+            X[i, X[i, :] < r[i]] = 0
         
         if csarray:
             import sppy
             X = sppy.csarray(X, storagetype="row")
         else:
             X = scipy.sparse.csr_matrix(X)
-        return X
+            
+        if verbose: 
+            return X, U, s, V 
+        else: 
+            return X
 
     @staticmethod
     def equals(A, B):
