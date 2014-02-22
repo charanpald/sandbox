@@ -72,3 +72,27 @@ class SparseUtilsCython(object):
             result[rowInds[i]] += vals[i]
 
         return result 
+        
+    @staticmethod
+    def computeR(numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, double u, unsigned int indsPerRow=50): 
+        """
+        Given a matrix Z = UV.T compute a vector r such r[i] is the uth quantile 
+        of the ith row of Z. We sample indsPerRow elements in each row and use that 
+        for computing quantiles. Thus u=0 implies the smallest element and u=1 implies 
+        the largest. 
+        """
+        cdef unsigned int i
+        cdef unsigned int m = U.shape[0]
+        cdef unsigned int n = V.shape[0]
+        indsPerRow = min(indsPerRow, n)
+        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] r = numpy.zeros(m, numpy.float)
+        cdef numpy.ndarray[numpy.float_t, ndim=2, mode="c"] tempRows = numpy.zeros((m, indsPerRow), numpy.float)
+        cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] colInds = numpy.zeros(indsPerRow, numpy.int)
+
+        for i in range(m): 
+            colInds = numpy.random.permutation(n)[0:indsPerRow]
+            tempRows[i, :] = U[i, :].dot(V[colInds, :].T)
+        r = numpy.percentile(tempRows, u*100.0, 1)
+        
+        return r  
+        

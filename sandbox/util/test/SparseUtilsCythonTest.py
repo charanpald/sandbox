@@ -113,5 +113,37 @@ class SparseUtilsCythonTest(unittest.TestCase):
         sumCol = SparseUtilsCython.sumCols(rowInds, numpy.array(A[rowInds, colInds]).flatten(), A.shape[0])
         nptst.assert_array_equal(numpy.array(A.sum(1)).flatten(), sumCol) 
 
+    def testComputeR(self): 
+        U = numpy.random.rand(10, 5)
+        V = numpy.random.rand(15, 5)
+        
+        Z = U.dot(V.T)
+        
+        u = 1.0
+        r = SparseUtilsCython.computeR(U, V, u)
+               
+        tol = 0.1
+        self.assertTrue(numpy.linalg.norm(Z.max(1) - r)/numpy.linalg.norm(Z.max(1)) < tol)
+        
+        u = 0.0
+        r = SparseUtilsCython.computeR(U, V, u)
+        self.assertTrue(numpy.linalg.norm(Z.min(1) - r)/numpy.linalg.norm(Z.min(1)) < tol)
+        
+        u = 0.3
+        r = SparseUtilsCython.computeR(U, V, u) 
+        r2 = numpy.percentile(Z, u*100.0, 1)
+        nptst.assert_array_almost_equal(r, r2)
+        
+        #Try a larger matrix 
+        U = numpy.random.rand(100, 5)
+        V = numpy.random.rand(105, 5)
+        
+        Z = U.dot(V.T)
+        
+        r = SparseUtilsCython.computeR(U, V, u) 
+        r2 = numpy.percentile(Z, u*100.0, 1)
+        
+        self.assertTrue(numpy.linalg.norm(r-r2) < 0.5)
+
 if __name__ == '__main__':
     unittest.main()
