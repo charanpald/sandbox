@@ -9,7 +9,7 @@ class PathDefaults(object):
     """
     @staticmethod 
     def readField(field):
-        configFileName = expanduser("~") + os.sep + ".apglrc"
+        configFileName = expanduser("~") + os.sep + ".sandboxrc"
 
         if not os.path.exists(configFileName): 
             print("Creating missing config file: " + configFileName)
