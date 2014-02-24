@@ -4,9 +4,9 @@ import sys
 from apgl.graph import *
 from apgl.generator import *
 from sandbox.util.ProfileUtils import ProfileUtils
-from exp.sandbox.recommendation.SoftImpute import SoftImpute
+from sandbox.recommendation.SoftImpute import SoftImpute
 import scipy.sparse
-from exp.util.SparseUtils import SparseUtils
+from sandbox.util.SparseUtils import SparseUtils
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
