@@ -83,8 +83,11 @@ class MaxLocalAUC(object):
         
         #Optimal rate doesn't seem to work 
         self.rate = "constant"
-        self.alpha = 0.1
-        self.t0 = 0.1
+        self.alpha = 0.1 #Initial learning rate 
+        self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
+        
+        self.nu = 20.0 
+        self.nuBar = 1.0
         
         self.recordStep = 20
         self.numRowSamples = 50
@@ -96,7 +99,7 @@ class MaxLocalAUC(object):
         #Model selection parameters 
         self.folds = 3 
         self.ks = numpy.array([10, 20, 50, 100])
-        self.rhos = numpy.flipud(numpy.logspace(-3, -1, 11)) 
+        self.rhos = numpy.flipud(numpy.logspace(-3, -1, 11)*2) 
         
         #Learning rate selection 
         self.alphas = numpy.arange(0.1, 1.0, 0.2)
@@ -104,7 +107,7 @@ class MaxLocalAUC(object):
     def getLambda(self, X): 
         return self.rho/X.shape[0]
     
-    def learnModel(self, X, verbose=False, U=None, V=None): 
+    def learnModel(self, X, verbose=False, U=None, V=None, testX=None): 
         """
         Max local AUC with Frobenius norm penalty. Solve with gradient descent. 
         The input is a sparse array. 
@@ -113,6 +116,7 @@ class MaxLocalAUC(object):
         m = X.shape[0]
         n = X.shape[1]
         omegaList = SparseUtils.getOmegaList(X)
+        testOmegaList = SparseUtils.getOmegaList(testX)
 
         if U==None or V==None:
             if self.initialAlg == "rand": 
@@ -141,9 +145,11 @@ class MaxLocalAUC(object):
         normDeltaU = numpy.linalg.norm(U - lastU)
         normDeltaV = numpy.linalg.norm(V - lastV)
         objs = []
-        aucs = []
+        trainAucs = []
+        testAucs = []
         
         ind = 0
+        r = SparseUtilsCython.computeR(U, V, 1-self.u, self.numAucSamples)
 
         #Convert to a csarray for faster access 
         if scipy.sparse.issparse(X):
@@ -191,9 +197,12 @@ class MaxLocalAUC(object):
                 
             if ind % self.recordStep == 0: 
                 objs.append(objectiveApprox(X, U, V, omegaList, self.numAucSamples, self.getLambda(X), r))
-                aucs.append(localAUCApprox(X, U, V, omegaList, self.numAucSamples, r))
+                trainAucs.append(localAUCApprox(X, U, V, omegaList, self.numAucSamples, r))
+                
+                if testX != None: 
+                    testAucs.append(localAUCApprox(testX, U, V, testOmegaList, self.numAucSamples, r))
                 printStr = "Iteration: " + str(ind)
-                printStr += " local AUC~" + str(aucs[-1]) + " objective~" + str(objs[-1])
+                printStr += " local AUC~" + str(trainAucs[-1]) + " objective~" + str(objs[-1])
                 printStr += " ||dU||=" + str(normDeltaU) + " " + "||dV||=" + str(normDeltaV)
                 logging.debug(printStr)
             
@@ -205,7 +214,7 @@ class MaxLocalAUC(object):
         logging.debug("Number of iterations: " + str(ind))
                         
         if verbose:     
-            return U, V, numpy.array(objs), numpy.array(aucs), ind, totalTime
+            return U, V, numpy.array(objs), numpy.array(trainAucs), numpy.array(testAucs), ind, totalTime
         else: 
             return U, V
         
@@ -221,7 +230,7 @@ class MaxLocalAUC(object):
             return dU
         else: 
             rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
-            updateUApprox(X, U, V, omegaList, rowInds, self.numAucSamples, self.sigma, self.getLambda(X), r)
+            updateUApprox(X, U, V, omegaList, rowInds, self.numAucSamples, self.sigma, self.getLambda(X), r, self.nu, self.nuBar)
         
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, r): 
@@ -243,7 +252,7 @@ class MaxLocalAUC(object):
         else: 
             rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
             colInds = numpy.array(numpy.random.randint(X.shape[1], size=self.numColSamples), numpy.uint)
-            updateVApprox(X, U, V, omegaList, rowInds, colInds, self.numAucSamples, self.sigma, self.getLambda(X), r)
+            updateVApprox(X, U, V, omegaList, rowInds, colInds, self.numAucSamples, self.sigma, self.getLambda(X), r, self.nu, self.nuBar)
 
                 
     def derivativeVi(self, X, U, V, omegaList, i, r): 
