@@ -408,7 +408,7 @@ class SparseUtils(object):
     @staticmethod
     def splitNnz(X, split):
         numTrainInds = int(X.nnz*split)
-        trainInds = numpy.random.permutation(numTrainInds)[0:numTrainInds]
+        trainInds = numpy.random.permutation(X.nnz)[0:numTrainInds]
         trainInds = numpy.sort(trainInds)
         trainX = SparseUtils.submatrix(X, trainInds)
 
