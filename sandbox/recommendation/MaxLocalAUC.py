@@ -424,6 +424,7 @@ class MaxLocalAUC(object):
         outputStr = "MaxLocalAUC: rho=" + str(self.rho) + " k=" + str(self.k) + " sigma=" + str(self.sigma) + " eps=" + str(self.eps) 
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numColSamples=" + str(self.numColSamples)
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
+        outputStr += " u=" + str(self.u) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0)
         
         return outputStr 
 
