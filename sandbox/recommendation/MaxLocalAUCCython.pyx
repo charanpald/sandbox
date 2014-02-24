@@ -122,7 +122,7 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     return deltaPhi
 
 
-def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned long, ndim=1, mode="c"] rowInds, unsigned int numAucSamples, double sigma,  double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu):
+def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned long, ndim=1, mode="c"] rowInds, unsigned int numAucSamples, double sigma,  double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double nuBar):
     """
     Find an approximation of delta phi/delta u_i
     """
@@ -130,7 +130,6 @@ def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
     cdef unsigned int k = U.shape[1]
     cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappaSq, gamma, onePlusGamma
     cdef double denom, denom2, normDeltaBeta
-    cdef double nuBar = 1.0
     cdef unsigned int n, m, numOmegai, numOmegaBari
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
@@ -274,7 +273,7 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
    
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned long, ndim=1, mode="c"] rowInds, numpy.ndarray[unsigned long, ndim=1, mode="c"] colInds, unsigned int numAucSamples, double sigma, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu): 
+def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned long, ndim=1, mode="c"] rowInds, numpy.ndarray[unsigned long, ndim=1, mode="c"] colInds, unsigned int numAucSamples, double sigma, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double nuBar): 
     """
     delta phi/delta V using a few randomly selected rows of V 
     """
@@ -284,7 +283,6 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1], ind
     cdef unsigned int s = 0
-    cdef double nuBar = 1.0
     cdef double uivp, kappa, onePlusKappa, uivq, gamma, onePlusGamma, denom, riExp, uivpExp, betaScale, uivqExp, onePlusTwoKappa, ri
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaAlpha = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
