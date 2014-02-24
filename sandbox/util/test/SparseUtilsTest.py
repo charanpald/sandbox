@@ -578,5 +578,24 @@ class SparseUtilsCythonTest(unittest.TestCase):
             
             nptst.assert_array_almost_equal((X1+X2).toarray(), X.toarray()) 
    
+    def testGetOmegaList(self):
+        import sppy 
+        m = 10 
+        n = 5
+        X = scipy.sparse.rand(m, n, 0.1)
+        X = X.tocsr()
+        
+        
+        omegaList = SparseUtils.getOmegaList(X)
+        for i in range(m): 
+            nptst.assert_array_almost_equal(omegaList[i], X.toarray()[i, :].nonzero()[0])
+        
+        Xsppy = sppy.csarray(X)
+        omegaList = SparseUtils.getOmegaList(Xsppy)
+        
+        for i in range(m):
+            nptst.assert_array_almost_equal(omegaList[i], X.toarray()[i, :].nonzero()[0])
+        
+   
 if __name__ == '__main__':
     unittest.main()
