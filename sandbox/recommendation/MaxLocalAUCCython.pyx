@@ -122,7 +122,7 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     return deltaPhi
 
 
-def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned long, ndim=1, mode="c"] rowInds, unsigned int numAucSamples, double sigma,  double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):
+def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned long, ndim=1, mode="c"] rowInds, unsigned int numAucSamples, double sigma,  double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu):
     """
     Find an approximation of delta phi/delta u_i
     """
@@ -130,6 +130,7 @@ def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
     cdef unsigned int k = U.shape[1]
     cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappaSq, gamma, onePlusGamma
     cdef double denom, denom2, normDeltaBeta
+    cdef double nuBar = 1.0
     cdef unsigned int n, m, numOmegai, numOmegaBari
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
@@ -164,12 +165,12 @@ def updateUApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
                 q = omegaBari[indsQ[j]]  
             
                 uivp = dot(U, i, V, p, k)
-                kappa = exp(-uivp +ri)
+                kappa = exp(nuBar*(ri-uivp))
                 onePlusKappa = 1+kappa
                 onePlusKappaSq = square(onePlusKappa)
                 
                 uivq = dot(U, i, V, q, k)
-                gamma = exp(-uivp+uivq)
+                gamma = exp(nu*(uivq-uivp))
                 onePlusGamma = 1+gamma
                 onePlusGammaSq = square(onePlusGamma)
                 
@@ -273,7 +274,7 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
    
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned long, ndim=1, mode="c"] rowInds, numpy.ndarray[unsigned long, ndim=1, mode="c"] colInds, unsigned int numAucSamples, double sigma, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
+def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned long, ndim=1, mode="c"] rowInds, numpy.ndarray[unsigned long, ndim=1, mode="c"] colInds, unsigned int numAucSamples, double sigma, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu): 
     """
     delta phi/delta V using a few randomly selected rows of V 
     """
@@ -283,6 +284,7 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1], ind
     cdef unsigned int s = 0
+    cdef double nuBar = 1.0
     cdef double uivp, kappa, onePlusKappa, uivq, gamma, onePlusGamma, denom, riExp, uivpExp, betaScale, uivqExp, onePlusTwoKappa, ri
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaAlpha = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
@@ -311,7 +313,7 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
                 p = j 
                 uivp = dot(U, i, V, p, k)
 
-                kappa = exp(ri - uivp)
+                kappa = exp(nuBar*(ri - uivp))
                 onePlusKappa = 1+kappa
                 onePlusTwoKappa = 1+kappa*2
                 
@@ -319,7 +321,7 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
                     q = getNonZeroRow(X, i, n)
                 
                     uivq = dot(U, i, V, q, k)
-                    gamma = exp(uivq - uivp) #Faster to do this                     
+                    gamma = exp(nu*(uivq - uivp)) #Faster to do this                     
                     
                     denom = square(1+gamma)
                     betaScale += (kappa+gamma*onePlusTwoKappa)/denom
@@ -333,8 +335,8 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
                 for p in omegai: 
                     uivp = dot(U, i, V, p, k)
                     
-                    gamma = exp(uivq - uivp)
-                    kappa = exp(ri - uivp)
+                    gamma = exp(nu*(uivq - uivp))
+                    kappa = exp(nuBar*(ri - uivp))
                     
                     betaScale += gamma/(square(1+gamma) * (1+kappa))
                 #Note we use numOmegaBari*numOmegai to normalise
