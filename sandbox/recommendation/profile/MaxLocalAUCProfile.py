@@ -46,7 +46,7 @@ class MaxLocalAUCProfile(object):
         trainX, testX = SparseUtils.splitNnz(self.X, 0.5)     
 
         def run(): 
-            U, V, objs, aucs, iterations, times = maxLocalAuc.learnModel(trainX, True)  
+            U, V, objs, trainAuc, testAucs, iterations, times = maxLocalAuc.learnModel(trainX, True)  
             logging.debug("Train Precision@5=" + str(MCEvaluator.precisionAtK(trainX, U, V, 5)))
             logging.debug("Train Precision@10=" + str(MCEvaluator.precisionAtK(trainX, U, V, 10)))
             logging.debug("Train Precision@20=" + str(MCEvaluator.precisionAtK(trainX, U, V, 20)))
