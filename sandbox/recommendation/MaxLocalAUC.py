@@ -116,7 +116,8 @@ class MaxLocalAUC(object):
         m = X.shape[0]
         n = X.shape[1]
         omegaList = SparseUtils.getOmegaList(X)
-        testOmegaList = SparseUtils.getOmegaList(testX)
+        if testX != None: 
+            testOmegaList = SparseUtils.getOmegaList(testX)
 
         if U==None or V==None:
             if self.initialAlg == "rand": 
