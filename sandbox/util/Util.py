@@ -726,7 +726,7 @@ class Util(object):
         """
         b = numpy.zeros(N, numpy.int)
         tempA = a.copy()  
-        minA = numpy.min(a)
+        minA = numpy.min(a)-1
         
         for i in range(N):
             idx = numpy.argmax(tempA)

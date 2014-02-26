@@ -401,6 +401,17 @@ class UtilTest(unittest.TestCase):
                 nptst.assert_array_almost_equal(V[:, 0], -v, 2)
         
 
+    def testArgMaxN(self): 
+        numRuns = 10 
+
+        for j in range(numRuns): 
+            m = numpy.random.randint(5, 50)
+            a = numpy.random.rand(m)
+            
+            inds = numpy.flipud(numpy.argsort(a))
+            
+            for i in range(m): 
+                nptst.assert_array_equal(Util.argmaxN(a, i), inds[0:i])
         
 if __name__ == "__main__":
     unittest.main()
