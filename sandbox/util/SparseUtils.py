@@ -391,8 +391,11 @@ class SparseUtils(object):
             rowInds = rowInds[inds]
             colInds = colInds[inds]
             vals = X.data[inds]
-
-            return scipy.sparse.csc_matrix((vals, (rowInds, colInds)), X.shape)
+            
+            if scipy.sparse.isspmatrix_csc(X): 
+                return scipy.sparse.csc_matrix((vals, (rowInds, colInds)), X.shape)
+            elif scipy.sparse.isspmatrix_csr(X): 
+                return scipy.sparse.csr_matrix((vals, (rowInds, colInds)), X.shape)
         else:
             #Assume a sppy array
             rowInds, colInds = X.nonzero()
