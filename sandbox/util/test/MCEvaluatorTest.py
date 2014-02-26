@@ -31,17 +31,16 @@ class  MCEvaluatorTest(unittest.TestCase):
         m = 10 
         n = 5 
         r = 3 
-        k = m*n
-        
-        X, U, s, V = SparseUtils.generateSparseLowRank((m,n), r, k, verbose=True)
-        mean = X.data.mean()
-        X.data[X.data <= mean] = 0
-        X.data[X.data > mean] = 1
-        
+
+        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), r, 0.8, verbose=True)
+
         import sppy 
         X = sppy.csarray(X)
         
-        print(MCEvaluator.precisionAtK(X, U, V, 4))
+        print(MCEvaluator.precisionAtK(X, U*s, V, 2))
+        
+
+        self.assertAlmostEquals(MCEvaluator.precisionAtK(X, U, V, n), X.nnz/float(m*n))
         
             
     def testLocalAUC(self): 

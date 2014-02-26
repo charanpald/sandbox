@@ -67,7 +67,10 @@ class MCEvaluator(object):
                 #scores = U[i, :].dot(V.T)
                 #scoreInds = numpy.flipud(numpy.argsort(scores))[0:k]
                 scoreInds = Util.argmaxN(scores[i, :], k)
-                nonzeroRowi = X.rowInds(j*blocksize + i)
+                try: 
+                    nonzeroRowi = X.rowInds(j*blocksize + i)
+                except: 
+                    nonzeroRowi = numpy.array(X[i, :].nonzero()[1])
                 precisions[j*blocksize + i] = numpy.intersect1d(nonzeroRowi, scoreInds).shape[0]/float(k)
         
         return precisions.mean()
