@@ -2,19 +2,14 @@
 import numpy 
 import logging
 import multiprocessing 
-import sppy 
-import time
-import scipy.sparse
-from math import exp
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
-from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, updateVApprox, updateUApprox, objectiveApprox, localAUCApprox
+from sandbox.recommendation.MaxLocalAUCCython import  localAUCApprox
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.Util import Util 
-from sandbox.data.Standardiser import Standardiser 
 from mrec.mf.wrmf import WRMFRecommender
 
-def localAucsRhos(args): 
+def localAucsLmbdas(args): 
     trainX, testX, testOmegaList, learner  = args 
     
     (m, n) = trainX.shape
@@ -85,9 +80,9 @@ class WeightedMf(object):
                 paramList.append((trainX, testX, testOmegaList, maxLocalAuc))
                     
         pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-        resultsIterator = pool.imap(localAucsRhos, paramList, self.chunkSize)
+        resultsIterator = pool.imap(localAucsLmbdas, paramList, self.chunkSize)
         #import itertools
-        #resultsIterator = itertools.imap(localAucsRhos, paramList)
+        #resultsIterator = itertools.imap(localAucsLmbdas, paramList)
         
         for icv, (trainInds, testInds) in enumerate(cvInds):        
             for i, k in enumerate(self.ks): 
