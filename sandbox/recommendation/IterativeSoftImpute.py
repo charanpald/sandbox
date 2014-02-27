@@ -325,7 +325,6 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
 
         for i, (trainInds, testInds) in enumerate(cvInds):
             Util.printIteration(i, 1, len(cvInds), "Fold: ")
-            print(type(X))
             trainX = SparseUtils.submatrix(X, trainInds)
             testX = SparseUtils.submatrix(X, testInds)
 
@@ -353,6 +352,14 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
 
         meanErrors = errors.mean(2)
         stdErrors = errors.std(2)
+        
+        logging.debug(meanErrors)
+        
+        #Set the parameters 
+        self.setRho(rhos[numpy.unravel_index(numpy.argmin(meanErrors), meanErrors.shape)[0]]) 
+        self.setK(ks[numpy.unravel_index(numpy.argmin(meanErrors), meanErrors.shape)[1]])
+                
+        logging.debug("Model parameters: k=" + str(self.k) + " rho=" + str(self.rho))
 
         return meanErrors, stdErrors
 
@@ -385,6 +392,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         #Parameter.checkInt(k, 1, float('inf'))
 
         self.k = k
+        self.kmax = k*5
 
     def getK(self):
         return self.k
