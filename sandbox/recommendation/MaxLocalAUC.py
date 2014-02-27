@@ -228,6 +228,7 @@ class MaxLocalAUC(object):
             for i in range(X.shape[0]): 
                 dU[i, :] = self.derivativeUi(X, U, V, omegaList, i, r)
             U -= self.sigma*dU
+            U = Standardiser().normaliseArray(U.T).T 
             return dU
         else: 
             rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
@@ -249,6 +250,7 @@ class MaxLocalAUC(object):
             for i in range(X.shape[1]): 
                 dV[i, :] = self.derivativeVi(X, U, V, omegaList, i, r)
             V -= self.sigma*dV
+            V = Standardiser().normaliseArray(V.T).T 
             return dV 
         else: 
             rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
