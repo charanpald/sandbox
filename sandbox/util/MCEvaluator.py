@@ -125,6 +125,9 @@ class MCEvaluator(object):
         localAuc = numpy.zeros(X.shape[0]) 
         allInds = numpy.arange(X.shape[1])
         
+        U = numpy.ascontiguousarray(U)
+        V = numpy.ascontiguousarray(V)
+        
         r = SparseUtilsCython.computeR(U, V, 1-u, numAucSamples)
         
         if omegaList==None: 
