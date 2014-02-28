@@ -20,11 +20,18 @@ class MaxLocalAUCProfile(object):
         
         
     def profileLearnModel(self):
-        lmbda = 0.00001
+        #Profile full gradient descent 
+        m = 100 
+        n = 50 
+        self.k = 10 
+        self.X = SparseUtils.generateSparseBinaryMatrix((m, n), self.k, csarray=True)    
+    
+        rho = 0.00001
         u = 0.5
-        eps = 0.5
+        eps = 0.01
         sigma = 100
-        maxLocalAuc = MaxLocalAUC(lmbda, self.k, u, sigma=sigma, eps=eps)
+        maxLocalAuc = MaxLocalAUC(rho, self.k, u, sigma=sigma, eps=eps, stochastic=False)
+        maxLocalAuc.maxIterations = 100
                 
         ProfileUtils.profile('maxLocalAuc.learnModel(self.X)', globals(), locals())
 
@@ -61,5 +68,5 @@ class MaxLocalAUCProfile(object):
         
 
 profiler = MaxLocalAUCProfile()
-#profiler.profileLearnModel()  
-profiler.profileLearnModel2()
+profiler.profileLearnModel()  
+#profiler.profileLearnModel2()
