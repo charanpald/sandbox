@@ -31,6 +31,18 @@ def updateUV(args):
     return deltaU, deltaV
 
 
+def computeObjective(args): 
+    numpy.random.seed(21)
+    X, omegaList, U, V, maxLocalAuc  = args 
+    
+    U, V = maxLocalAuc.learnModel(X, U=U, V=V)
+    r = SparseUtilsCython.computeR(U, V, 1-maxLocalAuc.u, maxLocalAuc.numAucSamples)
+    
+    objective = objectiveApprox(X, U, V, omegaList, maxLocalAuc.numAucSamples, maxLocalAuc.getLambda(X), r)
+    
+    logging.debug("Objective: " + str(objective) + " with t0 = " + str(maxLocalAuc.t0) + " and alpha= " + str(maxLocalAuc.alpha))
+    return objective
+    
 def localAucsRhos(args): 
     trainX, testX, testOmegaList, maxLocalAuc  = args 
     
@@ -103,7 +115,8 @@ class MaxLocalAUC(object):
         self.rhos = numpy.flipud(numpy.logspace(-3, -1, 11)*2) 
         
         #Learning rate selection 
-        self.alphas = numpy.arange(0.1, 1.0, 0.2)
+        self.alphas = numpy.linspace(0.1, 10.0, 5)
+        self.t0s = numpy.linspace(0.01, 1.0, 5)
     
     def getLambda(self, X): 
         return self.rho/X.shape[0]
@@ -333,35 +346,48 @@ class MaxLocalAUC(object):
         """
         Let's set the initial learning rate. 
         """        
-        cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
-        localAucs = numpy.zeros((self.alphas.shape[0], len(cvInds)))
+        m, n = X.shape
+        omegaList = SparseUtils.getOmegaList(X)
+        objectives = numpy.zeros((self.t0s.shape[0], self.alphas.shape[0]))
         
-        logging.debug("Performing alpha selection")
-        for icv, (trainInds, testInds) in enumerate(cvInds):
-            Util.printIteration(icv, 1, self.folds, "Fold: ")
-
-            trainX = SparseUtils.submatrix(X, trainInds)
-            testX = SparseUtils.submatrix(X, testInds)
-            
-            for i, alpha in enumerate(self.alphas): 
-                self.alpha = alpha 
+        logging.debug("Performing learning rate selection")
+        paramList = []      
+        
+        U = numpy.random.rand(m, self.k)
+        V = numpy.random.rand(n, self.k)
+        
+        U = Standardiser().normaliseArray(U.T).T    
+        V = Standardiser().normaliseArray(V.T).T 
+                    
+        for i, t0 in enumerate(self.t0s): 
+            for j, alpha in enumerate(self.alphas): 
+                maxLocalAuc = self.copy()
+                maxLocalAuc.t0 = t0
+                maxLocalAuc.alpha = alpha 
+                paramList.append((X, omegaList, U, V, maxLocalAuc))
+                    
+        pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
+        resultsIterator = pool.imap(computeObjective, paramList, self.chunkSize)
+        #import itertools
+        #resultsIterator = itertools.imap(localAucsRhos, paramList)
+        
+        for i, t0 in enumerate(self.t0s): 
+            for j, alpha in enumerate(self.alphas):  
+                objectives[i, j] = resultsIterator.next()
+        
+        pool.terminate()
                 
-                U, V = self.learnModel(trainX)
-                r = SparseUtilsCython.computeR(U, V, 1-self.u, self.numAucSamples)
-                
-                omegaList = SparseUtils.getOmegaList(testX)
-                localAucs[i, icv] = localAUCApprox(testX, U, V, omegaList, self.numAucSamples, r) 
+        logging.debug(objectives)
         
-        meanLocalAucs = numpy.mean(localAucs, 1)
-        stdLocalAucs = numpy.std(localAucs, 1)
+        t0 = self.t0s[numpy.unravel_index(numpy.argmin(objectives), objectives.shape)[0]]
+        alpha = self.alphas[numpy.unravel_index(numpy.argmin(objectives), objectives.shape)[1]]
         
-        logging.debug(meanLocalAucs)
+        logging.debug("Learning rate parameters: t0=" + str(t0) + " alpha=" + str(alpha))
         
-        alpha = self.alphas[numpy.argmax(meanLocalAucs)]
-        
-        logging.debug("Selected alpha =" + str(alpha))
-        
+        self.t0 = t0 
         self.alpha = alpha 
+        
+        return objectives
         
     def modelSelect(self, X): 
         """
