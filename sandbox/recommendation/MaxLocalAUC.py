@@ -8,7 +8,7 @@ import scipy.sparse
 from math import exp
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
-from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, updateVApprox, updateUApprox, objectiveApprox, localAUCApprox
+from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, updateVApprox, updateUApprox, objectiveApprox, localAUCApprox, updateV, updateU
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.Util import Util 
 from sandbox.data.Standardiser import Standardiser 
@@ -88,6 +88,7 @@ class MaxLocalAUC(object):
         
         self.nu = 20.0 
         self.nuBar = 1.0
+        self.project = True
         
         self.recordStep = 20
         self.numRowSamples = 50
@@ -223,16 +224,12 @@ class MaxLocalAUC(object):
         """
         Find the derivative with respect to V or part of it. 
         """
-        if not self.stochastic: 
-            dU = numpy.zeros(U.shape)
-            for i in range(X.shape[0]): 
-                dU[i, :] = self.derivativeUi(X, U, V, omegaList, i, r)
-            U -= self.sigma*dU
-            U = Standardiser().normaliseArray(U.T).T 
-            return dU
+        if not self.stochastic:                 
+            lmbda = self.getLambda(X)
+            updateU(X, U, V, omegaList, self.k, self.sigma, lmbda, r, self.project)
         else: 
             rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
-            updateUApprox(X, U, V, omegaList, rowInds, self.numAucSamples, self.sigma, self.getLambda(X), r, self.nu, self.nuBar)
+            updateUApprox(X, U, V, omegaList, rowInds, self.numAucSamples, self.sigma, self.getLambda(X), r, self.nu, self.nuBar, self.project)
         
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, r): 
@@ -246,18 +243,13 @@ class MaxLocalAUC(object):
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic: 
-            dV = numpy.zeros(V.shape)
-            for i in range(X.shape[1]): 
-                dV[i, :] = self.derivativeVi(X, U, V, omegaList, i, r)
-            V -= self.sigma*dV
-            V = Standardiser().normaliseArray(V.T).T 
-            return dV 
+            lmbda = self.getLambda(X)
+            updateV(X, U, V, omegaList, self.k, self.sigma, lmbda, r, self.project)
         else: 
             rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
             colInds = numpy.array(numpy.random.randint(X.shape[1], size=self.numColSamples), numpy.uint)
-            updateVApprox(X, U, V, omegaList, rowInds, colInds, self.numAucSamples, self.sigma, self.getLambda(X), r, self.nu, self.nuBar)
+            updateVApprox(X, U, V, omegaList, rowInds, colInds, self.numAucSamples, self.sigma, self.getLambda(X), r, self.nu, self.nuBar, self.project)
 
-                
     def derivativeVi(self, X, U, V, omegaList, i, r): 
         return derivativeVi(X, U, V, omegaList, i, self.k, self.getLambda(X), r)           
 
