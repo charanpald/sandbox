@@ -115,7 +115,7 @@ class MaxLocalAUC(object):
         self.rhos = numpy.flipud(numpy.logspace(-3, -1, 11)*2) 
         
         #Learning rate selection 
-        self.alphas = numpy.linspace(0.1, 10.0, 5)
+        self.alphas = numpy.linspace(0.1, 50.0, 5)
         self.t0s = numpy.linspace(0.01, 1.0, 5)
     
     def getLambda(self, X): 
@@ -350,7 +350,6 @@ class MaxLocalAUC(object):
         omegaList = SparseUtils.getOmegaList(X)
         objectives = numpy.zeros((self.t0s.shape[0], self.alphas.shape[0]))
         
-        logging.debug("Performing learning rate selection")
         paramList = []      
         
         U = numpy.random.rand(m, self.k)
