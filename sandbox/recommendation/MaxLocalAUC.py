@@ -115,8 +115,8 @@ class MaxLocalAUC(object):
         self.rhos = numpy.flipud(numpy.logspace(-3, -1, 11)*2) 
         
         #Learning rate selection 
-        self.alphas = numpy.linspace(0.1, 50.0, 5)
-        self.t0s = numpy.linspace(0.01, 1.0, 5)
+        self.alphas = numpy.linspace(0.1, 100.0, 5)
+        self.t0s = 10.0**numpy.arange(-5, 0)
     
     def getLambda(self, X): 
         return self.rho/X.shape[0]
@@ -205,7 +205,7 @@ class MaxLocalAUC(object):
             #pool.terminate()
             
             self.updateU(X, U, V, omegaList, r)            
-            self.updateV(X, U, V, omegaList, r)
+            self.updateV(X, lastU, V, omegaList, r)
 
             normDeltaU = numpy.linalg.norm(U - lastU)
             normDeltaV = numpy.linalg.norm(V - lastV)               
@@ -443,7 +443,7 @@ class MaxLocalAUC(object):
         outputStr = "MaxLocalAUC: rho=" + str(self.rho) + " k=" + str(self.k) + " sigma=" + str(self.sigma) + " eps=" + str(self.eps) 
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numColSamples=" + str(self.numColSamples)
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
-        outputStr += " u=" + str(self.u) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0)
+        outputStr += " u=" + str(self.u) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
         
         return outputStr 
 
@@ -466,6 +466,7 @@ class MaxLocalAUC(object):
         
         maxLocalAuc.rhos = self.rhos
         maxLocalAuc.ks = self.ks
+        maxLocalAuc.folds = self.folds
         
         return maxLocalAuc
         
