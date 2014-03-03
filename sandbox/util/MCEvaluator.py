@@ -50,31 +50,43 @@ class MCEvaluator(object):
         return error
         
     @staticmethod 
-    def precisionAtK(X, U, V, k): 
+    def precisionAtK(X, U, V, k, scoreInds=None, omegaList=None, verbose=False): 
         """
         Compute the average precision@k score for each row of the predicted matrix UV.T 
-        using real values in X. X is a 0/1 sppy sparse matrix. 
-        """        
+        using real values in X. X is a 0/1 sppy sparse matrix.
+        
+        :param verbose: If true return precision and first k recommendation for each row, otherwise just precisions
+        """
+        if scoreInds == None: 
+            scoreInds = MCEvaluator.recommendAtk(U, V, k)
+        if omegaList == None: 
+            omegaList = SparseUtils.getOmegaList(X)
+        
         precisions = numpy.zeros(X.shape[0])
-        blocksize = 500
-        numBlocks = int(ceil(X.shape[0]/float(blocksize)))
-        
+        precisions = SparseUtilsCython.precisionAtk(omegaList, scoreInds)
+
+        if verbose: 
+            return precisions.mean(), scoreInds
+        else: 
+            return precisions.mean()
+
+    @staticmethod 
+    def recommendAtk(U, V, k, blockSize=1000): 
+        """
+        Compute the matrix Z = U V^T and then find the k largest indices for each row. 
+        """
+        blocksize = 1000
+        numBlocks = int(ceil(U.shape[0]/float(blocksize)))
+        scoreInds = numpy.zeros((U.shape[0], k), numpy.int32)
+
         for j in range(numBlocks):
-            endInd = min(X.shape[0], (j+1)*blocksize)
-            scores = U[j*blocksize:endInd, :].dot(V.T)            
+            endInd = min(U.shape[0], (j+1)*blocksize)
+            scores = U[j*blocksize:endInd, :].dot(V.T)     
+            scoreInds[j*blocksize:endInd, :] = Util.argmaxN(scores, k)
+            #scoreInds[j*blocksize:endInd, :] = Util.argmaxN2d(scores, k)
             
-            for i in range(scores.shape[0]): 
-                #scores = U[i, :].dot(V.T)
-                #scoreInds = numpy.flipud(numpy.argsort(scores))[0:k]
-                scoreInds = Util.argmaxN(scores[i, :], k)
-                try: 
-                    nonzeroRowi = X.rowInds(j*blocksize + i)
-                except: 
-                    nonzeroRowi = numpy.array(X[i, :].nonzero()[1])
-                precisions[j*blocksize + i] = numpy.intersect1d(nonzeroRowi, scoreInds).shape[0]/float(k)
+        return scoreInds 
         
-        return precisions.mean()
-      
     @staticmethod 
     def localAUC(X, U, V, u, omegaList=None, numRowInds=None): 
         """
