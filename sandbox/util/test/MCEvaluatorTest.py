@@ -32,15 +32,40 @@ class  MCEvaluatorTest(unittest.TestCase):
         n = 5 
         r = 3 
 
-        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), r, 0.8, verbose=True)
+        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), r, 0.5, verbose=True)
 
         import sppy 
         X = sppy.csarray(X)
         
-        print(MCEvaluator.precisionAtK(X, U*s, V, 2))
+        #print(MCEvaluator.precisionAtK(X, U*s, V, 2))
         
 
         self.assertAlmostEquals(MCEvaluator.precisionAtK(X, U, V, n), X.nnz/float(m*n))
+        
+        k = 2
+        precision, scoreInds = MCEvaluator.precisionAtK(X, U*s, V, k, verbose=True)
+        
+        precisions = numpy.zeros(m)
+        for i in range(m): 
+            nonzeroRow = X.toarray()[i, :].nonzero()[0]
+
+            precisions[i] = numpy.intersect1d(scoreInds[i, :], nonzeroRow).shape[0]/float(k)  
+        
+        self.assertEquals(precision, precisions.mean())
+        
+        #Now try random U and V 
+        U = numpy.random.rand(m, 3)
+        V = numpy.random.rand(m, 3)
+        
+        precision, scoreInds = MCEvaluator.precisionAtK(X, U, V, k, verbose=True)
+        
+        precisions = numpy.zeros(m)
+        for i in range(m): 
+            nonzeroRow = X.toarray()[i, :].nonzero()[0]
+
+            precisions[i] = numpy.intersect1d(scoreInds[i, :], nonzeroRow).shape[0]/float(k)  
+        
+        self.assertEquals(precision, precisions.mean())
         
             
     def testLocalAUC(self): 
