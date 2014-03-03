@@ -130,6 +130,19 @@ class MCEvaluator(object):
 
     @staticmethod
     def localAUCApprox(X, U, V, u, numAucSamples=50, omegaList=None): 
+        from sandbox.recommendation.MaxLocalAUCCython import localAUCApprox
+        
+        if omegaList==None: 
+            omegaList = SparseUtils.getOmegaList(X)        
+        
+        U = numpy.ascontiguousarray(U)
+        V = numpy.ascontiguousarray(V)        
+        
+        r = SparseUtilsCython.computeR(U, V, 1-u, numAucSamples)
+        return localAUCApprox(X, U, V, omegaList, numAucSamples, r)
+
+    @staticmethod
+    def localAUCApprox2(X, U, V, u, numAucSamples=50, omegaList=None): 
         """
         Compute the estimated local AUC for the score functions UV^T relative to X with 
         quantile 1-u. 
