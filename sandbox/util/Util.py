@@ -722,16 +722,37 @@ class Util(object):
     @staticmethod 
     def argmaxN(a, N): 
         """
-        Return the top N elements of numpy array a 
+        Return the top N elements of numpy array a. If it is a 2D array 
+        return the argmax of each row. 
         """
-        b = numpy.zeros(N, numpy.int)
-        tempA = a.copy()  
-        minA = numpy.min(a)-1
-        
-        for i in range(N):
-            idx = numpy.argmax(tempA)
-            b[i] = idx 
-            tempA[idx] = minA
+        if a.ndim == 1: 
+            b = numpy.zeros(N, numpy.int)
+            tempA = a.copy()  
+            minA = numpy.min(a)-1
             
-        return b 
+            for i in range(N):
+                idx = numpy.argmax(tempA)
+                b[i] = idx 
+                tempA[idx] = minA
+            return b
+        elif a.ndim ==2: 
+            B = numpy.zeros((a.shape[0], N), numpy.int)
+            tempA = a.copy()  
+            minA = numpy.min(a, 1)-1
+            
+            for i in range(N):
+                idx = numpy.argmax(tempA, axis=1)
+
+                B[:, i] = idx 
+                tempA[numpy.arange(a.shape[0]), idx] = minA
+            return B    
+    
+    @staticmethod 
+    def argmaxN2d(A, N): 
+        """
+        Return the top N elements of numpy array A. A must be a 2D array and we
+        return the argmax of each row. 
+        """    
+        inds = numpy.argsort(A, axis=1)
+        return inds[:, 0:N]
       

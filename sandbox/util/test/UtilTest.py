@@ -412,6 +412,18 @@ class UtilTest(unittest.TestCase):
             
             for i in range(m): 
                 nptst.assert_array_equal(Util.argmaxN(a, i), inds[0:i])
+                
+        #Now test a 2D array 
+        for j in range(numRuns): 
+            m = numpy.random.randint(5, 50)
+            n = numpy.random.randint(5, 50)
+            A = numpy.random.rand(m, n)
+            
+            inds = numpy.argsort(-A, axis=1)
+            
+            
+            for i in range(n): 
+                nptst.assert_array_equal(Util.argmaxN(A, i), inds[:, 0:i])
         
 if __name__ == "__main__":
     unittest.main()
