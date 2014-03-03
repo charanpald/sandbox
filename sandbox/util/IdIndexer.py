@@ -48,6 +48,14 @@ class IdIndexer(object):
         except TypeError: 
             return self.idDict.keys()[self.idDict.values()[ind]]    
         
+    def reverseTranslateDict(self): 
+        indDict = {}
+
+        for key, value in self.idDict.items(): 
+            indDict[value] = key
+        
+        return indDict
+        
     def getArray(self): 
         return numpy.array(self.inds)
         

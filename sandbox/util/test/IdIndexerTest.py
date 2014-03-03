@@ -42,6 +42,12 @@ class IdIndexerTest(unittest.TestCase):
         
         self.assertEquals(self.indexer.reverseTranslate([2,1,0]), ["mark", "james", "john"])
         
+    def testReverseTranslateDict(self):        
+        indDict = self.indexer.reverseTranslateDict()    
+        
+        for i in range(len(self.indexer.getIdDict())): 
+            self.assertEquals(self.indexer.append(indDict[i]), i)
+        
       
 if __name__ == '__main__':
     unittest.main()
