@@ -310,7 +310,7 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
         
     #Write exact computation of dtheta/dvj     
     for j in colInds:
-        deltaTheta = scale(V, j, lmbda*m, k)
+        deltaTheta = scale(V, j, lmbda*rowInds.shape[0], k)
         #inds2 = numpy.array(numpy.unique(numpy.random.randint(0, m, numRowSamples)), numpy.uint)
         #inds2 = numpy.array(numpy.arange(m), numpy.uint)
          
@@ -320,8 +320,6 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
             numOmegaBari = n-numOmegai
             
             ri = r[i]
-            #riExp = exp(r[i])
-            
             betaScale = 0
             deltaBeta = numpy.zeros(k, numpy.float)
             
@@ -362,6 +360,7 @@ def updateVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
             plusEquals1d(deltaTheta, -deltaBeta, k)
         
         #Normalise gradient vector 
+        deltaTheta = deltaTheta/rowInds.shape[0]
         deltaTheta = deltaTheta/numpy.linalg.norm(deltaTheta)
         plusEquals(V, j, -sigma*deltaTheta, k)
         
