@@ -621,8 +621,7 @@ class SparseUtils(object):
             for i in range(X.shape[0]): 
                 omegaList.append(numpy.array(X[i, :].nonzero()[1], numpy.uint))
         else: 
-            for i in range(X.shape[0]): 
-                omegaList.append(numpy.array(X[i, :].nonzero()[0], numpy.uint))
+            omegaList = X.nonzeroRows()
         return omegaList 
 
     kmaxMultiplier = 15
