@@ -1,4 +1,5 @@
 import numpy 
+import logging
 from sandbox.util.Util import Util 
 from sandbox.util.SparseUtils import SparseUtils 
 from sandbox.util.SparseUtilsCython import SparseUtilsCython 
@@ -63,8 +64,9 @@ class MCEvaluator(object):
             omegaList = SparseUtils.getOmegaList(X)
         
         precisions = numpy.zeros(X.shape[0])
+        scoreInds = scoreInds[:, 0:k]
         precisions = SparseUtilsCython.precisionAtk(omegaList, scoreInds)
-
+        
         if verbose: 
             return precisions.mean(), scoreInds
         else: 
@@ -80,6 +82,7 @@ class MCEvaluator(object):
         scoreInds = numpy.zeros((U.shape[0], k), numpy.int32)
 
         for j in range(numBlocks):
+            logging.debug("Block " + str(j) + " of " + str(numBlocks))
             endInd = min(U.shape[0], (j+1)*blocksize)
             scores = U[j*blocksize:endInd, :].dot(V.T)     
             scoreInds[j*blocksize:endInd, :] = Util.argmaxN(scores, k)
