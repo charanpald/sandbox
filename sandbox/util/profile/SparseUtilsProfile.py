@@ -5,7 +5,7 @@ import sys
 import scipy.sparse.linalg
 import scipy.io
 from sandbox.util.ProfileUtils import ProfileUtils
-from exp.util.SparseUtils import SparseUtils
+from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.PathDefaults import PathDefaults 
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -59,7 +59,19 @@ class SparseUtilsProfile(object):
         
         ProfileUtils.profile('SparseUtils.submatrix(X, inds)', globals(), locals()) 
 
+    def profileGetOmegaList(self): 
+        shape = (20000, 15000) 
+        r = 50
+        k = 1000000
+    
+        X = SparseUtils.generateSparseLowRank(shape, r, k)  
+        import sppy 
+        X = sppy.csarray(X)
+        
+        ProfileUtils.profile('SparseUtils.getOmegaList(X)', globals(), locals()) 
+
 profiler = SparseUtilsProfile()
 #profiler.profilePropackSvd()
 #profiler.profileArpackSvd()
-profiler.profileSubmatrix()
+#profiler.profileSubmatrix()
+profiler.profileGetOmegaList()
