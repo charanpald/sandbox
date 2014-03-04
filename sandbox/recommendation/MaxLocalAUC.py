@@ -97,7 +97,7 @@ class MaxLocalAUC(object):
         self.rhos = numpy.flipud(numpy.logspace(-3, -1, 11)*2) 
         
         #Learning rate selection 
-        self.alphas = numpy.linspace(0.1, 100.0, 10)
+        self.alphas = numpy.linspace(0.1, 10.0, 10)
         self.t0s = 10.0**numpy.arange(-5, 0)
     
     def getLambda(self, X): 
@@ -166,6 +166,7 @@ class MaxLocalAUC(object):
                 printStr = "Iteration: " + str(ind)
                 printStr += " local AUC~" + str(trainAucs[-1]) + " objective~" + str(objs[-1])
                 printStr += " ||dU||=" + str(normDeltaU) + " " + "||dV||=" + str(normDeltaV)
+                printStr += " sigma=" + str(self.sigma)
                 logging.debug(printStr)
             
             if self.stochastic: 
