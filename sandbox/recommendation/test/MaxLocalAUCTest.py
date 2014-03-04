@@ -79,6 +79,7 @@ class MaxLocalAUCTest(unittest.TestCase):
                     obj2 = maxLocalAuc.objective(X, tempU, V, omegaList, r)
                     
                     deltaU2[i,j] = (obj1-obj2)/(2*eps)
+                deltaU2[i,:] = deltaU2[i,:]/numpy.linalg.norm(deltaU2[i,:])
                     
             #print(deltaU.T*10)
             #print(deltaU2.T*10)                      
@@ -125,6 +126,7 @@ class MaxLocalAUCTest(unittest.TestCase):
                     obj2 = maxLocalAuc.objective(X, U, tempV, omegaList, r)
                     
                     deltaV2[i,j] = (obj1-obj2)/(2*eps)
+                deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])
              
             #print(deltaV.T*10)
             #print(deltaV2.T*10)                   

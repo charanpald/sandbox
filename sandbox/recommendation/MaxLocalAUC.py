@@ -8,7 +8,7 @@ import scipy.sparse
 from math import exp
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
-from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, updateVApprox, updateUApprox, objectiveApprox, localAUCApprox, updateV, updateU
+from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, updateUVApprox, objectiveApprox, localAUCApprox, updateV, updateU
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.Util import Util 
 from sandbox.data.Standardiser import Standardiser 
@@ -104,7 +104,7 @@ class MaxLocalAUC(object):
         
         self.recordStep = 20
         self.numRowSamples = 50
-        self.numColSamples = 50
+        self.numStepIterations = 10
         self.numAucSamples = 100
         self.maxIterations = 1000
         self.initialAlg = "rand"
@@ -188,24 +188,8 @@ class MaxLocalAUC(object):
             
             U  = numpy.ascontiguousarray(U)
             r = SparseUtilsCython.computeR(U, V, 1-self.u, self.numAucSamples)
-            
-            #paramList = []
-            #for j in range(self.numProcesses): 
-            #    paramList.append((X, U, V, omegaList, self.numRowSamples, self.numColSamples, self.numAucSamples, self.sigma, self.getLambda(X), r))
-                
-            #pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-            #resultsIterator = pool.imap(updateUV, paramList, self.chunkSize)
-            #import itertools
-            #resultsIterator = itertools.imap(updateUV, paramList)
-            
-            #for deltaU, deltaV in resultsIterator: 
-            #    U -= deltaU
-            #    V -= deltaV
-                
-            #pool.terminate()
-            
-            self.updateU(X, U, V, omegaList, r)            
-            self.updateV(X, lastU, V, omegaList, r)
+                        
+            self.updateUV(X, U, V, omegaList, r)            
 
             normDeltaU = numpy.linalg.norm(U - lastU)
             normDeltaV = numpy.linalg.norm(V - lastV)               
@@ -233,38 +217,30 @@ class MaxLocalAUC(object):
         else: 
             return U, V
         
-    def updateU(self, X, U, V, omegaList, r): 
+    def updateUV(self, X, U, V, omegaList, r): 
         """
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic:                 
             lmbda = self.getLambda(X)
             updateU(X, U, V, omegaList, self.k, self.sigma, lmbda, r, self.project)
+            updateV(X, U, V, omegaList, self.k, self.sigma, lmbda, r, self.project)
         else: 
-            rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
-            updateUApprox(X, U, V, omegaList, rowInds, self.numAucSamples, self.sigma, self.getLambda(X), r, self.nu, self.nuBar, self.project)
+            lmbda = self.getLambda(X)
+            updateUVApprox(X, U, V, omegaList, self.sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, lmbda, r, self.nu, self.project)
         
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, r): 
         """
         delta phi/delta u_i
         """
-        return derivativeUi(X, U, V, omegaList, i, self.k, self.getLambda(X), r)
+        return derivativeUi(X, U, V, omegaList, i, self.getLambda(X), r)
         
-    def updateV(self, X, U, V, omegaList, r): 
-        """
-        Find the derivative with respect to V or part of it. 
-        """
-        if not self.stochastic: 
-            lmbda = self.getLambda(X)
-            updateV(X, U, V, omegaList, self.k, self.sigma, lmbda, r, self.project)
-        else: 
-            rowInds = numpy.array(numpy.random.randint(X.shape[0], size=self.numRowSamples), numpy.uint)
-            colInds = numpy.array(numpy.random.randint(X.shape[1], size=self.numColSamples), numpy.uint)
-            updateVApprox(X, U, V, omegaList, rowInds, colInds, self.numAucSamples, self.sigma, self.getLambda(X), r, self.nu, self.nuBar, self.project)
-
     def derivativeVi(self, X, U, V, omegaList, i, r): 
-        return derivativeVi(X, U, V, omegaList, i, self.k, self.getLambda(X), r)           
+        """
+        delta phi/delta v_i
+        """
+        return derivativeVi(X, U, V, omegaList, i, self.getLambda(X), r)           
 
     #@profile
     def objective(self, X, U, V, omegaList, r):         
@@ -441,7 +417,7 @@ class MaxLocalAUC(object):
     
     def __str__(self): 
         outputStr = "MaxLocalAUC: rho=" + str(self.rho) + " k=" + str(self.k) + " sigma=" + str(self.sigma) + " eps=" + str(self.eps) 
-        outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numColSamples=" + str(self.numColSamples)
+        outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numStepIterations=" + str(self.numStepIterations)
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " u=" + str(self.u) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
         
