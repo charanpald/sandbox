@@ -68,5 +68,5 @@ class MaxLocalAUCProfile(object):
         
 
 profiler = MaxLocalAUCProfile()
-profiler.profileLearnModel()  
-#profiler.profileLearnModel2()
+#profiler.profileLearnModel()  
+profiler.profileLearnModel2()

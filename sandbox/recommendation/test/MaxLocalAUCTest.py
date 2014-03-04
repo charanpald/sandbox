@@ -181,6 +181,14 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         print(maxLocalAuc)
 
+    def testCopy(self): 
+        u= 0.1
+        rho = 0.001
+        eps = 0.001
+        k = 10 
+        maxLocalAuc = MaxLocalAUC(rho, k, u, sigma=5.0, eps=eps)
+        maxLocalAuc.copy()
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()

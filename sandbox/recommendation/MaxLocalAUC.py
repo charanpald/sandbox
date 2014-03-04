@@ -13,23 +13,6 @@ from sandbox.util.Sampling import Sampling
 from sandbox.util.Util import Util 
 from sandbox.data.Standardiser import Standardiser 
 
-def updateUV(args): 
-    X, U, V, omegaList, numRowSamples, numColSamples, numAucSamples, sigma, lmbda, r  = args   
-    
-    lastU = U.copy()
-    lastV = V.copy()
-    
-    rowInds = numpy.array(numpy.random.randint(X.shape[0], size=numRowSamples), numpy.uint)
-    updateUApprox(X, U, V, omegaList, rowInds, numAucSamples, sigma, lmbda, r)
-    deltaU = U - lastU
-
-    rowInds = numpy.array(numpy.random.randint(X.shape[0], size=numRowSamples), numpy.uint)
-    colInds = numpy.array(numpy.random.randint(X.shape[1], size=numColSamples), numpy.uint)
-    updateVApprox(X, U, V, omegaList, rowInds, colInds, numAucSamples, sigma, lmbda, r)
-    deltaV = V - lastV
-    
-    return deltaU, deltaV
-
 
 def computeObjective(args): 
     numpy.random.seed(21)
@@ -99,12 +82,11 @@ class MaxLocalAUC(object):
         self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
         
         self.nu = 20.0 
-        self.nuBar = 1.0
         self.project = True
         
         self.recordStep = 20
         self.numRowSamples = 50
-        self.numStepIterations = 10
+        self.numStepIterations = 20
         self.numAucSamples = 100
         self.maxIterations = 1000
         self.initialAlg = "rand"
@@ -115,7 +97,7 @@ class MaxLocalAUC(object):
         self.rhos = numpy.flipud(numpy.logspace(-3, -1, 11)*2) 
         
         #Learning rate selection 
-        self.alphas = numpy.linspace(0.1, 100.0, 5)
+        self.alphas = numpy.linspace(0.1, 100.0, 10)
         self.t0s = 10.0**numpy.arange(-5, 0)
     
     def getLambda(self, X): 
@@ -134,25 +116,7 @@ class MaxLocalAUC(object):
             testOmegaList = SparseUtils.getOmegaList(testX)
 
         if U==None or V==None:
-            if self.initialAlg == "rand": 
-                U = numpy.random.rand(m, self.k)
-                V = numpy.random.rand(n, self.k)
-            elif self.initialAlg == "ones": 
-                U = numpy.ones((m, self.k))
-                V = numpy.ones((n, self.k))
-            elif self.initialAlg == "svd":
-                logging.debug("Initialising with SVD")
-                try: 
-                    U, s, V = SparseUtils.svdPropack(X, self.k, kmax=numpy.min([self.k*15, m-1, n-1]))
-                except ImportError: 
-                    U, s, V = SparseUtils.svdArpack(X, self.k)
-                U = numpy.ascontiguousarray(U)
-                V = numpy.ascontiguousarray(V)
-            else:
-                raise ValueError("Unknown initialisation: " + str(self.initialAlg))
-        
-        U = Standardiser().normaliseArray(U.T).T    
-        V = Standardiser().normaliseArray(V.T).T 
+            U, V = self.initUV(X)
         
         lastU = numpy.random.rand(m, self.k)
         lastV = numpy.random.rand(n, self.k)
@@ -164,8 +128,7 @@ class MaxLocalAUC(object):
         testAucs = []
         
         ind = 0
-        r = SparseUtilsCython.computeR(U, V, 1-self.u, self.numAucSamples)
-
+        
         #Convert to a csarray for faster access 
         if scipy.sparse.issparse(X):
             logging.debug("Converting to csarray")
@@ -187,14 +150,14 @@ class MaxLocalAUC(object):
                 raise ValueError("Invalid rate: " + self.rate)
             
             U  = numpy.ascontiguousarray(U)
-            r = SparseUtilsCython.computeR(U, V, 1-self.u, self.numAucSamples)
-                        
-            self.updateUV(X, U, V, omegaList, r)            
+            
+            self.updateUV(X, U, V, omegaList)            
 
             normDeltaU = numpy.linalg.norm(U - lastU)
             normDeltaV = numpy.linalg.norm(V - lastV)               
                 
             if ind % self.recordStep == 0: 
+                r = SparseUtilsCython.computeR(U, V, 1-self.u, self.numAucSamples)
                 objs.append(objectiveApprox(X, U, V, omegaList, self.numAucSamples, self.getLambda(X), r))
                 trainAucs.append(localAUCApprox(X, U, V, omegaList, self.numAucSamples, r))
                 
@@ -205,7 +168,10 @@ class MaxLocalAUC(object):
                 printStr += " ||dU||=" + str(normDeltaU) + " " + "||dV||=" + str(normDeltaV)
                 logging.debug(printStr)
             
-            ind += 1
+            if self.stochastic: 
+                ind += self.numStepIterations
+            else: 
+                ind += 1
             
         totalTime = time.time() - startTime
         logging.debug("||dU||=" + str(normDeltaU) + " " + "||dV||=" + str(normDeltaV))
@@ -217,17 +183,41 @@ class MaxLocalAUC(object):
         else: 
             return U, V
         
-    def updateUV(self, X, U, V, omegaList, r): 
+    def initUV(self, X): 
+        m = X.shape[0]
+        n = X.shape[1]        
+        
+        if self.initialAlg == "rand": 
+            U = numpy.random.rand(m, self.k)
+            V = numpy.random.rand(n, self.k)
+        elif self.initialAlg == "svd":
+            logging.debug("Initialising with SVD")
+            try: 
+                U, s, V = SparseUtils.svdPropack(X, self.k, kmax=numpy.min([self.k*15, m-1, n-1]))
+            except ImportError: 
+                U, s, V = SparseUtils.svdArpack(X, self.k)
+            U = numpy.ascontiguousarray(U)
+            V = numpy.ascontiguousarray(V)
+        else:
+            raise ValueError("Unknown initialisation: " + str(self.initialAlg))  
+            
+        U = Standardiser().normaliseArray(U.T).T    
+        V = Standardiser().normaliseArray(V.T).T 
+        
+        return U, V
+        
+    def updateUV(self, X, U, V, omegaList): 
         """
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic:                 
             lmbda = self.getLambda(X)
+            r = SparseUtilsCython.computeR(U, V, 1-self.u, self.numAucSamples)
             updateU(X, U, V, omegaList, self.k, self.sigma, lmbda, r, self.project)
             updateV(X, U, V, omegaList, self.k, self.sigma, lmbda, r, self.project)
         else: 
             lmbda = self.getLambda(X)
-            updateUVApprox(X, U, V, omegaList, self.sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, lmbda, r, self.nu, self.project)
+            updateUVApprox(X, U, V, omegaList, self.sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, lmbda, self.u, self.nu, self.project)
         
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, r): 
@@ -328,11 +318,7 @@ class MaxLocalAUC(object):
         
         paramList = []      
         
-        U = numpy.random.rand(m, self.k)
-        V = numpy.random.rand(n, self.k)
-        
-        U = Standardiser().normaliseArray(U.T).T    
-        V = Standardiser().normaliseArray(V.T).T 
+        U, V = self.initUV(X)
                     
         for i, t0 in enumerate(self.t0s): 
             for j, alpha in enumerate(self.alphas): 
@@ -344,7 +330,7 @@ class MaxLocalAUC(object):
         pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
         resultsIterator = pool.imap(computeObjective, paramList, self.chunkSize)
         #import itertools
-        #resultsIterator = itertools.imap(localAucsRhos, paramList)
+        #resultsIterator = itertools.imap(computeObjective, paramList)
         
         for i, t0 in enumerate(self.t0s): 
             for j, alpha in enumerate(self.alphas):  
@@ -435,7 +421,7 @@ class MaxLocalAUC(object):
         
         maxLocalAuc.recordStep = self.recordStep
         maxLocalAuc.numRowSamples = self.numRowSamples
-        maxLocalAuc.numColSamples = self.numColSamples
+        maxLocalAuc.numStepIterations = self.numStepIterations
         maxLocalAuc.numAucSamples = self.numAucSamples
         maxLocalAuc.maxIterations = self.maxIterations
         maxLocalAuc.initialAlg = self.initialAlg
