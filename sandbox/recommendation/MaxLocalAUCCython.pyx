@@ -3,6 +3,7 @@ import cython
 from cython.parallel import parallel, prange
 cimport numpy
 import numpy
+from sandbox.util.SparseUtilsCython import SparseUtilsCython
 
 cdef extern from "math.h":
     double exp(double x)
@@ -363,23 +364,29 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     return deltaTheta
 
 
-def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, double sigma, unsigned int numIterations, unsigned int numRowSamples, unsigned int numAucSamples, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, bint project): 
+def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, double sigma, unsigned int numIterations, unsigned int numRowSamples, unsigned int numAucSamples, double lmbda, double u, double nu, bint project): 
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1]    
     cdef unsigned int k = U.shape[1] 
-    cdef unsigned int i, j
+    cdef numpy.ndarray[double, ndim=1, mode="c"] r = SparseUtilsCython.computeR(U, V, 1-u, numAucSamples) 
+    cdef unsigned int i, j, s
     
-    for j in range(numIterations):
+    for s in range(numIterations):
         i = numpy.random.randint(m)
         dUi = derivativeUiApprox(X, U, V, omegaList, i, numAucSamples, lmbda, r, nu)
-        dVi = derivativeViApprox(X, U, V, omegaList, i, numRowSamples, numAucSamples, lmbda, r, nu)
-        
         plusEquals(U, i, -sigma*dUi, k)
-        plusEquals(V, i, -sigma*dVi, k)        
-            
+        
         if project:
-            U[i,:] = scale(U, i, 1/numpy.linalg.norm(U[i,:]), k)
-            V[i,:] = scale(V, i, 1/numpy.linalg.norm(V[i,:]), k) 
+            U[i,:] = scale(U, i, 1/numpy.linalg.norm(U[i,:]), k)        
+        
+        j = numpy.random.randint(n)
+        dVi = derivativeViApprox(X, U, V, omegaList, j, numRowSamples, numAucSamples, lmbda, r, nu)
+        plusEquals(V, j, -sigma*dVi, k)        
+            
+        if project: 
+            V[j,:] = scale(V, j, 1/numpy.linalg.norm(V[j,:]), k)
+            
+        r = SparseUtilsCython.computeR(U, V, 1-u, numAucSamples) 
     
 def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):         
     cdef double obj = 0 
