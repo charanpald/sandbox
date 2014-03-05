@@ -39,11 +39,13 @@ class IdIndexer(object):
         """
         Take an index and convert back into the ID
         """
+        reverseDict = self.reverseTranslateDict()  
+        
         try: 
             iter(ind)
             itemList = []
             for item in ind: 
-                itemList.append(self.idDict.keys()[self.idDict.values()[item]]) 
+                itemList.append(reverseDict[item]) 
             return itemList 
         except TypeError: 
             return self.idDict.keys()[self.idDict.values()[ind]]    
