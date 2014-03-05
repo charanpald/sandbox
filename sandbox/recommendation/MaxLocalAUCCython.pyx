@@ -119,6 +119,7 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     return deltaTheta
 
 def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int k, double sigma, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, bint project): 
+def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, double sigma, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, bint project): 
     """
     Compute the full gradient descent update of U
     """    
@@ -126,6 +127,7 @@ def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, 
     cdef numpy.ndarray[numpy.float_t, ndim=2, mode="c"] dU = numpy.zeros((U.shape[0], U.shape[1]), numpy.float)
     cdef unsigned int i 
     cdef unsigned int m = X.shape[0]
+    cdef unsigned int k = U.shape[1]
     
     for i in range(m): 
         dU[i, :] = derivativeUi(X, U, V, omegaList, i, lmbda, r, nu) 
@@ -274,12 +276,14 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
  
 
 def updateV(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int k, double sigma, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, bint project): 
+def updateV(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, double sigma, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, bint project): 
     """
     Compute the full gradient descent update of V
     """
     cdef numpy.ndarray[numpy.float_t, ndim=2, mode="c"] dV = numpy.zeros((V.shape[0], V.shape[1]), numpy.float)
     cdef unsigned int i 
     cdef unsigned int n = X.shape[1]
+    cdef unsigned int k = V.shape[1]
     
     for i in range(n): 
         dV[i, :] = derivativeVi(X, U, V, omegaList, i, lmbda, r, nu) 
