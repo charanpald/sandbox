@@ -47,7 +47,7 @@ def localAucsRhos(args):
     return localAucs
       
 class MaxLocalAUC(object): 
-    def __init__(self, rho, k, u, sigma=0.05, eps=0.01, stochastic=False, numProcesses=None): 
+    def __init__(self, rho, k, w, sigma=0.05, eps=0.01, stochastic=False, numProcesses=None): 
         """
         Create an object for  maximising the local AUC with a penalty term using the matrix
         decomposition UV.T 
@@ -56,7 +56,7 @@ class MaxLocalAUC(object):
         
         :param k: The rank of matrices U and V
         
-        :param u: The quantile for the local AUC 
+        :param w: The quantile for the local AUC 
         
         :param sigma: The learning rate 
         
@@ -66,7 +66,7 @@ class MaxLocalAUC(object):
         """
         self.rho = rho
         self.k = k 
-        self.u = u
+        self.w = w
         self.sigma = sigma
         self.eps = eps 
         self.stochastic = stochastic
@@ -150,7 +150,7 @@ class MaxLocalAUC(object):
                 raise ValueError("Invalid rate: " + self.rate)
             
             if ind % self.recordStep == 0: 
-                r = SparseUtilsCython.computeR(U, V, 1-self.u, self.numAucSamples)
+                r = SparseUtilsCython.computeR(U, V, 1-self.w, self.numAucSamples)
                 objs.append(objectiveApprox(X, U, V, omegaList, self.numAucSamples, self.getLambda(X), r))
                 trainAucs.append(localAUCApprox(X, U, V, omegaList, self.numAucSamples, r))
                 
@@ -213,13 +213,16 @@ class MaxLocalAUC(object):
         """
         if not self.stochastic:                 
             lmbda = self.getLambda(X)
-            r = SparseUtilsCython.computeR(U, V, 1-self.u, self.numAucSamples)
+            r = SparseUtilsCython.computeR(U, V, 1-self.w, self.numAucSamples)
             updateU(X, U, V, omegaList, self.k, self.sigma, lmbda, r, self.nu, self.project)
             updateV(X, lastU, V, omegaList, self.k, self.sigma, lmbda, r, self.nu, self.project)
         else: 
             lmbda = self.getLambda(X)
-            updateUVApprox(X, U, V, omegaList, self.sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, lmbda, self.u, self.nu, self.project)
-        
+            updateUVApprox(X, U, V, omegaList, self.sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, lmbda, self.w, self.nu, self.project)
+    
+    def computeConstantR(self, X): 
+        return numpy.ones(X.shape[0])*(1-2*self.w)
+    
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, r): 
         """
@@ -406,13 +409,13 @@ class MaxLocalAUC(object):
         outputStr = "MaxLocalAUC: rho=" + str(self.rho) + " k=" + str(self.k) + " sigma=" + str(self.sigma) + " eps=" + str(self.eps) 
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numStepIterations=" + str(self.numStepIterations)
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
-        outputStr += " u=" + str(self.u) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
+        outputStr += " w=" + str(self.w) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
         outputStr += " nu=" + str(self.nu)
         
         return outputStr 
 
     def copy(self): 
-        maxLocalAuc = MaxLocalAUC(rho=self.rho, k=self.k, u=self.u)
+        maxLocalAuc = MaxLocalAUC(rho=self.rho, k=self.k, w=self.w)
         maxLocalAuc.sigma = self.sigma
         maxLocalAuc.eps = self.eps 
         maxLocalAuc.stochastic = self.stochastic

@@ -91,7 +91,7 @@ class MCEvaluator(object):
         return scoreInds 
         
     @staticmethod 
-    def localAUC(X, U, V, u, omegaList=None, numRowInds=None): 
+    def localAUC(X, U, V, w, omegaList=None, numRowInds=None): 
         """
         Compute the local AUC for the score functions UV^T relative to X with 
         quantile 1-u. 
@@ -102,7 +102,7 @@ class MCEvaluator(object):
         #For now let's compute the full matrix 
         Z = U.dot(V.T)
         
-        r = SparseUtilsCython.computeR(U, V, 1-u, numRowInds)
+        r = SparseUtilsCython.computeR(U, V, 1-w, numRowInds)
         
         if omegaList==None: 
             omegaList = SparseUtils.getOmegaList(X)
