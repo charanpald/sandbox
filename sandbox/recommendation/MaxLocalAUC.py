@@ -78,7 +78,7 @@ class MaxLocalAUC(object):
         
         #Optimal rate doesn't seem to work 
         self.rate = "constant"
-        self.alpha = 0.1 #Initial learning rate 
+        self.alpha = sigma #Initial learning rate 
         self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
         
         self.nu = 20.0 
@@ -149,13 +149,6 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
             
-            U  = numpy.ascontiguousarray(U)
-            
-            self.updateUV(X, U, V, omegaList)            
-
-            normDeltaU = numpy.linalg.norm(U - lastU)
-            normDeltaV = numpy.linalg.norm(V - lastV)               
-                
             if ind % self.recordStep == 0: 
                 r = SparseUtilsCython.computeR(U, V, 1-self.u, self.numAucSamples)
                 objs.append(objectiveApprox(X, U, V, omegaList, self.numAucSamples, self.getLambda(X), r))
@@ -169,6 +162,13 @@ class MaxLocalAUC(object):
                 printStr += " sigma=" + str(self.sigma)
                 logging.debug(printStr)
             
+            U  = numpy.ascontiguousarray(U)
+            
+            self.updateUV(X, U, V, lastU, lastV, omegaList)            
+
+            normDeltaU = numpy.linalg.norm(U - lastU)
+            normDeltaV = numpy.linalg.norm(V - lastV)               
+                            
             if self.stochastic: 
                 ind += self.numStepIterations
             else: 
@@ -207,15 +207,15 @@ class MaxLocalAUC(object):
         
         return U, V
         
-    def updateUV(self, X, U, V, omegaList): 
+    def updateUV(self, X, U, V, lastU, lastV, omegaList): 
         """
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic:                 
             lmbda = self.getLambda(X)
             r = SparseUtilsCython.computeR(U, V, 1-self.u, self.numAucSamples)
-            updateU(X, U, V, omegaList, self.k, self.sigma, lmbda, r, self.project)
-            updateV(X, U, V, omegaList, self.k, self.sigma, lmbda, r, self.project)
+            updateU(X, U, V, omegaList, self.k, self.sigma, lmbda, r, self.nu, self.project)
+            updateV(X, lastU, V, omegaList, self.k, self.sigma, lmbda, r, self.nu, self.project)
         else: 
             lmbda = self.getLambda(X)
             updateUVApprox(X, U, V, omegaList, self.sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, lmbda, self.u, self.nu, self.project)
@@ -225,13 +225,13 @@ class MaxLocalAUC(object):
         """
         delta phi/delta u_i
         """
-        return derivativeUi(X, U, V, omegaList, i, self.getLambda(X), r)
+        return derivativeUi(X, U, V, omegaList, i, self.getLambda(X), r, self.nu)
         
     def derivativeVi(self, X, U, V, omegaList, i, r): 
         """
         delta phi/delta v_i
         """
-        return derivativeVi(X, U, V, omegaList, i, self.getLambda(X), r)           
+        return derivativeVi(X, U, V, omegaList, i, self.getLambda(X), r, self.nu)           
 
     #@profile
     def objective(self, X, U, V, omegaList, r):         
@@ -407,6 +407,7 @@ class MaxLocalAUC(object):
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numStepIterations=" + str(self.numStepIterations)
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " u=" + str(self.u) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
+        outputStr += " nu=" + str(self.nu)
         
         return outputStr 
 
