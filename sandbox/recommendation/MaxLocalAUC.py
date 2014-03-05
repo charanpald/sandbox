@@ -137,15 +137,11 @@ class MaxLocalAUC(object):
         
         startTime = time.time()
     
-        while (normDeltaU > self.eps or normDeltaV > self.eps) and ind < self.maxIterations: 
-            lastU = U.copy() 
-            lastV = V.copy() 
-            
+        while (normDeltaU > self.eps or normDeltaV > self.eps) and ind < self.maxIterations:             
             if self.rate == "constant": 
                 pass
             elif self.rate == "optimal":
                 self.sigma = self.alpha/((1 + self.alpha*self.t0*ind))
-                #logging.debug("sigma=" + str(self.sigma))
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
             
@@ -161,6 +157,9 @@ class MaxLocalAUC(object):
                 printStr += " ||dU||=" + str(normDeltaU) + " " + "||dV||=" + str(normDeltaV)
                 printStr += " sigma=" + str(self.sigma)
                 logging.debug(printStr)
+
+            lastU = U.copy() 
+            lastV = V.copy() 
             
             U  = numpy.ascontiguousarray(U)
             
@@ -213,9 +212,10 @@ class MaxLocalAUC(object):
         """
         if not self.stochastic:                 
             lmbda = self.getLambda(X)
+            #r = self.computeConstantR(X)
             r = SparseUtilsCython.computeR(U, V, 1-self.w, self.numAucSamples)
-            updateU(X, U, V, omegaList, self.k, self.sigma, lmbda, r, self.nu, self.project)
-            updateV(X, lastU, V, omegaList, self.k, self.sigma, lmbda, r, self.nu, self.project)
+            updateU(X, U, V, omegaList, self.sigma, lmbda, r, self.nu, self.project)
+            updateV(X, U, V, omegaList, self.sigma, lmbda, r, self.nu, self.project)
         else: 
             lmbda = self.getLambda(X)
             updateUVApprox(X, U, V, omegaList, self.sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, lmbda, self.w, self.nu, self.project)
