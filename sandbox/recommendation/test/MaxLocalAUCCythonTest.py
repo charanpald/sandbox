@@ -3,6 +3,7 @@ import sys
 from sandbox.recommendation.MaxLocalAUCCython import localAUCApprox, derivativeUiApprox, derivativeUi, derivativeViApprox, derivativeVi
 from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC 
 from sandbox.util.SparseUtils import SparseUtils
+from sandbox.util.SparseUtilsCython import SparseUtilsCython 
 import numpy
 import unittest
 import logging
@@ -80,10 +81,11 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         X = X/X
 
-        r = numpy.ones(m)*0
+        numAucSamplesR = 100 
+        w = 0.1
         rho = 0.0
         eps = 0.001
-        maxLocalAuc = MaxLocalAUC(rho, k, r, eps=eps)
+        maxLocalAuc = MaxLocalAUC(rho, k, w, eps=eps)
         maxLocalAuc.numAucSamples = m*n
         maxLocalAuc.sigma = 1
         maxLocalAuc.iterationsPerUpdate = m
@@ -91,13 +93,14 @@ class MaxLocalAUCTest(unittest.TestCase):
         omegaList = SparseUtils.getOmegaList(X) 
         
         U = numpy.random.rand(X.shape[0], k)
-        V = numpy.random.rand(X.shape[1], k)   
+        V = numpy.random.rand(X.shape[1], k)
+        r =  SparseUtilsCython.computeR(U, V, 1-w, numAucSamplesR)
 
         #Let's compare against using the exact derivative 
         for i in range(X.shape[0]): 
             du1 = derivativeUiApprox(X, U, V, omegaList, i, maxLocalAuc.numAucSamples, maxLocalAuc.getLambda(X), r, 1)
-            du2 = derivativeUi(X, U, V, omegaList, i, maxLocalAuc.getLambda(X), r, 1)
-            self.assertTrue(numpy.linalg.norm(du1 - du2) < 0.1)
+            du2 = derivativeUi(X, U, V, omegaList, i, maxLocalAuc.getLambda(X), r, 1)       
+            self.assertTrue(numpy.linalg.norm(du1 - du2) < 0.15)
             
         maxLocalAuc.rho = 0.1
         errors = numpy.zeros(m)     
@@ -108,10 +111,19 @@ class MaxLocalAUCTest(unittest.TestCase):
             errors[i] = numpy.linalg.norm(du1 - du2)
             #self.assertTrue(numpy.linalg.norm(du1 - du2) < 0.1)
 
-        self.assertTrue((errors < 0.1).sum() < n*3/4.0)        
+        self.assertTrue((errors < 0.1).sum() < n*3/4.0)       
+        
+        nu = 5
+        errors = numpy.zeros(m)     
+        
+        for i in range(X.shape[0]): 
+            du1 = derivativeUiApprox(X, U, V, omegaList, i, maxLocalAuc.numAucSamples, maxLocalAuc.getLambda(X), r, nu)
+            du2 = derivativeUi(X, U, V, omegaList, i, maxLocalAuc.getLambda(X), r, nu)
+            errors[i] = numpy.linalg.norm(du1 - du2)
+            #self.assertTrue(numpy.linalg.norm(du1 - du2) < 0.1)
         
     #@unittest.skip("")
-    def testUpdateVApprox(self): 
+    def testDerivativeViApprox(self): 
         """
         We'll test the case in which we approximate using a large number of samples 
         for the AUC and see if we get close to the exact derivative 
@@ -124,10 +136,12 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         X = X/X
 
-        r = numpy.ones(m)*0
+        w = 0.1
+        numAucSamplesR = 100
+        
         rho = 0.0
         eps = 0.001
-        maxLocalAuc = MaxLocalAUC(rho, k, r, eps=eps)
+        maxLocalAuc = MaxLocalAUC(rho, k, w, eps=eps)
         maxLocalAuc.numAucSamples = 30
         maxLocalAuc.numRowSamples = m
         maxLocalAuc.sigma = 1
@@ -137,6 +151,8 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         U = numpy.random.rand(X.shape[0], k)
         V = numpy.random.rand(X.shape[1], k)   
+
+        r =  SparseUtilsCython.computeR(U, V, 1-w, numAucSamplesR)        
 
         errors = numpy.zeros(n)        
         
@@ -156,6 +172,16 @@ class MaxLocalAUCTest(unittest.TestCase):
         for i in range(n): 
             dv1 = derivativeViApprox(X, U, V, omegaList, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.getLambda(X), r, 1)
             dv2 = derivativeVi(X, U, V, omegaList, i, maxLocalAuc.getLambda(X), r, 1)
+            errors[i] += numpy.linalg.norm(dv1 - dv2)
+      
+        self.assertTrue((errors < 0.1).sum() < n*3/4.0)
+    
+        nu = 5 
+        errors = numpy.zeros(n)
+        
+        for i in range(n): 
+            dv1 = derivativeViApprox(X, U, V, omegaList, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.getLambda(X), r, nu)
+            dv2 = derivativeVi(X, U, V, omegaList, i, maxLocalAuc.getLambda(X), r, nu)
             errors[i] += numpy.linalg.norm(dv1 - dv2)
       
         self.assertTrue((errors < 0.1).sum() < n*3/4.0)
