@@ -96,7 +96,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         #Let's compare against using the exact derivative 
         for i in range(X.shape[0]): 
             du1 = derivativeUiApprox(X, U, V, omegaList, i, maxLocalAuc.numAucSamples, maxLocalAuc.getLambda(X), r, 1)
-            du2 = derivativeUi(X, U, V, omegaList, i, maxLocalAuc.getLambda(X), r)
+            du2 = derivativeUi(X, U, V, omegaList, i, maxLocalAuc.getLambda(X), r, 1)
             self.assertTrue(numpy.linalg.norm(du1 - du2) < 0.1)
             
         maxLocalAuc.rho = 0.1
@@ -104,7 +104,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         for i in range(X.shape[0]): 
             du1 = derivativeUiApprox(X, U, V, omegaList, i, maxLocalAuc.numAucSamples, maxLocalAuc.getLambda(X), r, 1)
-            du2 = derivativeUi(X, U, V, omegaList, i, maxLocalAuc.getLambda(X), r)
+            du2 = derivativeUi(X, U, V, omegaList, i, maxLocalAuc.getLambda(X), r, 1)
             errors[i] = numpy.linalg.norm(du1 - du2)
             #self.assertTrue(numpy.linalg.norm(du1 - du2) < 0.1)
 
@@ -145,7 +145,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         #So check if most errors are small 
         for i in range(n): 
             dv1 = derivativeViApprox(X, U, V, omegaList, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.getLambda(X), r, 1)
-            dv2 = derivativeVi(X, U, V, omegaList, i, maxLocalAuc.getLambda(X), r)
+            dv2 = derivativeVi(X, U, V, omegaList, i, maxLocalAuc.getLambda(X), r, 1)
             errors[i] += numpy.linalg.norm(dv1 - dv2)
       
         self.assertTrue((errors < 0.1).sum() < n*3/4.0)
@@ -155,7 +155,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         for i in range(n): 
             dv1 = derivativeViApprox(X, U, V, omegaList, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.getLambda(X), r, 1)
-            dv2 = derivativeVi(X, U, V, omegaList, i, maxLocalAuc.getLambda(X), r)
+            dv2 = derivativeVi(X, U, V, omegaList, i, maxLocalAuc.getLambda(X), r, 1)
             errors[i] += numpy.linalg.norm(dv1 - dv2)
       
         self.assertTrue((errors < 0.1).sum() < n*3/4.0)

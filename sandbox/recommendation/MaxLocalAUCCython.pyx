@@ -68,7 +68,7 @@ cdef unsigned int getNonZeroRow(X, unsigned int i, unsigned int n):
     return q
 
 @cython.boundscheck(False)
-def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
+def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu): 
     """
     delta phi/delta u_i
     """
@@ -99,7 +99,7 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
         
         for q in omegaBari: 
             uivq = dot(U, i, V, q, k)
-            gamma = exp(-uivp+uivq)
+            gamma = exp(nu*(uivq - uivp))
             onePlusGamma = 1+gamma
             onePlusGammaSq = square(onePlusGamma)
             
@@ -118,7 +118,7 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     
     return deltaTheta
 
-def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int k, double sigma, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, bint project): 
+def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int k, double sigma, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, bint project): 
     """
     Compute the full gradient descent update of U
     """    
@@ -128,7 +128,7 @@ def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, 
     cdef unsigned int m = X.shape[0]
     
     for i in range(m): 
-        dU[i, :] = derivativeUi(X, U, V, omegaList, i, lmbda, r) 
+        dU[i, :] = derivativeUi(X, U, V, omegaList, i, lmbda, r, nu) 
     
     U -= sigma*dU
     
@@ -197,7 +197,7 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
 
 
 @cython.boundscheck(False)
-def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int j, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r): 
+def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int j, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu): 
     """
     delta phi/delta v_j
     """
@@ -237,7 +237,7 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
             
             for q in omegaBari: 
                 uivq = dot(U, i, V, q, k)
-                gamma = exp(-uivp+uivq)
+                gamma = exp(nu*(uivq - uivp))
                 onePlusGamma = 1+gamma
                 
                 denom = onePlusGamma**2 * onePlusKappaSq 
@@ -251,7 +251,7 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
             for p in omegai: 
                 uivp = dot(U, i, V, p, k)
                 
-                gamma = exp(-uivp+uivq)
+                gamma = exp(nu*(uivq - uivp))
                 kappa = exp(-uivp+ri)
                 
                 betaScale -= (gamma/((1+gamma)**2 * (1+kappa)))
@@ -273,7 +273,7 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     return deltaTheta
  
 
-def updateV(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int k, double sigma, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, bint project): 
+def updateV(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int k, double sigma, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, bint project): 
     """
     Compute the full gradient descent update of V
     """
@@ -282,7 +282,7 @@ def updateV(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, 
     cdef unsigned int n = X.shape[1]
     
     for i in range(n): 
-        dV[i, :] = derivativeVi(X, U, V, omegaList, i, lmbda, r) 
+        dV[i, :] = derivativeVi(X, U, V, omegaList, i, lmbda, r, nu) 
     
     V -= sigma*dV
     
@@ -374,20 +374,24 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
     
     for s in range(numIterations):
         i = numpy.random.randint(m)
-        dUi = derivativeUiApprox(X, U, V, omegaList, i, numAucSamples, lmbda, r, nu)
+        #dUi = derivativeUiApprox(X, U, V, omegaList, i, numAucSamples, lmbda, r, nu)
+        dUi = derivativeUi(X, U, V, omegaList, i, lmbda, r, nu)
+        
+        j = numpy.random.randint(n)
+        #dVi = derivativeViApprox(X, U, V, omegaList, j, numRowSamples, numAucSamples, lmbda, r, nu)
+        dVi = derivativeVi(X, U, V, omegaList, j, lmbda, r, nu)
+
         plusEquals(U, i, -sigma*dUi, k)
         
         if project:
-            U[i,:] = scale(U, i, 1/numpy.linalg.norm(U[i,:]), k)        
+            U[i,:] = scale(U, i, 1/numpy.linalg.norm(U[i,:]), k)             
         
-        j = numpy.random.randint(n)
-        dVi = derivativeViApprox(X, U, V, omegaList, j, numRowSamples, numAucSamples, lmbda, r, nu)
         plusEquals(V, j, -sigma*dVi, k)        
             
         if project: 
             V[j,:] = scale(V, j, 1/numpy.linalg.norm(V[j,:]), k)
             
-        r = SparseUtilsCython.computeR(U, V, 1-u, numAucSamplesR) 
+        #r = SparseUtilsCython.computeR(U, V, 1-u, numAucSamplesR) 
     
 def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):         
     cdef double obj = 0 
