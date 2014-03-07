@@ -63,7 +63,6 @@ class MCEvaluator(object):
         if omegaList == None: 
             omegaList = SparseUtils.getOmegaList(X)
         
-        precisions = numpy.zeros(X.shape[0])
         scoreInds = scoreInds[:, 0:k]
         precisions = SparseUtilsCython.precisionAtk(omegaList, scoreInds)
         
@@ -71,6 +70,27 @@ class MCEvaluator(object):
             return precisions.mean(), scoreInds
         else: 
             return precisions.mean()
+
+    @staticmethod 
+    def recallAtK(X, U, V, k, scoreInds=None, omegaList=None, verbose=False): 
+        """
+        Compute the average precision@k score for each row of the predicted matrix UV.T 
+        using real values in X. X is a 0/1 sppy sparse matrix.
+        
+        :param verbose: If true return precision and first k recommendation for each row, otherwise just precisions
+        """
+        if scoreInds == None: 
+            scoreInds = MCEvaluator.recommendAtk(U, V, k)
+        if omegaList == None: 
+            omegaList = SparseUtils.getOmegaList(X)
+        
+        scoreInds = scoreInds[:, 0:k]
+        recalls = SparseUtilsCython.recallAtk(omegaList, scoreInds)
+        
+        if verbose: 
+            return recalls.mean(), scoreInds
+        else: 
+            return recalls.mean()
 
     @staticmethod 
     def recommendAtk(U, V, k, blockSize=1000): 
