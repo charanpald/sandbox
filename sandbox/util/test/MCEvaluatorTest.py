@@ -39,11 +39,12 @@ class  MCEvaluatorTest(unittest.TestCase):
         
         #print(MCEvaluator.precisionAtK(X, U*s, V, 2))
         
-
-        self.assertAlmostEquals(MCEvaluator.precisionAtK(X, U, V, n), X.nnz/float(m*n))
+        orderedItems = MCEvaluator.recommendAtk(U, V, n)
+        self.assertAlmostEquals(MCEvaluator.precisionAtK(X, orderedItems, n), X.nnz/float(m*n))
         
         k = 2
-        precision, scoreInds = MCEvaluator.precisionAtK(X, U*s, V, k, verbose=True)
+        orderedItems = MCEvaluator.recommendAtk(U*s, V, k)
+        precision, scoreInds = MCEvaluator.precisionAtK(X, orderedItems, k, verbose=True)
         
         precisions = numpy.zeros(m)
         for i in range(m): 
@@ -57,7 +58,8 @@ class  MCEvaluatorTest(unittest.TestCase):
         U = numpy.random.rand(m, 3)
         V = numpy.random.rand(m, 3)
         
-        precision, scoreInds = MCEvaluator.precisionAtK(X, U, V, k, verbose=True)
+        orderedItems = MCEvaluator.recommendAtk(U*s, V, k)
+        precision, scoreInds = MCEvaluator.precisionAtK(X, orderedItems, k, verbose=True)
         
         precisions = numpy.zeros(m)
         for i in range(m): 
@@ -78,11 +80,12 @@ class  MCEvaluatorTest(unittest.TestCase):
         X = sppy.csarray(X)
         
 
-        
-        self.assertAlmostEquals(MCEvaluator.recallAtK(X, U, V, n), 1.0)
+        orderedItems = MCEvaluator.recommendAtk(U, V, n)
+        self.assertAlmostEquals(MCEvaluator.recallAtK(X, orderedItems, n), 1.0)
         
         k = 2
-        recall, scoreInds = MCEvaluator.recallAtK(X, U*s, V, k, verbose=True)
+        orderedItems = MCEvaluator.recommendAtk(U*s, V, k)
+        recall, scoreInds = MCEvaluator.recallAtK(X, orderedItems, k, verbose=True)
         
         recalls = numpy.zeros(m)
         for i in range(m): 
@@ -96,7 +99,8 @@ class  MCEvaluatorTest(unittest.TestCase):
         U = numpy.random.rand(m, 3)
         V = numpy.random.rand(m, 3)
         
-        recall, scoreInds = MCEvaluator.recallAtK(X, U, V, k, verbose=True)
+        orderedItems = MCEvaluator.recommendAtk(U, V, k)
+        recall, scoreInds = MCEvaluator.recallAtK(X, orderedItems, k, verbose=True)
         
         recalls = numpy.zeros(m)
         for i in range(m): 

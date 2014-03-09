@@ -51,44 +51,42 @@ class MCEvaluator(object):
         return error
         
     @staticmethod 
-    def precisionAtK(X, U, V, k, scoreInds=None, omegaList=None, verbose=False): 
+    def precisionAtK(X, orderedItems, k, omegaList=None, verbose=False): 
         """
         Compute the average precision@k score for each row of the predicted matrix UV.T 
         using real values in X. X is a 0/1 sppy sparse matrix.
         
+        :param orderedItems: The ordered items for each user (users are rows, items are cols)       
+        
         :param verbose: If true return precision and first k recommendation for each row, otherwise just precisions
         """
-        if scoreInds == None: 
-            scoreInds = MCEvaluator.recommendAtk(U, V, k)
         if omegaList == None: 
             omegaList = SparseUtils.getOmegaList(X)
         
-        scoreInds = scoreInds[:, 0:k]
-        precisions = SparseUtilsCython.precisionAtk(omegaList, scoreInds)
+        orderedItems = orderedItems[:, 0:k]
+        precisions = SparseUtilsCython.precisionAtk(omegaList, orderedItems)
         
         if verbose: 
-            return precisions.mean(), scoreInds
+            return precisions.mean(), orderedItems
         else: 
             return precisions.mean()
 
     @staticmethod 
-    def recallAtK(X, U, V, k, scoreInds=None, omegaList=None, verbose=False): 
+    def recallAtK(X, orderedItems, k, omegaList=None, verbose=False): 
         """
         Compute the average precision@k score for each row of the predicted matrix UV.T 
         using real values in X. X is a 0/1 sppy sparse matrix.
         
         :param verbose: If true return precision and first k recommendation for each row, otherwise just precisions
         """
-        if scoreInds == None: 
-            scoreInds = MCEvaluator.recommendAtk(U, V, k)
         if omegaList == None: 
             omegaList = SparseUtils.getOmegaList(X)
         
-        scoreInds = scoreInds[:, 0:k]
-        recalls = SparseUtilsCython.recallAtk(omegaList, scoreInds)
+        orderedItems = orderedItems[:, 0:k]
+        recalls = SparseUtilsCython.recallAtk(omegaList, orderedItems)
         
         if verbose: 
-            return recalls.mean(), scoreInds
+            return recalls.mean(), orderedItems
         else: 
             return recalls.mean()
 
@@ -99,16 +97,16 @@ class MCEvaluator(object):
         """
         blocksize = 1000
         numBlocks = int(ceil(U.shape[0]/float(blocksize)))
-        scoreInds = numpy.zeros((U.shape[0], k), numpy.int32)
+        orderedItems = numpy.zeros((U.shape[0], k), numpy.int32)
 
         for j in range(numBlocks):
             logging.debug("Block " + str(j) + " of " + str(numBlocks))
             endInd = min(U.shape[0], (j+1)*blocksize)
             scores = U[j*blocksize:endInd, :].dot(V.T)     
-            scoreInds[j*blocksize:endInd, :] = Util.argmaxN(scores, k)
-            #scoreInds[j*blocksize:endInd, :] = Util.argmaxN2d(scores, k)
+            orderedItems[j*blocksize:endInd, :] = Util.argmaxN(scores, k)
+            #orderedItems[j*blocksize:endInd, :] = Util.argmaxN2d(scores, k)
             
-        return scoreInds 
+        return orderedItems 
         
     @staticmethod 
     def localAUC(X, U, V, w, omegaList=None, numRowInds=None): 
