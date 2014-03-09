@@ -8,6 +8,7 @@ from sandbox.recommendation.MaxLocalAUCCython import  localAUCApprox
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.Util import Util 
 from mrec.mf.wrmf import WRMFRecommender
+from sandbox.util.MCEvaluator import MCEvaluator 
 
 def localAucsLmbdas(args): 
     trainX, testX, testOmegaList, learner  = args 
@@ -52,8 +53,13 @@ class WeightedMf(object):
         learner = WRMFRecommender(self.k, self.alpha, self.lmbda, self.numIterations)
         
         learner.fit(X)
+        self.U = learner.U 
+        self.V = learner.V 
         
-        return learner.U, learner.V 
+        return self.U, self.V 
+
+    def predict(self, maxItems): 
+        return MCEvaluator.recommendAtk(self.U, self.U, maxItems)
         
     def modelSelect(self, X): 
         """

@@ -12,6 +12,7 @@ from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi,
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.Util import Util 
 from sandbox.data.Standardiser import Standardiser 
+from sandbox.util.MCEvaluator import MCEvaluator 
 
 
 def computeObjective(args): 
@@ -177,12 +178,18 @@ class MaxLocalAUC(object):
         logging.debug("||dU||=" + str(normDeltaU) + " " + "||dV||=" + str(normDeltaV))
         logging.debug("Total time taken " + str(totalTime))
         logging.debug("Number of iterations: " + str(ind))
-                        
+                  
+        self.U = U 
+        self.V = V                  
+                  
         if verbose:     
             return U, V, numpy.array(objs), numpy.array(trainAucs), numpy.array(testAucs), ind, totalTime
         else: 
             return U, V
-        
+      
+    def predict(self, maxItems): 
+        return MCEvaluator.recommendAtk(self.U, self.V, maxItems)
+          
     def initUV(self, X): 
         m = X.shape[0]
         n = X.shape[1]        
