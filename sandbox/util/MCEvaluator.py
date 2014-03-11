@@ -112,7 +112,7 @@ class MCEvaluator(object):
     def localAUC(X, U, V, w, omegaList=None, numRowInds=None): 
         """
         Compute the local AUC for the score functions UV^T relative to X with 
-        quantile 1-u. 
+        quantile w. 
         """
         if numRowInds == None: 
             numRowInds = V.shape[0]
@@ -120,7 +120,7 @@ class MCEvaluator(object):
         #For now let's compute the full matrix 
         Z = U.dot(V.T)
         
-        r = SparseUtilsCython.computeR(U, V, 1-w, numRowInds)
+        r = SparseUtilsCython.computeR(U, V, w, numRowInds)
         
         if omegaList==None: 
             omegaList = SparseUtils.getOmegaList(X)
@@ -147,7 +147,7 @@ class MCEvaluator(object):
         return localAuc
 
     @staticmethod
-    def localAUCApprox(X, U, V, u, numAucSamples=50, omegaList=None): 
+    def localAUCApprox(X, U, V, w, numAucSamples=50, omegaList=None): 
         from sandbox.recommendation.MaxLocalAUCCython import localAUCApprox
         
         if omegaList==None: 
@@ -156,14 +156,14 @@ class MCEvaluator(object):
         U = numpy.ascontiguousarray(U)
         V = numpy.ascontiguousarray(V)        
         
-        r = SparseUtilsCython.computeR(U, V, 1-u, numAucSamples)
+        r = SparseUtilsCython.computeR(U, V, w, numAucSamples)
         return localAUCApprox(X, U, V, omegaList, numAucSamples, r)
 
     @staticmethod
-    def localAUCApprox2(X, U, V, u, numAucSamples=50, omegaList=None): 
+    def localAUCApprox2(X, U, V, w, numAucSamples=50, omegaList=None): 
         """
         Compute the estimated local AUC for the score functions UV^T relative to X with 
-        quantile 1-u. 
+        quantile w. 
         """
         #For now let's compute the full matrix 
         Z = U.dot(V.T)
@@ -174,7 +174,7 @@ class MCEvaluator(object):
         U = numpy.ascontiguousarray(U)
         V = numpy.ascontiguousarray(V)
         
-        r = SparseUtilsCython.computeR(U, V, 1-u, numAucSamples)
+        r = SparseUtilsCython.computeR(U, V, w, numAucSamples)
         
         if omegaList==None: 
             omegaList = SparseUtils.getOmegaList(X)

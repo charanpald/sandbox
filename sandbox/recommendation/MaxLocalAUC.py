@@ -57,7 +57,7 @@ class MaxLocalAUC(object):
         
         :param k: The rank of matrices U and V
         
-        :param w: The quantile for the local AUC 
+        :param w: The quantile for the local AUC - e.g. 1 means takes the largest value, 0.7 means take the top 0.3 
         
         :param sigma: The learning rate 
         
@@ -86,8 +86,8 @@ class MaxLocalAUC(object):
         self.project = True
         
         self.recordStep = 20
-        self.numRowSamples = 50
-        self.numStepIterations = 20
+        self.numRowSamples = 100
+        self.numStepIterations = 50
         self.numAucSamples = 100
         self.maxIterations = 1000
         self.initialAlg = "rand"
@@ -147,7 +147,7 @@ class MaxLocalAUC(object):
                 raise ValueError("Invalid rate: " + self.rate)
             
             if ind % self.recordStep == 0: 
-                r = SparseUtilsCython.computeR(U, V, 1-self.w, self.numAucSamples)
+                r = SparseUtilsCython.computeR(U, V, self.w, self.numAucSamples)
                 objs.append(objectiveApprox(X, U, V, omegaList, self.numAucSamples, self.getLambda(X), r))
                 trainAucs.append(localAUCApprox(X, U, V, omegaList, self.numAucSamples, r))
                 
@@ -220,7 +220,7 @@ class MaxLocalAUC(object):
         if not self.stochastic:                 
             lmbda = self.getLambda(X)
             #r = self.computeConstantR(X)
-            r = SparseUtilsCython.computeR(U, V, 1-self.w, self.numAucSamples)
+            r = SparseUtilsCython.computeR(U, V, self.w, self.numAucSamples)
             updateU(X, U, V, omegaList, self.sigma, lmbda, r, self.nu, self.project)
             updateV(X, U, V, omegaList, self.sigma, lmbda, r, self.nu, self.project)
         else: 

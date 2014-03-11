@@ -366,12 +366,12 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     return deltaTheta
 
 
-def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, double sigma, unsigned int numIterations, unsigned int numRowSamples, unsigned int numAucSamples, double lmbda, double u, double nu, bint project): 
+def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, double sigma, unsigned int numIterations, unsigned int numRowSamples, unsigned int numAucSamples, double lmbda, double w, double nu, bint project): 
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1]    
     cdef unsigned int k = U.shape[1] 
     cdef unsigned int numAucSamplesR = 100
-    cdef numpy.ndarray[double, ndim=1, mode="c"] r = SparseUtilsCython.computeR(U, V, 1-u, numAucSamplesR) 
+    cdef numpy.ndarray[double, ndim=1, mode="c"] r = SparseUtilsCython.computeR(U, V, w, numAucSamplesR) 
     cdef unsigned int i, j, s
     
     for s in range(numIterations):
@@ -393,7 +393,7 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
         if project: 
             V[j,:] = scale(V, j, 1/numpy.linalg.norm(V[j,:]), k)
             
-        #r = SparseUtilsCython.computeR(U, V, 1-u, numAucSamplesR) 
+        #r = SparseUtilsCython.computeR(U, V, w, numAucSamplesR) 
     
 def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, double lmbda, numpy.ndarray[double, ndim=1, mode="c"] r):         
     cdef double obj = 0 
