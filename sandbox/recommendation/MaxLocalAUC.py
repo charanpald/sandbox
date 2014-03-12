@@ -20,7 +20,7 @@ def computeObjective(args):
     X, omegaList, U, V, maxLocalAuc  = args 
     
     U, V = maxLocalAuc.learnModel(X, U=U, V=V)
-    r = SparseUtilsCython.computeR(U, V, 1-maxLocalAuc.u, maxLocalAuc.numAucSamples)
+    r = SparseUtilsCython.computeR(U, V, maxLocalAuc.w, maxLocalAuc.numAucSamples)
     
     objective = objectiveApprox(X, U, V, omegaList, maxLocalAuc.numAucSamples, maxLocalAuc.getLambda(X), r)
     
@@ -41,7 +41,7 @@ def localAucsRhos(args):
         
         U, V = maxLocalAuc.learnModel(trainX, U=U, V=V)
         
-        r = SparseUtilsCython.computeR(U, V, 1-maxLocalAuc.u, maxLocalAuc.numAucSamples)
+        r = SparseUtilsCython.computeR(U, V, maxLocalAuc.w, maxLocalAuc.numAucSamples)
         localAucs[j] = localAUCApprox(testX, U, V, testOmegaList, maxLocalAuc.numAucSamples, r) 
         logging.debug("Local AUC: " + str(localAucs[j]) + " with k = " + str(maxLocalAuc.k) + " and rho= " + str(maxLocalAuc.rho))
         
