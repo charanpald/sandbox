@@ -121,6 +121,8 @@ class MaxLocalAUC(object):
         
         lastU = numpy.random.rand(m, self.k)
         lastV = numpy.random.rand(n, self.k)
+        lastMuObj = 0
+        muObj = -1
         
         normDeltaU = numpy.linalg.norm(U - lastU)
         normDeltaV = numpy.linalg.norm(V - lastV)
@@ -138,7 +140,7 @@ class MaxLocalAUC(object):
         
         startTime = time.time()
     
-        while (normDeltaU > self.eps or normDeltaV > self.eps) and ind < self.maxIterations:             
+        while (abs(muObj - lastMuObj) > self.eps) and ind < self.maxIterations:             
             if self.rate == "constant": 
                 pass
             elif self.rate == "optimal":
@@ -155,19 +157,18 @@ class MaxLocalAUC(object):
                     testAucs.append(localAUCApprox(testX, U, V, testOmegaList, self.numAucSamples, r))
                 printStr = "Iteration: " + str(ind)
                 printStr += " local AUC~" + str(trainAucs[-1]) + " objective~" + str(objs[-1])
-                printStr += " ||dU||=" + str(normDeltaU) + " " + "||dV||=" + str(normDeltaV)
                 printStr += " sigma=" + str(self.sigma)
                 logging.debug(printStr)
 
+            lastMuObj = muObj
+            muObj = numpy.average(objs, weights=numpy.flipud(1/numpy.arange(1, len(objs)+1)))
+            
             lastU = U.copy() 
-            lastV = V.copy() 
+            lastV = V.copy()
             
             U  = numpy.ascontiguousarray(U)
             
-            self.updateUV(X, U, V, lastU, lastV, omegaList)            
-
-            normDeltaU = numpy.linalg.norm(U - lastU)
-            normDeltaV = numpy.linalg.norm(V - lastV)               
+            self.updateUV(X, U, V, lastU, lastV, omegaList)                          
                             
             if self.stochastic: 
                 ind += self.numStepIterations
