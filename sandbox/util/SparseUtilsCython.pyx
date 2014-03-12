@@ -75,7 +75,7 @@ class SparseUtilsCython(object):
         return result 
         
     @staticmethod
-    def computeR(numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, double u, unsigned int indsPerRow=50): 
+    def computeR(numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, double w, unsigned int indsPerRow=50): 
         """
         Given a matrix Z = UV.T compute a vector r such r[i] is the uth quantile 
         of the ith row of Z. We sample indsPerRow elements in each row and use that 
@@ -91,7 +91,7 @@ class SparseUtilsCython(object):
 
         colInds = numpy.random.permutation(n)[0:indsPerRow]
         tempRows = U.dot(V[colInds, :].T)
-        r = numpy.percentile(tempRows, u*100.0, 1)
+        r = numpy.percentile(tempRows, w*100.0, 1)
         
         return r  
     
