@@ -387,8 +387,8 @@ class MaxLocalAUC(object):
                     
         pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
         resultsIterator = pool.imap(localAucsRhos, paramList, self.chunkSize)
-        #import itertools
-        #resultsIterator = itertools.imap(localAucsRhos, paramList)
+        import itertools
+        resultsIterator = itertools.imap(localAucsRhos, paramList)
         
         for icv, (trainInds, testInds) in enumerate(cvInds):        
             for i, k in enumerate(self.ks): 
