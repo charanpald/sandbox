@@ -17,12 +17,12 @@ from sandbox.util.MCEvaluator import MCEvaluator
 
 def computeObjective(args): 
     numpy.random.seed(21)
+    numAucSamples = 100
+    
     X, omegaList, U, V, maxLocalAuc  = args 
-    
     U, V = maxLocalAuc.learnModel(X, U=U, V=V)
-    r = SparseUtilsCython.computeR(U, V, maxLocalAuc.w, maxLocalAuc.numAucSamples)
-    
-    objective = objectiveApprox(X, U, V, omegaList, maxLocalAuc.numAucSamples, maxLocalAuc.getLambda(X), r)
+    r = SparseUtilsCython.computeR(U, V, maxLocalAuc.w, numAucSamples)
+    objective = objectiveApprox(X, U, V, omegaList, numAucSamples, maxLocalAuc.getLambda(X), r)
     
     logging.debug("Objective: " + str(objective) + " with t0 = " + str(maxLocalAuc.t0) + " and alpha= " + str(maxLocalAuc.alpha))
     return objective
@@ -98,8 +98,9 @@ class MaxLocalAUC(object):
         self.rhos = numpy.flipud(numpy.logspace(-3, -1, 11)*2) 
         
         #Learning rate selection 
-        self.alphas = numpy.linspace(0.1, 10.0, 10)
-        self.t0s = 10.0**numpy.arange(-5, 0)
+        #self.alphas = numpy.logspace(-2, 1, 10, base=10)
+        self.alphas = numpy.logspace(0, 1, 10, base=10)
+        self.t0s = numpy.logspace(-10, -1, 5, base=10)
     
     def getLambda(self, X): 
         return self.rho/X.shape[0]
@@ -328,28 +329,36 @@ class MaxLocalAUC(object):
         omegaList = SparseUtils.getOmegaList(X)
         objectives = numpy.zeros((self.t0s.shape[0], self.alphas.shape[0]))
         
-        paramList = []      
+        paramList = []   
         
-        U, V = self.initUV(X)
-                    
-        for i, t0 in enumerate(self.t0s): 
-            for j, alpha in enumerate(self.alphas): 
-                maxLocalAuc = self.copy()
-                maxLocalAuc.t0 = t0
-                maxLocalAuc.alpha = alpha 
-                paramList.append((X, omegaList, U, V, maxLocalAuc))
+        if self.initialAlg != "svd": 
+            numInitalUVs = self.folds
+        else: 
+            numInitalUVs = 1
+            
+        
+        for k in range(numInitalUVs):
+            U, V = self.initUV(X)
+                        
+            for i, t0 in enumerate(self.t0s): 
+                for j, alpha in enumerate(self.alphas): 
+                    maxLocalAuc = self.copy()
+                    maxLocalAuc.t0 = t0
+                    maxLocalAuc.alpha = alpha 
+                    paramList.append((X, omegaList, U, V, maxLocalAuc))
                     
         pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
         resultsIterator = pool.imap(computeObjective, paramList, self.chunkSize)
         #import itertools
         #resultsIterator = itertools.imap(computeObjective, paramList)
         
-        for i, t0 in enumerate(self.t0s): 
-            for j, alpha in enumerate(self.alphas):  
-                objectives[i, j] = resultsIterator.next()
-        
+        for k in range(numInitalUVs):
+            for i, t0 in enumerate(self.t0s): 
+                for j, alpha in enumerate(self.alphas):  
+                    objectives[i, j] += resultsIterator.next()
+            
         pool.terminate()
-                
+        objectives /= numInitalUVs    
         logging.debug(objectives)
         
         t0 = self.t0s[numpy.unravel_index(numpy.argmin(objectives), objectives.shape)[0]]
