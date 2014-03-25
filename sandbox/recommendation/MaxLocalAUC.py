@@ -16,16 +16,17 @@ from sandbox.util.MCEvaluator import MCEvaluator
 
 
 def computeObjective(args): 
-    numpy.random.seed(21)
-    numAucSamples = 100
+    #numpy.random.seed(21)
+    #numAucSamples = 100
     
     X, omegaList, U, V, maxLocalAuc  = args 
-    U, V = maxLocalAuc.learnModel(X, U=U, V=V)
-    r = SparseUtilsCython.computeR(U, V, maxLocalAuc.w, numAucSamples)
-    objective = objectiveApprox(X, U, V, omegaList, numAucSamples, maxLocalAuc.getLambda(X), r)
+    U, V, objs, trainAucs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
+    muObj = numpy.average(objs, weights=numpy.flipud(1/numpy.arange(1, len(objs)+1)))
+    #r = SparseUtilsCython.computeR(U, V, maxLocalAuc.w, numAucSamples)
+    #objective = objectiveApprox(X, U, V, omegaList, numAucSamples, maxLocalAuc.getLambda(X), r)
     
-    logging.debug("Objective: " + str(objective) + " with t0 = " + str(maxLocalAuc.t0) + " and alpha= " + str(maxLocalAuc.alpha))
-    return objective
+    logging.debug("Weighted objective: " + str(muObj) + " with t0 = " + str(maxLocalAuc.t0) + " and alpha= " + str(maxLocalAuc.alpha))
+    return muObj
     
 def localAucsRhos(args): 
     trainX, testX, testOmegaList, maxLocalAuc  = args 
@@ -99,8 +100,8 @@ class MaxLocalAUC(object):
         
         #Learning rate selection 
         #self.alphas = numpy.logspace(-2, 1, 10, base=10)
-        self.alphas = numpy.logspace(0, 1, 10, base=10)
-        self.t0s = numpy.logspace(-10, -1, 5, base=10)
+        self.alphas = numpy.logspace(0, 1, 4, base=10)
+        self.t0s = numpy.logspace(-10, -1, 4, base=10)
     
     def getLambda(self, X): 
         return self.rho/X.shape[0]
