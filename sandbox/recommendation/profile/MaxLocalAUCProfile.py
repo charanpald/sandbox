@@ -39,14 +39,14 @@ class MaxLocalAUCProfile(object):
         #Profile stochastic case 
         rho = 0.00
         u = 0.2
-        eps = 0.001
+        eps = 10**-6
         sigma = 0.1
         k = self.k*10
         maxLocalAuc = MaxLocalAUC(rho, k, u, sigma=sigma, eps=eps, stochastic=True)
         maxLocalAuc.numRowSamples = 50
         maxLocalAuc.numColSamples = 50
-        maxLocalAuc.numAucSamples = 100
-        maxLocalAuc.maxIterations = 100
+        maxLocalAuc.numAucSamples = 50
+        maxLocalAuc.maxIterations = 10
         maxLocalAuc.initialAlg = "rand"
         maxLocalAuc.rate = "optimal"
                 
@@ -54,15 +54,15 @@ class MaxLocalAUCProfile(object):
 
         def run(): 
             U, V, objs, trainAuc, testAucs, iterations, times = maxLocalAuc.learnModel(trainX, True)  
-            logging.debug("Train Precision@5=" + str(MCEvaluator.precisionAtK(trainX, U, V, 5)))
-            logging.debug("Train Precision@10=" + str(MCEvaluator.precisionAtK(trainX, U, V, 10)))
-            logging.debug("Train Precision@20=" + str(MCEvaluator.precisionAtK(trainX, U, V, 20)))
-            logging.debug("Train Precision@50=" + str(MCEvaluator.precisionAtK(trainX, U, V, 50)))            
+            #logging.debug("Train Precision@5=" + str(MCEvaluator.precisionAtK(trainX, U, V, 5)))
+            #logging.debug("Train Precision@10=" + str(MCEvaluator.precisionAtK(trainX, U, V, 10)))
+            #logging.debug("Train Precision@20=" + str(MCEvaluator.precisionAtK(trainX, U, V, 20)))
+            #logging.debug("Train Precision@50=" + str(MCEvaluator.precisionAtK(trainX, U, V, 50)))            
             
-            logging.debug("Test Precision@5=" + str(MCEvaluator.precisionAtK(testX, U, V, 5)))
-            logging.debug("Test Precision@10=" + str(MCEvaluator.precisionAtK(testX, U, V, 10)))
-            logging.debug("Test Precision@20=" + str(MCEvaluator.precisionAtK(testX, U, V, 20)))
-            logging.debug("Test Precision@50=" + str(MCEvaluator.precisionAtK(testX, U, V, 50)))
+            #logging.debug("Test Precision@5=" + str(MCEvaluator.precisionAtK(testX, U, V, 5)))
+            #logging.debug("Test Precision@10=" + str(MCEvaluator.precisionAtK(testX, U, V, 10)))
+            #logging.debug("Test Precision@20=" + str(MCEvaluator.precisionAtK(testX, U, V, 20)))
+            #logging.debug("Test Precision@50=" + str(MCEvaluator.precisionAtK(testX, U, V, 50)))
                 
         ProfileUtils.profile('run()', globals(), locals())
         

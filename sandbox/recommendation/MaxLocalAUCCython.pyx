@@ -376,12 +376,12 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
     
     for s in range(numIterations):
         i = numpy.random.randint(m)
-        #dUi = derivativeUiApprox(X, U, V, omegaList, i, numAucSamples, lmbda, r, nu)
-        dUi = derivativeUi(X, U, V, omegaList, i, lmbda, r, nu)
+        dUi = derivativeUiApprox(X, U, V, omegaList, i, numAucSamples, lmbda, r, nu)
+        #dUi = derivativeUi(X, U, V, omegaList, i, lmbda, r, nu)
         
         j = numpy.random.randint(n)
-        #dVi = derivativeViApprox(X, U, V, omegaList, j, numRowSamples, numAucSamples, lmbda, r, nu)
-        dVi = derivativeVi(X, U, V, omegaList, j, lmbda, r, nu)
+        dVi = derivativeViApprox(X, U, V, omegaList, j, numRowSamples, numAucSamples, lmbda, r, nu)
+        #dVi = derivativeVi(X, U, V, omegaList, j, lmbda, r, nu)
 
         plusEquals(U, i, -sigma*dUi, k)
         
