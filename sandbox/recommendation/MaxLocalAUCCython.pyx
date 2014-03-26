@@ -386,12 +386,16 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
         plusEquals(U, i, -sigma*dUi, k)
         
         if project:
-            U[i,:] = scale(U, i, 1/numpy.linalg.norm(U[i,:]), k)             
+            normUi = numpy.linalg.norm(U[i,:])
+            if normUi != 0: 
+                U[i,:] = scale(U, i, 1/normUi, k)             
         
         plusEquals(V, j, -sigma*dVi, k)        
             
         if project: 
-            V[j,:] = scale(V, j, 1/numpy.linalg.norm(V[j,:]), k)
+            normVj = numpy.linalg.norm(V[j,:])
+            if normVj != 0: 
+                V[j,:] = scale(V, j, 1/normVj, k)
             
         #r = SparseUtilsCython.computeR(U, V, w, numAucSamplesR) 
     
