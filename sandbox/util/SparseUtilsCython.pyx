@@ -131,7 +131,8 @@ class SparseUtilsCython(object):
             for j in range(k): 
                 if indices[i, j] in omegaList[i]: 
                     count += 1
-            recalls[i] = count/omegaList[i].shape[0]
+            if omegaList[i].shape[0] != 0: 
+                recalls[i] = count/omegaList[i].shape[0]
         
         return recalls            
         
