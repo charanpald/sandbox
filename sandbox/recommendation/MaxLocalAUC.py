@@ -16,33 +16,21 @@ from sandbox.util.MCEvaluator import MCEvaluator
 
 
 def computeObjective(args): 
-    #numpy.random.seed(21)
-    #numAucSamples = 100
-    
     X, omegaList, U, V, maxLocalAuc  = args 
-    U, V, objs, trainAucs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
-    muObj = numpy.average(objs, weights=numpy.flipud(1/numpy.arange(1, len(objs)+1)))
-    #r = SparseUtilsCython.computeR(U, V, maxLocalAuc.w, numAucSamples)
-    #objective = objectiveApprox(X, U, V, omegaList, numAucSamples, maxLocalAuc.getLambda(X), r)
+    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
+    muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1)))
     
-    logging.debug("Weighted objective: " + str(muObj) + " with t0 = " + str(maxLocalAuc.t0) + " and alpha= " + str(maxLocalAuc.alpha))
+    logging.debug("Weighted objective: " + str(muObj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
     return muObj
     
-def computeLocalAuc(args): 
-    trainX, testX, testOmegaList, maxLocalAuc  = args 
+def computeTestObjective(args): 
+    trainX, testX, U, V, maxLocalAuc  = args 
+                    
+    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
+    muObj = numpy.average(testObjs, weights=numpy.flipud(1/numpy.arange(1, len(testObjs)+1)))
     
-    (m, n) = trainX.shape
-    U = numpy.random.rand(m, maxLocalAuc.k)
-    V = numpy.random.rand(n, maxLocalAuc.k)                
-           
-
-    U, V = maxLocalAuc.learnModel(trainX, U=U, V=V)
-    
-    r = SparseUtilsCython.computeR(U, V, maxLocalAuc.w, maxLocalAuc.numAucSamples)
-    localAuc = localAUCApprox(testX, U, V, testOmegaList, maxLocalAuc.numAucSamples, r) 
-    logging.debug("Local AUC: " + str(localAuc) + " with k = " + str(maxLocalAuc.k))
-        
-    return localAuc
+    logging.debug("Weighted objective: " + str(muObj) + " with k=" + str(maxLocalAuc.k))
+    return muObj
       
 class MaxLocalAUC(object): 
     def __init__(self, k, w, sigma=0.05, eps=0.01, stochastic=False, numProcesses=None): 
@@ -92,9 +80,8 @@ class MaxLocalAUC(object):
         self.ks = numpy.array([10, 20, 50, 100])
 
         #Learning rate selection 
-        #self.alphas = numpy.logspace(-2, 1, 10, base=10)
-        self.alphas = numpy.logspace(0, 1, 4, base=10)
-        self.t0s = numpy.logspace(-10, -1, 4, base=10)
+        self.alphas = numpy.array([0.1, 0.2, 0.5, 1.0])
+        self.t0s = numpy.logspace(-3, -5, 6, base=10)
     
     def learnModel(self, X, verbose=False, U=None, V=None, testX=None): 
         """
@@ -118,8 +105,9 @@ class MaxLocalAUC(object):
         
         normDeltaU = numpy.linalg.norm(U - lastU)
         normDeltaV = numpy.linalg.norm(V - lastV)
-        objs = []
+        trainObjs = []
         trainAucs = []
+        testObjs = []
         testAucs = []
         
         ind = 0
@@ -131,9 +119,8 @@ class MaxLocalAUC(object):
             X = X2
         
         #Set up order of indices for stochastic methods 
-        if self.stochastic: 
-            rowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
-            colInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
+        rowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
+        colInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
         
         startTime = time.time()
     
@@ -147,18 +134,20 @@ class MaxLocalAUC(object):
             
             if ind % self.recordStep == 0: 
                 r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)
-                objs.append(objectiveApprox(X, U, V, omegaList, self.numRecordAucSamples, r))
+                trainObjs.append(objectiveApprox(X, U, V, omegaList, self.numRecordAucSamples, r))
                 trainAucs.append(localAUCApprox(X, U, V, omegaList, self.numRecordAucSamples, r))
                 
-                if testX != None: 
-                    testAucs.append(localAUCApprox(testX, U, V, testOmegaList, self.numAucSamples, r))
+                if testX != None:
+                    testObjs.append(objectiveApprox(testX, U, V, testOmegaList, self.numRecordAucSamples, r))
+                    testAucs.append(localAUCApprox(testX, U, V, testOmegaList, self.numRecordAucSamples, r))
+                    
                 printStr = "Iteration: " + str(ind)
-                printStr += " local AUC~" + str(trainAucs[-1]) + " objective~" + str(objs[-1])
+                printStr += " local AUC~" + str(trainAucs[-1]) + " objective~" + str(trainObjs[-1])
                 printStr += " sigma=" + str(self.sigma)
                 logging.debug(printStr)
 
             lastMuObj = muObj
-            muObj = numpy.average(objs, weights=numpy.flipud(1/numpy.arange(1, len(objs)+1)))
+            muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1)))
             
             lastU = U.copy() 
             lastV = V.copy()
@@ -181,7 +170,7 @@ class MaxLocalAUC(object):
         self.V = V                  
                   
         if verbose:     
-            return U, V, numpy.array(objs), numpy.array(trainAucs), numpy.array(testAucs), ind, totalTime
+            return U, V, numpy.array(trainObjs), numpy.array(trainAucs), numpy.array(testObjs), numpy.array(testAucs), ind, totalTime
         else: 
             return U, V
       
@@ -371,48 +360,44 @@ class MaxLocalAUC(object):
         """
         m, n = X.shape
         cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
-        localAucs = numpy.zeros((self.ks.shape[0], len(cvInds)))
+        testObjectives = numpy.zeros((self.ks.shape[0], len(cvInds)))
         
         logging.debug("Performing model selection")
         paramList = []        
         
-        for icv, (trainInds, testInds) in enumerate(cvInds):
-            Util.printIteration(icv, 1, self.folds, "Fold: ")
-
-            trainX = SparseUtils.submatrix(X, trainInds)
-            testX = SparseUtils.submatrix(X, testInds)
+        for i, k in enumerate(self.ks): 
+            self.k = k
+            U, V = self.initUV(X)
             
-            testOmegaList = SparseUtils.getOmegaList(testX)
-            
-            for i, k in enumerate(self.ks): 
+            for icv, (trainInds, testInds) in enumerate(cvInds):
                 maxLocalAuc = self.copy()
-                maxLocalAuc.k = k
-                paramList.append((trainX, testX, testOmegaList, maxLocalAuc))
+                maxLocalAuc.k = k                
+                
+                trainX = SparseUtils.submatrix(X, trainInds)
+                testX = SparseUtils.submatrix(X, testInds)
+            
+                paramList.append((trainX, testX, U, V, maxLocalAuc))
                     
         pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-        resultsIterator = pool.imap(computeLocalAuc, paramList, self.chunkSize)
+        resultsIterator = pool.imap(computeTestObjective, paramList, self.chunkSize)
         #import itertools
-        #resultsIterator = itertools.imap(localAucsRhos, paramList)
+        #resultsIterator = itertools.imap(computeTestObjective, paramList)
         
-        for icv, (trainInds, testInds) in enumerate(cvInds):        
-            for i, k in enumerate(self.ks): 
-                tempAuc = resultsIterator.next()
-                localAucs[i, icv] = tempAuc
+        for i, k in enumerate(self.ks):
+            for icv, (trainInds, testInds) in enumerate(cvInds):             
+                testObjectives[i, icv] = resultsIterator.next()
         
         pool.terminate()
         
-        meanLocalAucs = numpy.mean(localAucs, 1)
-        stdLocalAucs = numpy.std(localAucs, 1)
+        meanTestObjectives = numpy.mean(testObjectives, 1)
+        stdTestObjectives = numpy.std(testObjectives, 1)
         
-        logging.debug(meanLocalAucs)
+        logging.debug(meanTestObjectives)
         
-        k = self.ks[numpy.argmax(meanLocalAucs)]
-        
-        logging.debug("Model parameters: k=" + str(k))
-        
-        self.k = k 
-        
-        return meanLocalAucs, stdLocalAucs
+        self.k = self.ks[numpy.argmin(meanTestObjectives)]
+        logging.debug("Model parameters: k=" + str(self.k))
+         
+        return meanTestObjectives, stdTestObjectives
     
     def __str__(self): 
         outputStr = "MaxLocalAUC: k=" + str(self.k) + " sigma=" + str(self.sigma) + " eps=" + str(self.eps) 
