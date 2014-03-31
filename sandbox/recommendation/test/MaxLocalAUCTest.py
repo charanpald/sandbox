@@ -27,10 +27,9 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         X = X/X
         
-        lmbda = 0.00
         r = numpy.ones(m)*0.0
         eps = 0.05
-        maxLocalAuc = MaxLocalAUC(lmbda, k, r, sigma=5.0, eps=eps)
+        maxLocalAuc = MaxLocalAUC(k, r, sigma=5.0, eps=eps)
         
         U, V = maxLocalAuc.learnModel(X)
         
@@ -48,43 +47,42 @@ class MaxLocalAUCTest(unittest.TestCase):
         X = X/X
         
         
-        for lmbda in [0.0, 0.01, 0.1]: 
-            r = numpy.ones(m)*0.0
-            maxLocalAuc = MaxLocalAUC(lmbda, k, r)
-            maxLocalAuc.project = False
-            maxLocalAuc.nu = 1.0
-            omegaList = SparseUtils.getOmegaList(X)
-    
-            U = numpy.random.rand(m, k)
-            V = numpy.random.rand(n, k)
-            rowInds, colInds = X.nonzero()
-    
-            deltaU = numpy.zeros(U.shape)
-            for i in range(X.shape[0]): 
-                deltaU[i, :] = maxLocalAuc.derivativeUi(X, U, V, omegaList, i, r)    
-    
-            #deltaU, inds = maxLocalAuc.derivativeU(X, U, V, omegaList)
-            
-            deltaU2 = numpy.zeros(U.shape)    
-            
-            eps = 0.0001        
-            
-            for i in range(m): 
-                for j in range(k):
-                    tempU = U.copy() 
-                    tempU[i,j] += eps
-                    obj1 = maxLocalAuc.objective(X, tempU, V, omegaList, r)
-                    
-                    tempU = U.copy() 
-                    tempU[i,j] -= eps
-                    obj2 = maxLocalAuc.objective(X, tempU, V, omegaList, r)
-                    
-                    deltaU2[i,j] = (obj1-obj2)/(2*eps)
-                deltaU2[i,:] = deltaU2[i,:]/numpy.linalg.norm(deltaU2[i,:])
-                    
-            #print(deltaU.T*10)
-            #print(deltaU2.T*10)                      
-            nptst.assert_almost_equal(deltaU, deltaU2, 2)
+        r = numpy.ones(m)*0.0
+        maxLocalAuc = MaxLocalAUC(k, r)
+        maxLocalAuc.project = False
+        maxLocalAuc.nu = 1.0
+        omegaList = SparseUtils.getOmegaList(X)
+
+        U = numpy.random.rand(m, k)
+        V = numpy.random.rand(n, k)
+        rowInds, colInds = X.nonzero()
+
+        deltaU = numpy.zeros(U.shape)
+        for i in range(X.shape[0]): 
+            deltaU[i, :] = maxLocalAuc.derivativeUi(X, U, V, omegaList, i, r)    
+
+        #deltaU, inds = maxLocalAuc.derivativeU(X, U, V, omegaList)
+        
+        deltaU2 = numpy.zeros(U.shape)    
+        
+        eps = 0.0001        
+        
+        for i in range(m): 
+            for j in range(k):
+                tempU = U.copy() 
+                tempU[i,j] += eps
+                obj1 = maxLocalAuc.objective(X, tempU, V, omegaList, r)
+                
+                tempU = U.copy() 
+                tempU[i,j] -= eps
+                obj2 = maxLocalAuc.objective(X, tempU, V, omegaList, r)
+                
+                deltaU2[i,j] = (obj1-obj2)/(2*eps)
+            deltaU2[i,:] = deltaU2[i,:]/numpy.linalg.norm(deltaU2[i,:])
+                
+        #print(deltaU.T*10)
+        #print(deltaU2.T*10)                      
+        nptst.assert_almost_equal(deltaU, deltaU2, 2)
 
     #@unittest.skip("")
     def testDerivativeV(self): 
@@ -96,42 +94,41 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         X = X/X
         
-        for rho in [0.0, 0.01, 0.1]: 
-            r = numpy.ones(m)*0.0
-            maxLocalAuc = MaxLocalAUC(rho, k, r)
-            maxLocalAuc.nu = 1
-            omegaList = SparseUtils.getOmegaList(X)
-    
-            U = numpy.random.rand(m, k)
-            V = numpy.random.rand(n, k)
-            rowInds, colInds = X.nonzero()
-    
-            deltaV = numpy.zeros(V.shape)
-            for i in range(X.shape[1]): 
-                deltaV[i, :] = maxLocalAuc.derivativeVi(X, U, V, omegaList, i, r)    
-    
-            #deltaV, inds = maxLocalAuc.derivativeV(X, U, V, omegaList)
-            
-            deltaV2 = numpy.zeros(V.shape)    
-            
-            eps = 0.001        
-            
-            for i in range(n): 
-                for j in range(k):
-                    tempV = V.copy() 
-                    tempV[i,j] += eps
-                    obj1 = maxLocalAuc.objective(X, U, tempV, omegaList, r)
-                    
-                    tempV = V.copy() 
-                    tempV[i,j] -= eps
-                    obj2 = maxLocalAuc.objective(X, U, tempV, omegaList, r)
-                    
-                    deltaV2[i,j] = (obj1-obj2)/(2*eps)
-                deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])
-             
-            #print(deltaV.T*10)
-            #print(deltaV2.T*10)                   
-            nptst.assert_almost_equal(deltaV, deltaV2, 2)
+        r = numpy.ones(m)*0.0
+        maxLocalAuc = MaxLocalAUC(k, r)
+        maxLocalAuc.nu = 1
+        omegaList = SparseUtils.getOmegaList(X)
+
+        U = numpy.random.rand(m, k)
+        V = numpy.random.rand(n, k)
+        rowInds, colInds = X.nonzero()
+
+        deltaV = numpy.zeros(V.shape)
+        for i in range(X.shape[1]): 
+            deltaV[i, :] = maxLocalAuc.derivativeVi(X, U, V, omegaList, i, r)    
+
+        #deltaV, inds = maxLocalAuc.derivativeV(X, U, V, omegaList)
+        
+        deltaV2 = numpy.zeros(V.shape)    
+        
+        eps = 0.001        
+        
+        for i in range(n): 
+            for j in range(k):
+                tempV = V.copy() 
+                tempV[i,j] += eps
+                obj1 = maxLocalAuc.objective(X, U, tempV, omegaList, r)
+                
+                tempV = V.copy() 
+                tempV[i,j] -= eps
+                obj2 = maxLocalAuc.objective(X, U, tempV, omegaList, r)
+                
+                deltaV2[i,j] = (obj1-obj2)/(2*eps)
+            deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])
+         
+        #print(deltaV.T*10)
+        #print(deltaV2.T*10)                   
+        nptst.assert_almost_equal(deltaV, deltaV2, 2)
 
     @unittest.skip("")
     def testModelSelect(self): 
@@ -146,9 +143,8 @@ class MaxLocalAUCTest(unittest.TestCase):
         os.system('taskset -p 0xffffffff %d' % os.getpid())
         
         u = 0.2
-        lmbda = 0.001
         eps = 0.001
-        maxLocalAuc = MaxLocalAUC(lmbda, k, u, eps=eps)
+        maxLocalAuc = MaxLocalAUC(k, u, eps=eps)
         maxLocalAuc.maxIterations = 20
         
         maxLocalAuc.modelSelect(X)
@@ -165,9 +161,8 @@ class MaxLocalAUCTest(unittest.TestCase):
         X = X/X
         
         u= 0.1
-        lmbda = 0.001
         eps = 0.001
-        maxLocalAuc = MaxLocalAUC(lmbda, k, u, eps=eps)
+        maxLocalAuc = MaxLocalAUC(k, u, eps=eps)
         maxLocalAuc.rate = "optimal"
         maxLocalAuc.maxIterations = 200
         
@@ -176,18 +171,16 @@ class MaxLocalAUCTest(unittest.TestCase):
     def testStr(self): 
         k=10
         u= 0.1
-        lmbda = 0.001
         eps = 0.001
-        maxLocalAuc = MaxLocalAUC(lmbda, k, u, eps=eps)    
+        maxLocalAuc = MaxLocalAUC(k, u, eps=eps)    
         
         print(maxLocalAuc)
 
     def testCopy(self): 
         u= 0.1
-        rho = 0.001
         eps = 0.001
         k = 10 
-        maxLocalAuc = MaxLocalAUC(rho, k, u, sigma=5.0, eps=eps)
+        maxLocalAuc = MaxLocalAUC(k, u, sigma=5.0, eps=eps)
         maxLocalAuc.copy()
 
 if __name__ == "__main__":
