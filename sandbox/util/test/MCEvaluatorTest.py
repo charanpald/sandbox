@@ -3,8 +3,10 @@ import unittest
 import numpy
 import scipy.sparse 
 import sklearn.metrics 
+import numpy.testing as nptst 
 from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.SparseUtils import SparseUtils
+from sandbox.util.Util import Util 
 
 class  MCEvaluatorTest(unittest.TestCase):
     def setUp(self): 
@@ -26,6 +28,27 @@ class  MCEvaluatorTest(unittest.TestCase):
         error = MCEvaluator.meanSqError(scipy.sparse.csr_matrix(testX), scipy.sparse.csr_matrix(predX)) 
         
         self.assertEquals(error, error2)
+
+    def testRecommendAtk(self): 
+        m = 100 
+        n = 50 
+        r = 3 
+
+        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), r, 0.5, verbose=True)
+
+        import sppy 
+        X = sppy.csarray(X)  
+        
+        k = 10        
+        orderedItems = MCEvaluator.recommendAtk(U, V, k)
+        
+        #Now do it manually 
+        Z = U.dot(V.T)
+        
+        orderedItems2 = Util.argmaxN(Z, k)
+        
+        nptst.assert_array_equal(orderedItems, orderedItems2)
+        
         
     def testPrecisionAtK(self): 
         m = 10 
@@ -128,13 +151,13 @@ class  MCEvaluatorTest(unittest.TestCase):
                     
         localAuc = localAuc.mean()
         
-        u = 1.0
+        u = 0.0
         localAuc2 = MCEvaluator.localAUC(X, U, V, u)
 
         self.assertEquals(localAuc, localAuc2)
         
         #Now try a large r 
-        u =0
+        u = 1.0
 
         localAuc2 = MCEvaluator.localAUC(X, U, V, u)
         self.assertEquals(localAuc2, 0)
