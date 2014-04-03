@@ -16,6 +16,9 @@ from sandbox.util.MCEvaluator import MCEvaluator
 
 
 def computeObjective(args): 
+    """
+    Compute the objective for a particular parameter set. Used to set a learning rate. 
+    """
     X, omegaList, U, V, maxLocalAuc  = args 
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
     muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1)))
@@ -23,17 +26,23 @@ def computeObjective(args):
     logging.debug("Weighted objective: " + str(muObj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
     return muObj
     
-def computeTestObjective(args): 
+def computeTestAucs(args): 
     trainX, testX, U, V, maxLocalAuc  = args 
-                    
-    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
-    muObj = numpy.average(testObjs, weights=numpy.flipud(1/numpy.arange(1, len(testObjs)+1)))
+      
+    testAucScores = numpy.zeros(maxLocalAuc.lmbdas.shape[0])
     
-    logging.debug("Weighted objective: " + str(muObj) + " with k=" + str(maxLocalAuc.k))
-    return muObj
+    for i, lmbda in enumerate(maxLocalAuc.lmbdas):         
+        maxLocalAuc.lmbda = lmbda 
+        U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
+        muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testObjs)+1)))
+        testAucScores[i] = muAuc
+        
+        logging.debug("Weighted local AUC: " + str(muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda))
+        
+    return testAucScores
       
 class MaxLocalAUC(object): 
-    def __init__(self, k, w, sigma=0.05, eps=0.01, stochastic=False, numProcesses=None): 
+    def __init__(self, k, w, sigma=0.05, eps=0.01, lmbda=0.001, stochastic=False, numProcesses=None): 
         """
         Create an object for  maximising the local AUC with a penalty term using the matrix
         decomposition UV.T 
@@ -45,6 +54,8 @@ class MaxLocalAUC(object):
         :param sigma: The learning rate 
         
         :param eps: The termination threshold for ||dU|| and ||dV||
+        
+        :param lmbda: The regularistion penalty for V 
         
         :stochastic: Whether to use stochastic gradient descent or gradient descent 
         """
@@ -65,7 +76,7 @@ class MaxLocalAUC(object):
         self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
         
         self.nu = 20.0 
-        self.project = True
+        self.lmbda = lmbda 
         
         self.recordStep = 20
         self.numRowSamples = 100
@@ -78,6 +89,7 @@ class MaxLocalAUC(object):
         #Model selection parameters 
         self.folds = 3 
         self.ks = numpy.array([10, 20, 50, 100])
+        self.lmbdas = 2.0**-numpy.arange(1, 10)
 
         #Learning rate selection 
         self.alphas = numpy.array([0.1, 0.2, 0.5, 1.0])
@@ -85,10 +97,9 @@ class MaxLocalAUC(object):
     
     def learnModel(self, X, verbose=False, U=None, V=None, testX=None): 
         """
-        Max local AUC with Frobenius norm penalty. Solve with gradient descent. 
+        Max local AUC with Frobenius norm penalty on V. Solve with gradient descent. 
         The input is a sparse array. 
         """
-        
         m = X.shape[0]
         n = X.shape[1]
         omegaList = SparseUtils.getOmegaList(X)
@@ -103,8 +114,6 @@ class MaxLocalAUC(object):
         lastMuObj = 0
         muObj = -1
         
-        normDeltaU = numpy.linalg.norm(U - lastU)
-        normDeltaV = numpy.linalg.norm(V - lastV)
         trainObjs = []
         trainAucs = []
         testObjs = []
@@ -144,6 +153,7 @@ class MaxLocalAUC(object):
                 printStr = "Iteration: " + str(ind)
                 printStr += " local AUC~" + str(trainAucs[-1]) + " objective~" + str(trainObjs[-1])
                 printStr += " sigma=" + str(self.sigma)
+                printStr += " normV=" + str(numpy.linalg.norm(V))
                 logging.debug(printStr)
 
             lastMuObj = muObj
@@ -162,7 +172,7 @@ class MaxLocalAUC(object):
                 ind += 1
             
         totalTime = time.time() - startTime
-        logging.debug("||dU||=" + str(normDeltaU) + " " + "||dV||=" + str(normDeltaV))
+        logging.debug("normU=" + str(numpy.linalg.norm(U)) + " normV=" + str(numpy.linalg.norm(V)))
         logging.debug("Total time taken " + str(totalTime))
         logging.debug("Number of iterations: " + str(ind))
                   
@@ -205,15 +215,11 @@ class MaxLocalAUC(object):
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic:                 
-            #r = self.computeConstantR(X)
             r = SparseUtilsCython.computeR(U, V, self.w, self.numAucSamples)
-            updateU(X, U, V, omegaList, self.sigma, r, self.nu, self.project)
-            updateV(X, U, V, omegaList, self.sigma, r, self.nu, self.project)
+            updateU(X, U, V, omegaList, self.sigma, r, self.nu)
+            updateV(X, U, V, omegaList, self.sigma, r, self.nu, self.lmbda)
         else: 
-            updateUVApprox(X, U, V, omegaList, rowInds, colInds, ind, self.sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.nu, self.project)
-    
-    def computeConstantR(self, X): 
-        return numpy.ones(X.shape[0])*(1-2*self.w)
+            updateUVApprox(X, U, V, omegaList, rowInds, colInds, ind, self.sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.nu, self.lmbda)
     
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, r): 
@@ -360,7 +366,7 @@ class MaxLocalAUC(object):
         """
         m, n = X.shape
         cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
-        testObjectives = numpy.zeros((self.ks.shape[0], len(cvInds)))
+        testObjectives = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(cvInds)))
         
         logging.debug("Performing model selection")
         paramList = []        
@@ -379,23 +385,25 @@ class MaxLocalAUC(object):
                 paramList.append((trainX, testX, U, V, maxLocalAuc))
                     
         pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-        resultsIterator = pool.imap(computeTestObjective, paramList, self.chunkSize)
+        resultsIterator = pool.imap(computeTestAucs, paramList, self.chunkSize)
         #import itertools
         #resultsIterator = itertools.imap(computeTestObjective, paramList)
         
         for i, k in enumerate(self.ks):
             for icv, (trainInds, testInds) in enumerate(cvInds):             
-                testObjectives[i, icv] = resultsIterator.next()
+                testObjectives[i, :, icv] = resultsIterator.next()
         
         pool.terminate()
         
-        meanTestObjectives = numpy.mean(testObjectives, 1)
-        stdTestObjectives = numpy.std(testObjectives, 1)
+        meanTestObjectives = numpy.mean(testObjectives, 2)
+        stdTestObjectives = numpy.std(testObjectives, 2)
         
         logging.debug(meanTestObjectives)
         
-        self.k = self.ks[numpy.argmin(meanTestObjectives)]
-        logging.debug("Model parameters: k=" + str(self.k))
+        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestObjectives), meanTestObjectives.shape)[0]]
+        self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestObjectives), meanTestObjectives.shape)[1]]
+
+        logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda))
          
         return meanTestObjectives, stdTestObjectives
     
@@ -404,12 +412,12 @@ class MaxLocalAUC(object):
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numStepIterations=" + str(self.numStepIterations)
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
-        outputStr += " nu=" + str(self.nu)
+        outputStr += " nu=" + str(self.nu) + " lmbda=" + str(self.lmbda)
         
         return outputStr 
 
     def copy(self): 
-        maxLocalAuc = MaxLocalAUC(k=self.k, w=self.w)
+        maxLocalAuc = MaxLocalAUC(k=self.k, w=self.w, lmbda=self.lmbda)
         maxLocalAuc.sigma = self.sigma
         maxLocalAuc.eps = self.eps 
         maxLocalAuc.stochastic = self.stochastic
@@ -426,6 +434,7 @@ class MaxLocalAUC(object):
         maxLocalAuc.initialAlg = self.initialAlg
         
         maxLocalAuc.ks = self.ks
+        maxLocalAuc.lmbdas = self.lmbdas
         maxLocalAuc.folds = self.folds
         
         return maxLocalAuc
