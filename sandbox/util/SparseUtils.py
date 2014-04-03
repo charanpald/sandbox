@@ -512,18 +512,18 @@ class SparseUtils(object):
 
 
     @staticmethod
-    def generateSparseBinaryMatrix(shape, p, u=0.9, csarray=False, verbose=False, indsPerRow=50):
+    def generateSparseBinaryMatrix(shape, p, w=0.9, csarray=False, verbose=False, indsPerRow=50):
         """
         Create an underlying matrix Z = UsV.T of rank p and then go through each row 
         and threshold so that a proportion quantile numbers are kept. The final matrix 
         is a 0/1 matrix. We order each row of Z in ascending order and then keep those bigger 
-        than u. In other words u=0 keeps all numbers and u=1.0 keeps none. 
+        than u. In other words w=0 keeps all numbers and w=1.0 keeps none. 
         """
         m, n = shape
         U, s, V = SparseUtils.generateLowRank(shape, p)
         
         X = (U*s).dot(V.T)
-        r = SparseUtilsCython.computeR((U*s), V, u, indsPerRow=indsPerRow)
+        r = SparseUtilsCython.computeR((U*s), V, w, indsPerRow=indsPerRow)
         
         for i in range(m):
             X[i, X[i, :] >= r[i]] = 1
