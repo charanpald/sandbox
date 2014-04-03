@@ -88,8 +88,8 @@ class MaxLocalAUC(object):
         
         #Model selection parameters 
         self.folds = 3 
-        self.ks = numpy.array([10, 20, 50, 100])
-        self.lmbdas = 2.0**-numpy.arange(1, 10)
+        self.ks = 2**numpy.arange(3, 7)
+        self.lmbdas = 2.0**-numpy.arange(1, 10, 2)
 
         #Learning rate selection 
         self.alphas = numpy.array([0.1, 0.2, 0.5, 1.0])
