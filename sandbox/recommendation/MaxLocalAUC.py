@@ -175,6 +175,10 @@ class MaxLocalAUC(object):
         logging.debug("normU=" + str(numpy.linalg.norm(U)) + " normV=" + str(numpy.linalg.norm(V)))
         logging.debug("Total time taken " + str(totalTime))
         logging.debug("Number of iterations: " + str(ind))
+        printStr = "Final train local AUC=" + str(trainAucs[-1])
+        if testX != None:
+            printStr += " test local AUC=" + str(testAucs[-1])
+        logging.debug(printStr)
                   
         self.U = U 
         self.V = V                  
@@ -380,7 +384,7 @@ class MaxLocalAUC(object):
                 maxLocalAuc.k = k                
                 
                 trainX = SparseUtils.submatrix(X, trainInds)
-                testX = SparseUtils.submatrix(X, testInds)
+                testX = X
             
                 paramList.append((trainX, testX, U, V, maxLocalAuc))
                     
