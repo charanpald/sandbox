@@ -88,8 +88,8 @@ class MaxLocalAUC(object):
         
         #Model selection parameters 
         self.folds = 3 
-        self.ks = numpy.array([10, 20, 50, 100])
-        self.lmbdas = 2.0**-numpy.arange(1, 10)
+        self.ks = 2**numpy.arange(3, 8)
+        self.lmbdas = 2.0**-numpy.arange(1, 10, 2)
 
         #Learning rate selection 
         self.alphas = numpy.array([0.1, 0.2, 0.5, 1.0])
@@ -236,7 +236,7 @@ class MaxLocalAUC(object):
         """
         delta phi/delta v_i
         """
-        return derivativeVi(X, U, V, omegaList, i, r, self.nu)           
+        return derivativeVi(X, U, V, omegaList, i, r, self.nu, self.lmbda)           
 
     #@profile
     def objective(self, X, U, V, omegaList, r):         
@@ -370,7 +370,7 @@ class MaxLocalAUC(object):
         """
         m, n = X.shape
         cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
-        testObjectives = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(cvInds)))
+        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(cvInds)))
         
         logging.debug("Performing model selection")
         paramList = []        
@@ -387,29 +387,35 @@ class MaxLocalAUC(object):
                 testX = X
             
                 paramList.append((trainX, testX, U, V, maxLocalAuc))
-                    
-        pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-        resultsIterator = pool.imap(computeTestAucs, paramList, self.chunkSize)
-        #import itertools
-        #resultsIterator = itertools.imap(computeTestObjective, paramList)
+            
+        if self.numProcesses != 1: 
+            pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
+            resultsIterator = pool.imap(computeTestAucs, paramList, self.chunkSize)
+        else: 
+            import itertools
+            resultsIterator = itertools.imap(computeTestAucs, paramList)
+
         
         for i, k in enumerate(self.ks):
             for icv, (trainInds, testInds) in enumerate(cvInds):             
-                testObjectives[i, :, icv] = resultsIterator.next()
+                testAucs[i, :, icv] = resultsIterator.next()
         
-        pool.terminate()
+        if self.numProcesses != 1: 
+            pool.terminate()
         
-        meanTestObjectives = numpy.mean(testObjectives, 2)
-        stdTestObjectives = numpy.std(testObjectives, 2)
+        meanTestLocalAucs = numpy.mean(testAucs, 2)
+        stdTestLocalAucs = numpy.std(testAucs, 2)
         
-        logging.debug(meanTestObjectives)
+        logging.debug("ks=" + str(self.ks)) 
+        logging.debug("lmbdas=" + str(self.lmbdas)) 
+        logging.debug("Mean local AUCs=" + str(meanTestLocalAucs))
         
-        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestObjectives), meanTestObjectives.shape)[0]]
-        self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestObjectives), meanTestObjectives.shape)[1]]
+        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[0]]
+        self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[1]]
 
         logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda))
          
-        return meanTestObjectives, stdTestObjectives
+        return meanTestLocalAucs, stdTestLocalAucs
     
     def __str__(self): 
         outputStr = "MaxLocalAUC: k=" + str(self.k) + " sigma=" + str(self.sigma) + " eps=" + str(self.eps) 
