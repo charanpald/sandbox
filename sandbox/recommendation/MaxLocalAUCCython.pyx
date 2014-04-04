@@ -371,6 +371,8 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
     cdef numpy.ndarray[double, ndim=1, mode="c"] r = SparseUtilsCython.computeR(U, V, w, numAucSamplesR) 
     cdef unsigned int i, j, s
     
+    #print(r)  
+    
     for s in range(numIterations):
         i = rowInds[(ind + s) % m]
         dUi = derivativeUiApprox(X, U, V, omegaList, i, numAucSamples, r, nu)
@@ -386,7 +388,15 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
         if normUi != 0: 
             U[i,:] = scale(U, i, 1/normUi, k)             
         
-        plusEquals(V, j, -sigma*dVj, k)        
+        plusEquals(V, j, -sigma*dVj, k)  
+        
+        #Note that we are penalising the norm of V in this derivative, however 
+        #we renormalise to reduce instabilities in r. 
+        normVj = numpy.linalg.norm(V[j,:])
+        if normVj != 0: 
+            V[j,:] = scale(V, j, 1/normVj, k)  
+        
+        #r = SparseUtilsCython.computeR(U, V, w, numAucSamples) 
             
     
 def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r):         
