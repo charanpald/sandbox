@@ -104,7 +104,7 @@ class WeightedMf(object):
         stdLocalAucs = numpy.std(localAucs, 2)
         
         logging.debug("ks=" + str(self.ks)) 
-        logging.debug("lambdas=" + str(self.lmbdas))
+        logging.debug("lmbdas=" + str(self.lmbdas)) 
         logging.debug("Mean local AUCs=" + str(meanLocalAucs))
         
         k = self.ks[numpy.unravel_index(numpy.argmax(meanLocalAucs), meanLocalAucs.shape)[0]]

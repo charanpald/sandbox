@@ -97,6 +97,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         r = numpy.ones(m)*0.0
         maxLocalAuc = MaxLocalAUC(k, r)
         maxLocalAuc.nu = 1
+        maxLocalAuc.lmbda = 0
         omegaList = SparseUtils.getOmegaList(X)
 
         U = numpy.random.rand(m, k)
@@ -130,7 +131,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         #print(deltaV2.T*10)                   
         nptst.assert_almost_equal(deltaV, deltaV2, 2)
 
-    @unittest.skip("")
+    #@unittest.skip("")
     def testModelSelect(self): 
         m = 10 
         n = 20 
