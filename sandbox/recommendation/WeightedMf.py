@@ -76,7 +76,7 @@ class WeightedMf(object):
             Util.printIteration(icv, 1, self.folds, "Fold: ")
 
             trainX = SparseUtils.submatrix(X, trainInds)
-            testX = SparseUtils.submatrix(X, testInds)
+            testX = X
             
             testOmegaList = SparseUtils.getOmegaList(testX)
             
@@ -84,23 +84,28 @@ class WeightedMf(object):
                 maxLocalAuc = self.copy()
                 maxLocalAuc.k = k
                 paramList.append((trainX, testX, testOmegaList, maxLocalAuc))
-                    
-        pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-        resultsIterator = pool.imap(localAucsLmbdas, paramList, self.chunkSize)
-        #import itertools
-        #resultsIterator = itertools.imap(localAucsLmbdas, paramList)
+            
+        if self.numProcesses != 1: 
+            pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
+            resultsIterator = pool.imap(localAucsLmbdas, paramList, self.chunkSize)
+        else: 
+            import itertools
+            resultsIterator = itertools.imap(localAucsLmbdas, paramList)
         
         for icv, (trainInds, testInds) in enumerate(cvInds):        
             for i, k in enumerate(self.ks): 
                 tempAucs = resultsIterator.next()
                 localAucs[i, :, icv] = tempAucs
         
-        pool.terminate()
+        if self.numProcesses != 1: 
+            pool.terminate()
         
         meanLocalAucs = numpy.mean(localAucs, 2)
         stdLocalAucs = numpy.std(localAucs, 2)
         
-        logging.debug(meanLocalAucs)
+        logging.debug("ks=" + str(self.ks)) 
+        logging.debug("lambdas=" + str(self.lmbdas))
+        logging.debug("Mean local AUCs=" + str(meanLocalAucs))
         
         k = self.ks[numpy.unravel_index(numpy.argmax(meanLocalAucs), meanLocalAucs.shape)[0]]
         lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanLocalAucs), meanLocalAucs.shape)[1]]
