@@ -79,10 +79,10 @@ class MaxLocalAUC(object):
         self.lmbda = lmbda 
         
         self.recordStep = 20
-        self.numRowSamples = 100
-        self.numStepIterations = 50
-        self.numAucSamples = 100
-        self.numRecordAucSamples = 50
+        self.numRowSamples = 20
+        self.numStepIterations = 100
+        self.numAucSamples = 50
+        self.numRecordAucSamples = 500
         self.maxIterations = 1000
         self.initialAlg = "rand"
         
