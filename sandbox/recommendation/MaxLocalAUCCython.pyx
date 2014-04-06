@@ -136,7 +136,7 @@ def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, 
     for i in range(m):
         U[i,:] = scale(U, i, 1/numpy.linalg.norm(U[i,:]), k)   
 
-def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double nu):
+def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double lmbda):
     """
     Find an approximation of delta phi/delta u_i
     """
@@ -152,7 +152,7 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP = numpy.zeros(k, numpy.int)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
 
-    #deltaTheta = scale(U, i, lmbda, k)    
+    deltaTheta = scale(U, i, lmbda, k)    
      
     omegai = omegaList[i]
     omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
@@ -368,14 +368,13 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
     cdef unsigned int n = X.shape[1]    
     cdef unsigned int k = U.shape[1] 
     cdef unsigned int numAucSamplesR = 100
-    cdef numpy.ndarray[double, ndim=1, mode="c"] r = SparseUtilsCython.computeR(U, V, w, numAucSamplesR) 
+    cdef numpy.ndarray[double, ndim=1, mode="c"] r = numpy.zeros(m)
+    #cdef numpy.ndarray[double, ndim=1, mode="c"] r = SparseUtilsCython.computeR(U, V, w, numAucSamplesR) 
     cdef unsigned int i, j, s
-    
-    #print(r)  
     
     for s in range(numIterations):
         i = rowInds[(ind + s) % m]
-        dUi = derivativeUiApprox(X, U, V, omegaList, i, numAucSamples, r, nu)
+        dUi = derivativeUiApprox(X, U, V, omegaList, i, numAucSamples, r, nu, lmbda)
         #dUi = derivativeUi(X, U, V, omegaList, i, r, nu)
         
         j = colInds[(ind + s) % n]
@@ -396,8 +395,6 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
         if normVj != 0: 
             V[j,:] = scale(V, j, 1/normVj, k)  
         
-        #r = SparseUtilsCython.computeR(U, V, w, numAucSamples) 
-            
     
 def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r):         
     cdef double obj = 0 
