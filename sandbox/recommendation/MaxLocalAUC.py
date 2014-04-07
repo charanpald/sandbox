@@ -441,7 +441,7 @@ class MaxLocalAUC(object):
         maxLocalAuc.sigma = self.sigma
         maxLocalAuc.eps = self.eps 
         maxLocalAuc.stochastic = self.stochastic
-        maxLocalAuc.rho = rho 
+        maxLocalAuc.rho = self.rho 
      
         maxLocalAuc.rate = self.rate
         maxLocalAuc.alpha = self.alpha
