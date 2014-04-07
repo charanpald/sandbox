@@ -28,12 +28,18 @@ def computeObjective(args):
     
 def computeTestAucs(args): 
     trainX, testX, U, V, maxLocalAuc  = args 
-      
+    
+    inputU = U.copy() 
+    inputV = V.copy()
     testAucScores = numpy.zeros(maxLocalAuc.lmbdas.shape[0])
     
     for i, lmbda in enumerate(maxLocalAuc.lmbdas):         
         maxLocalAuc.lmbda = lmbda 
-        U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
+        #Don't use warm restarts for the SVD
+        if maxLocalAuc.initialAlg == "svd": 
+            U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=inputU, V=inputV, verbose=True)
+        else: 
+            U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
         muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testObjs)+1)))
         testAucScores[i] = muAuc
         
@@ -77,6 +83,7 @@ class MaxLocalAUC(object):
         
         self.nu = 20.0 
         self.lmbda = lmbda 
+        self.rho = 0.001 #Penalty on orthogonality constraint ||U^TU - I|| + ||V^TV - I|| 
         
         self.recordStep = 20
         self.numRowSamples = 20
@@ -196,8 +203,11 @@ class MaxLocalAUC(object):
         n = X.shape[1]        
         
         if self.initialAlg == "rand": 
-            U = numpy.random.rand(m, self.k)
-            V = numpy.random.rand(n, self.k)
+            U = numpy.random.randn(m, self.k)
+            V = numpy.random.randn(n, self.k)
+            
+            #U, R = numpy.linalg.qr(U)
+            #V, R = numpy.linalg.qr(V)
         elif self.initialAlg == "svd":
             logging.debug("Initialising with SVD")
             try: 
@@ -223,8 +233,8 @@ class MaxLocalAUC(object):
             updateU(X, U, V, omegaList, self.sigma, r, self.nu)
             updateV(X, U, V, omegaList, self.sigma, r, self.nu, self.lmbda)
         else: 
-            updateUVApprox(X, U, V, omegaList, rowInds, colInds, ind, self.sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.nu, self.lmbda)
-    
+            updateUVApprox(X, U, V, omegaList, rowInds, colInds, ind, self.sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.nu, self.lmbda, self.rho)
+       
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, r): 
         """
@@ -422,7 +432,7 @@ class MaxLocalAUC(object):
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numStepIterations=" + str(self.numStepIterations)
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
-        outputStr += " nu=" + str(self.nu) + " lmbda=" + str(self.lmbda)
+        outputStr += " nu=" + str(self.nu) + " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho)
         
         return outputStr 
 
@@ -431,6 +441,7 @@ class MaxLocalAUC(object):
         maxLocalAuc.sigma = self.sigma
         maxLocalAuc.eps = self.eps 
         maxLocalAuc.stochastic = self.stochastic
+        maxLocalAuc.rho = rho 
      
         maxLocalAuc.rate = self.rate
         maxLocalAuc.alpha = self.alpha
