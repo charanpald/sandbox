@@ -368,8 +368,8 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
     cdef unsigned int n = X.shape[1]    
     cdef unsigned int k = U.shape[1] 
     cdef unsigned int numAucSamplesR = 100
-    cdef numpy.ndarray[double, ndim=1, mode="c"] r = numpy.ones(m)*-1
-    #cdef numpy.ndarray[double, ndim=1, mode="c"] r = SparseUtilsCython.computeR(U, V, w, numAucSamplesR) 
+    #cdef numpy.ndarray[double, ndim=1, mode="c"] r = numpy.ones(m)*-1
+    cdef numpy.ndarray[double, ndim=1, mode="c"] r = SparseUtilsCython.computeR(U, V, w, numAucSamplesR) 
     cdef unsigned int i, j, s
     
     for s in range(numIterations):
