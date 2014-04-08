@@ -136,6 +136,8 @@ def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, 
     for i in range(m):
         U[i,:] = scale(U, i, 1/numpy.linalg.norm(U[i,:]), k)   
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double lmbda, double rho):
     """
     Find an approximation of delta phi/delta u_i
@@ -151,14 +153,14 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP = numpy.zeros(k, numpy.int)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowInds = numpy.unique(numpy.array(numpy.random.randint(0, m, numRowSamples), dtype=numpy.uint))
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowUInds = numpy.unique(numpy.array(numpy.random.randint(0, m, numRowSamples), dtype=numpy.uint))
     
     #Penalise non orthogonal directions 
-    #rowInds = numpy.unique(numpy.array(numpy.append(rowInds, i), numpy.uint))
+    rowUInds = numpy.union1d(rowUInds, numpy.array([i], dtype=numpy.uint)) 
 
-    for j in rowInds: 
+    for j in rowUInds: 
         alpha +=  dot(U, i, U, j, k)
-    alpha = (alpha - 2)/rowInds.shape[0]
+    alpha = (alpha - 2)/rowUInds.shape[0]
 
     deltaTheta = scale(U, i, lmbda, k)    
      
@@ -316,13 +318,14 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowInds = numpy.unique(numpy.array(numpy.random.randint(0, m, numRowSamples), dtype=numpy.uint))
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowVInds = numpy.unique(numpy.array(numpy.random.randint(0, n, numRowSamples), dtype=numpy.uint))
     
     #Penalise non orthogonal directions using rho*||V^T V - I||^2_F
-    #rowInds = numpy.unique(numpy.array(numpy.append(rowInds, j), numpy.uint))
+    rowVInds = numpy.union1d(rowVInds, numpy.array([j], dtype=numpy.uint))
 
-    for i in rowInds: 
+    for i in rowVInds: 
         alpha +=  dot(V, j, V, i, k)
-    alpha = (alpha - 2)/rowInds.shape[0]
+    alpha = (alpha - 2)/rowVInds.shape[0]
     
     deltaTheta = scale(V, j, lmbda + rho*alpha, k)     
      
@@ -377,7 +380,8 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     
     return deltaTheta
 
-
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned int, ndim=1, mode="c"] rowInds, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, unsigned int ind, double sigma, unsigned int numIterations, unsigned int numRowSamples, unsigned int numAucSamples, double w, double nu, double lmbda, double rho): 
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1]    

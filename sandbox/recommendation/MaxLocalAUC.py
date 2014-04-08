@@ -180,6 +180,7 @@ class MaxLocalAUC(object):
             
         totalTime = time.time() - startTime
         logging.debug("normU=" + str(numpy.linalg.norm(U)) + " normV=" + str(numpy.linalg.norm(V)))
+        logging.debug("abs(muObj - lastMuObj)=" + str(abs(muObj - lastMuObj)))
         logging.debug("Total time taken " + str(totalTime))
         logging.debug("Number of iterations: " + str(ind))
         printStr = "Final train local AUC=" + str(trainAucs[-1])
