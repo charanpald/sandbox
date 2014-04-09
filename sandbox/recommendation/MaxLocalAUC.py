@@ -40,7 +40,8 @@ def computeTestAucs(args):
             U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=inputU, V=inputV, verbose=True)
         else: 
             U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
-        muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testObjs)+1)))
+            
+        muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1)))
         testAucScores[i] = muAuc
         
         logging.debug("Weighted local AUC: " + str(muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda))
