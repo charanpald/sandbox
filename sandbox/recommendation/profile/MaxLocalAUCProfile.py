@@ -2,9 +2,10 @@ import numpy
 import logging
 import sys
 from sandbox.util.ProfileUtils import ProfileUtils
-from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC
+from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC, localAUCApprox
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.MCEvaluator import MCEvaluator
+from sandbox.util.SparseUtilsCython import SparseUtilsCython
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
@@ -39,21 +40,22 @@ class MaxLocalAUCProfile(object):
         #Profile stochastic case 
         rho = 0.00
         u = 0.2
+        w = 1-u
         eps = 10**-6
         sigma = 0.1
         k = self.k*10
-        maxLocalAuc = MaxLocalAUC(rho, k, u, sigma=sigma, eps=eps, stochastic=True)
+        maxLocalAuc = MaxLocalAUC(k, w, sigma=sigma, eps=eps, stochastic=True)
         maxLocalAuc.numRowSamples = 50
         maxLocalAuc.numColSamples = 50
         maxLocalAuc.numAucSamples = 50
-        maxLocalAuc.maxIterations = 10
+        maxLocalAuc.maxIterations = 1000
         maxLocalAuc.initialAlg = "rand"
         maxLocalAuc.rate = "optimal"
                 
         trainX, testX = SparseUtils.splitNnz(self.X, 0.5)     
 
         def run(): 
-            U, V, objs, trainAuc, testAucs, iterations, times = maxLocalAuc.learnModel(trainX, True)  
+            U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, time = maxLocalAuc.learnModel(trainX, True)  
             #logging.debug("Train Precision@5=" + str(MCEvaluator.precisionAtK(trainX, U, V, 5)))
             #logging.debug("Train Precision@10=" + str(MCEvaluator.precisionAtK(trainX, U, V, 10)))
             #logging.debug("Train Precision@20=" + str(MCEvaluator.precisionAtK(trainX, U, V, 20)))
@@ -65,8 +67,29 @@ class MaxLocalAUCProfile(object):
             #logging.debug("Test Precision@50=" + str(MCEvaluator.precisionAtK(testX, U, V, 50)))
                 
         ProfileUtils.profile('run()', globals(), locals())
+     
+    def profileLocalAucApprox(self): 
+        m = 500 
+        n = 1000 
+        k = 10 
+        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True, verbose=True)
         
+        u = 0.1
+        w = 1-u
+        numAucSamples = 200        
+        
+        omegaList = SparseUtils.getOmegaList(X)
+        r = SparseUtilsCython.computeR(U, V, w, numAucSamples) 
+        
+        numRuns = 10        
+        
+        def run(): 
+            for i in range(numRuns):
+                localAUCApprox(X, U, V, omegaList, numAucSamples, r)
+        
+        ProfileUtils.profile('run()', globals(), locals())
 
 profiler = MaxLocalAUCProfile()
 #profiler.profileLearnModel()  
 profiler.profileLearnModel2()
+#profiler.profileLocalAucApprox()
