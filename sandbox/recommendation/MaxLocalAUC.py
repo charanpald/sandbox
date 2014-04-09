@@ -83,7 +83,7 @@ class MaxLocalAUC(object):
         
         self.nu = 20.0 
         self.lmbda = lmbda 
-        self.rho = 0.001 #Penalty on orthogonality constraint ||U^TU - I|| + ||V^TV - I|| 
+        self.rho = 0.00 #Penalty on orthogonality constraint ||U^TU - I|| + ||V^TV - I|| 
         
         self.recordStep = 20
         self.numRowSamples = 20
