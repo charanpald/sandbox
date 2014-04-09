@@ -172,18 +172,53 @@ class  MCEvaluatorTest(unittest.TestCase):
         X = X/X
         Z = U.dot(V.T)
 
-        u = 1.0
-        
-        
-        localAuc = MCEvaluator.localAUC(X, U, V, u)
+        w = 1.0
+        localAuc = MCEvaluator.localAUC(X, U, V, w)
         
         samples = numpy.arange(50, 200, 10)
         
         for i, sampleSize in enumerate(samples): 
             numAucSamples = sampleSize
-            localAuc2 = MCEvaluator.localAUCApprox(X, U, V, u, numAucSamples)
+            localAuc2 = MCEvaluator.localAUCApprox(X, U, V, w, numAucSamples)
 
-            self.assertAlmostEqual(localAuc2, localAuc, 1)        
+            self.assertAlmostEqual(localAuc2, localAuc, 1) 
+            
+        #Try smaller w 
+        w = 0.5
+        localAuc = MCEvaluator.localAUC(X, U, V, w)
+        
+        samples = numpy.arange(50, 200, 10)
+        
+        for i, sampleSize in enumerate(samples): 
+            numAucSamples = sampleSize
+            localAuc2 = MCEvaluator.localAUCApprox(X, U, V, w, numAucSamples)
+
+            self.assertAlmostEqual(localAuc2, localAuc, 1)   
+        
+    def testAverageRocCurve(self): 
+        m = 50
+        n = 20
+        k = 8 
+        u = 20.0/m
+        w = 1-u
+        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), k, w, csarray=True, verbose=True, indsPerRow=200)
+        
+        fpr, tpr = MCEvaluator.averageRocCurve(X, U, V)
+
+    def testAverageAuc(self): 
+        m = 50
+        n = 20
+        k = 8 
+        u = 20.0/m
+        w = 1-u
+        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), k, w, csarray=True, verbose=True, indsPerRow=200)
+        
+        auc = MCEvaluator.averageAuc(X, U, V) 
+        
+        u = 0.0
+        auc2 = MCEvaluator.localAUC(X, U, V, u)
+        
+        self.assertAlmostEquals(auc, auc2)        
         
 if __name__ == '__main__':
     unittest.main()

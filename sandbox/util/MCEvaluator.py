@@ -206,15 +206,39 @@ class MCEvaluator(object):
         Compute the average ROC curve for the rows of X given preductions based 
         on U V^T. 
         """
+        import sklearn.metrics 
         (m, n) = X.shape 
-        roc = numpy.zeros(n)
+        tprs = numpy.zeros(n)
+        fprs = numpy.zeros(n)
         
         for i in range(m): 
-            roc += sklearn.metrics.curve(X[i, :], U[i, :].T.dot(V.T))
+            trueXi = X[i, :].toarray().ravel()
+            predXi = U[i, :].T.dot(V.T)
+            fpr, tpr, thresholds = sklearn.metrics.roc_curve(trueXi, predXi)
+
+            #Sometimes the fpr and trp are not length m (not sure why) so make them fit 
+            fprs += fpr[0:n] 
+            tprs += tpr[0:n] 
             
-        roc /= m
+        fprs /= m
+        tprs /= m 
         
-        return roc 
+        return fprs, tprs 
         
+    @staticmethod 
+    def averageAuc(X, U, V): 
+        """
+        Compute the average ROC curve for the rows of X given preductions based 
+        on U V^T. 
+        """
+        import sklearn.metrics 
+        (m, n) = X.shape 
+        aucs = numpy.zeros(m)
         
+        for i in range(m): 
+            trueXi = X[i, :].toarray().ravel()
+            predXi = U[i, :].T.dot(V.T)
+            aucs[i] = sklearn.metrics.roc_auc_score(trueXi, predXi)
+        
+        return aucs.mean()         
         
