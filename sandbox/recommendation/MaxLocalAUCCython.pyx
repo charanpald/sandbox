@@ -57,6 +57,9 @@ cdef inline numpy.ndarray[double, ndim = 1, mode="c"] plusEquals1d(numpy.ndarray
     for s in range(k):
         u[s] = u[s] + d[s]
 
+@cython.nonecheck(False)
+@cython.boundscheck(False) 
+@cython.wraparound(False)
 cdef unsigned int getNonZeroRow(X, unsigned int i, unsigned int n):
     """
     Find a random nonzero element in the ith row of X
@@ -154,16 +157,7 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP = numpy.zeros(k, numpy.int)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowUInds = numpy.unique(numpy.array(numpy.random.randint(0, m, numRowSamples), dtype=numpy.uint))
-    
-    #Penalise non orthogonal directions 
-    rowUInds = numpy.union1d(rowUInds, numpy.array([i], dtype=numpy.uint)) 
-
-    for j in rowUInds: 
-        alpha +=  dot(U, i, U, j, k)
-    alpha = (alpha - 2)/rowUInds.shape[0]
-
-    deltaTheta = scale(U, i, lmbda, k)    
-     
+         
     omegai = omegaList[i]
     omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
     numOmegai = omegai.shape[0]
@@ -198,6 +192,16 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
         deltaAlpha /= float(numAucSamples)
         deltaTheta -= deltaAlpha
     
+    #Penalise non orthogonal directions 
+    rowUInds = numpy.union1d(rowUInds, numpy.array([i], dtype=numpy.uint)) 
+
+    for j in rowUInds: 
+        alpha +=  dot(U, i, U, j, k)
+    alpha = (alpha - 2)/rowUInds.shape[0]
+
+    deltaTheta += scale(U, i, lmbda/m + rho*alpha, k)    
+       
+    #Normalise gradient to have unit norm 
     normDeltaTheta = numpy.linalg.norm(deltaTheta)
     
     if normDeltaTheta != 0: 
@@ -320,14 +324,6 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowInds = numpy.unique(numpy.array(numpy.random.randint(0, m, numRowSamples), dtype=numpy.uint))
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowVInds = numpy.unique(numpy.array(numpy.random.randint(0, n, numRowSamples), dtype=numpy.uint))
     
-    #Penalise non orthogonal directions using rho*||V^T V - I||^2_F
-    rowVInds = numpy.union1d(rowVInds, numpy.array([j], dtype=numpy.uint))
-
-    for i in rowVInds: 
-        alpha +=  dot(V, j, V, i, k)
-    alpha = (alpha - 2)/rowVInds.shape[0]
-    
-    deltaTheta = scale(V, j, lmbda + rho*alpha, k)     
      
     for i in rowInds: 
         omegai = omegaList[i]
@@ -376,6 +372,17 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     
     #Normalise gradient vector 
     deltaTheta = deltaTheta/rowInds.shape[0]
+    
+    #Penalise non orthogonal directions using rho*||V^T V - I||^2_F
+    rowVInds = numpy.union1d(rowVInds, numpy.array([j], dtype=numpy.uint))
+
+    for i in rowVInds: 
+        alpha +=  dot(V, j, V, i, k)
+    alpha = (alpha - 2)/rowVInds.shape[0]
+    
+    deltaTheta += scale(V, j, lmbda/m + rho*alpha, k)       
+    
+    #Make gradient unit norm 
     deltaTheta = deltaTheta/numpy.linalg.norm(deltaTheta)
     
     return deltaTheta
@@ -415,7 +422,7 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
             V[j,:] = scale(V, j, 1/normVj, k)  
         
     
-def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r):         
+def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double lmbda):         
     cdef double obj = 0 
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1]
@@ -433,7 +440,7 @@ def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[
         ri = r[i]
         
         if omegai.shape[0] * (n-omegai.shape[0]) != 0: 
-            partialAuc = 0                
+            partialObj = 0                
             
             indsP = numpy.random.randint(0, omegai.shape[0], numAucSamples)  
             #indsQ = numpy.random.randint(0, omegaBari.shape[0], numAucSamples)
@@ -449,15 +456,17 @@ def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[
                 uivq = dot(U, i, V, q, k)
                 gamma = exp(-uivp+uivq)
 
-                partialAuc += 1/((1+gamma) * (1+kappa))
+                partialObj += 1/((1+gamma) * (1+kappa))
                         
-            obj += partialAuc/float(numAucSamples)
+            obj += partialObj/float(numAucSamples)
     
     obj /= m       
-    obj = -obj
+    obj = (lmbda/(2*m))*(numpy.linalg.norm(U)**2 + numpy.linalg.norm(V)**2) - obj
     
     return obj 
-    
+  
+@cython.boundscheck(False)
+@cython.wraparound(False)  
 def localAUCApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
     Compute the estimated local AUC for the score functions UV^T relative to X with 
@@ -469,7 +478,7 @@ def localAUCApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(10, numpy.uint)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] localAucArr = numpy.zeros(m)
     cdef unsigned int i, j, k, ind, p, q
-    cdef double partialAuc, ri
+    cdef double partialAuc, ri, uivp
 
     k = U.shape[1]
 
@@ -485,11 +494,10 @@ def localAUCApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
                 ind = numpy.random.randint(omegai.shape[0])
                 p = omegai[ind] 
                 
-                #ind = numpy.random.randint(omegaBari.shape[0])
-                #q = omegaBari[ind]   
                 q = getNonZeroRow(X, i, n)                
-                
-                if dot(U, i, V, p, k) > dot(U, i, V, q, k) and dot(U, i, V, p, k) > ri: 
+                uivp = dot(U, i, V, p, k)
+
+                if uivp > ri and uivp > dot(U, i, V, q, k): 
                     partialAuc += 1 
                         
             localAucArr[i] = partialAuc/float(numAucSamples)     
