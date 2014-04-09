@@ -395,7 +395,7 @@ class MaxLocalAUC(object):
                 maxLocalAuc.k = k                
                 
                 trainX = SparseUtils.submatrix(X, trainInds)
-                testX = X
+                testX = SparseUtils.submatrix(X, testInds)
             
                 paramList.append((trainX, testX, U, V, maxLocalAuc))
             
