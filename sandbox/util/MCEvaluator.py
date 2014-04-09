@@ -200,4 +200,21 @@ class MCEvaluator(object):
         
         return localAuc        
         
+    @staticmethod 
+    def averageRocCurve(X, U, V): 
+        """
+        Compute the average ROC curve for the rows of X given preductions based 
+        on U V^T. 
+        """
+        (m, n) = X.shape 
+        roc = numpy.zeros(n)
+        
+        for i in range(m): 
+            roc += sklearn.metrics.curve(X[i, :], U[i, :].T.dot(V.T))
+            
+        roc /= m
+        
+        return roc 
+        
+        
         
