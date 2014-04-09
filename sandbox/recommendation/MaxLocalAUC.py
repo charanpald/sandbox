@@ -111,8 +111,10 @@ class MaxLocalAUC(object):
         m = X.shape[0]
         n = X.shape[1]
         omegaList = SparseUtils.getOmegaList(X)
+        #Not that to compute the test AUC we pick i \in X and j \notin X \cup testX        
         if testX != None: 
             testOmegaList = SparseUtils.getOmegaList(testX)
+            testX = X+testX
 
         if U==None or V==None:
             U, V = self.initUV(X)

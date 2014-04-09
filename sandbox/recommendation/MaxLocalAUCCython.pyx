@@ -470,7 +470,8 @@ def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[
 def localAUCApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
     Compute the estimated local AUC for the score functions UV^T relative to X with 
-    quantile vector r. 
+    quantile vector r. If evaluating on a set of test observations then X is 
+    trainX+testX and omegaList is from testX. 
     """
     
     cdef unsigned int m = X.shape[0]
