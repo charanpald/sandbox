@@ -13,6 +13,7 @@ from sandbox.util.Sampling import Sampling
 from sandbox.util.Util import Util 
 from sandbox.data.Standardiser import Standardiser 
 from sandbox.util.MCEvaluator import MCEvaluator 
+from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
 
 
 def computeObjective(args): 
@@ -32,14 +33,17 @@ def computeTestAucs(args):
     inputU = U.copy() 
     inputV = V.copy()
     testAucScores = numpy.zeros(maxLocalAuc.lmbdas.shape[0])
+    logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
     
     for i, lmbda in enumerate(maxLocalAuc.lmbdas):         
         maxLocalAuc.lmbda = lmbda 
+
         #Don't use warm restarts for the SVD
-        if maxLocalAuc.initialAlg == "svd": 
-            U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=inputU, V=inputV, verbose=True)
-        else: 
-            U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
+        if maxLocalAuc.initialAlg == "svd" or maxLocalAuc.initialAlg == "softimpute": 
+            U = inputU.copy()
+            V = inputV.copy()
+
+        U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
             
         muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1)))
         testAucScores[i] = muAuc
@@ -223,6 +227,15 @@ class MaxLocalAUC(object):
                 U, s, V = SparseUtils.svdArpack(X, self.k)
             U = numpy.ascontiguousarray(U)
             V = numpy.ascontiguousarray(V)
+        elif self.initialAlg == "softimpute": 
+            trainIterator = iter([X.toScipyCsc()])
+            rho = 0.01
+            learner = IterativeSoftImpute(rho, k=self.k, svdAlg="propack")
+            ZList = learner.learnModel(trainIterator)    
+            U, s, V = ZList.next()
+            U = U*s
+            U = numpy.ascontiguousarray(U)
+            V = numpy.ascontiguousarray(V)
         else:
             raise ValueError("Unknown initialisation: " + str(self.initialAlg))  
             
@@ -400,9 +413,6 @@ class MaxLocalAUC(object):
             for icv, (trainX, testX) in enumerate(trainTestXs):
                 maxLocalAuc = self.copy()
                 maxLocalAuc.k = k                
-                
-                #trainX = SparseUtils.submatrix(X, trainInds)
-                #testX = SparseUtils.submatrix(X, testInds)
             
                 paramList.append((trainX, testX, U, V, maxLocalAuc))
             
@@ -412,7 +422,6 @@ class MaxLocalAUC(object):
         else: 
             import itertools
             resultsIterator = itertools.imap(computeTestAucs, paramList)
-
         
         for i, k in enumerate(self.ks):
             for icv in range(len(trainTestXs)):             
@@ -440,7 +449,7 @@ class MaxLocalAUC(object):
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numStepIterations=" + str(self.numStepIterations)
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
-        outputStr += " nu=" + str(self.nu) + " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho)
+        outputStr += " nu=" + str(self.nu) + " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho) + " numProcesses=" + str(self.numProcesses)
         
         return outputStr 
 
