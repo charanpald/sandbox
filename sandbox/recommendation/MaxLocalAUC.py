@@ -105,8 +105,8 @@ class MaxLocalAUC(object):
         self.lmbdas = 2.0**-numpy.arange(1, 10, 2)
 
         #Learning rate selection 
-        self.alphas = numpy.array([0.1, 0.2, 0.5, 1.0])
-        self.t0s = numpy.logspace(-3, -5, 6, base=10)
+        self.alphas = 2.0**-numpy.arange(0, 5, 1)
+        self.t0s = numpy.logspace(-2, -5, 6, base=10)
     
     def learnModel(self, X, verbose=False, U=None, V=None, testX=None): 
         """
