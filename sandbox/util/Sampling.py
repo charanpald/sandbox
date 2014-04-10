@@ -1,6 +1,8 @@
 
 from sandbox.util.Parameter import Parameter
+from sandbox.util.SparseUtils import SparseUtils
 import numpy
+import array 
 
 
 class Sampling(object):
@@ -186,3 +188,54 @@ class Sampling(object):
                 indexList.append((permInds[trainIndices], permInds[testIndices]))
 
         return indexList 
+        
+    @staticmethod 
+    def shuffleSplitRows(X, k, testSize): 
+        """
+        Take a sparse binary matrix and create k number of train-test splits 
+        in which the test split contains at most testSize elements and the train 
+        split contains the remaining elements from X. The splits are computed 
+        randomly. Returns sppy.csarray objects. 
+        """
+        import sppy 
+        trainTestXList = []
+        omegaList = SparseUtils.getOmegaList(X)
+        
+        for i in range(k):
+            trainInd = 0 
+            testInd = 0            
+            
+            trainRowInds = numpy.zeros(X.nnz, numpy.int32)
+            trainColInds = numpy.zeros(X.nnz, numpy.int32)
+            
+            testRowInds = numpy.zeros(X.shape[0]*testSize, numpy.int32)
+            testColInds = numpy.zeros(X.shape[0]*testSize, numpy.int32)
+            
+            for j in range(X.shape[0]):
+                inds = numpy.random.permutation(omegaList[j].shape[0])
+                trainInds = inds[testSize:]
+                testInds = inds[0:testSize]
+                
+                trainRowInds[trainInd:trainInd+trainInds.shape[0]] = numpy.ones(trainInds.shape[0], dtype=numpy.uint)*j
+                trainColInds[trainInd:trainInd+trainInds.shape[0]] = omegaList[j][trainInds]
+                trainInd += trainInds.shape[0]
+                
+                testRowInds[testInd:testInd+testInds.shape[0]] = numpy.ones(testInds.shape[0], dtype=numpy.uint)*j
+                testColInds[testInd:testInd+testInds.shape[0]] = omegaList[j][testInds]
+                testInd += testInds.shape[0]
+                
+            trainRowInds = trainRowInds[0:trainInd]   
+            trainColInds = trainColInds[0:trainInd] 
+      
+            testRowInds = testRowInds[0:testInd]   
+            testColInds = testColInds[0:testInd]
+                
+            trainX = sppy.csarray(X.shape,  dtype=numpy.int)
+            trainX.put(numpy.ones(trainRowInds.shape[0], numpy.int), trainRowInds, trainColInds, True)
+            
+            testX = sppy.csarray(X.shape,  dtype=numpy.int)
+            testX.put(numpy.ones(testRowInds.shape[0], numpy.int), testRowInds, testColInds, True)
+            
+            trainTestXList.append((trainX, testX))
+        
+        return trainTestXList 

@@ -1,8 +1,9 @@
 
 import unittest
 import numpy 
-from apgl.util.Sampling import Sampling 
-
+import numpy.testing as nptst 
+from sandbox.util.Sampling import Sampling 
+from sandbox.util.SparseUtils import SparseUtils 
 
 class  SamplingTest(unittest.TestCase):
     def testCrossValidation(self):
@@ -106,9 +107,28 @@ class  SamplingTest(unittest.TestCase):
         for i in range(folds):
             self.assertTrue((numpy.union1d(indices[i][0], indices[i][1]) == numpy.arange(numExamples)).all())
         
+
+    def testShuffleSplitRows(self): 
+        m = 10
+        n = 16
+        k = 5 
+        u = 0.5
+        w = 1-u
+        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), k, w, csarray=True, verbose=True, indsPerRow=200)
         
+        #print(X.toarray())
         
+        k2 = 5 
+        testSize = 2
+        trainTestXs = Sampling.shuffleSplitRows(X, k2, testSize)
         
+        for i in range(k2): 
+            trainX = trainTestXs[i][0]
+            testX = trainTestXs[i][1]
+                        
+            nptst.assert_array_almost_equal(X.toarray(), (trainX+testX).toarray())
+            
+            nptst.assert_array_equal(testX.sum(1), testSize*numpy.ones(m))
 
 if __name__ == '__main__':
     unittest.main()

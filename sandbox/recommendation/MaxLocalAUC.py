@@ -96,6 +96,7 @@ class MaxLocalAUC(object):
         
         #Model selection parameters 
         self.folds = 3 
+        self.testSize = 5
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 2.0**-numpy.arange(1, 10, 2)
 
@@ -161,7 +162,9 @@ class MaxLocalAUC(object):
                     testAucs.append(localAUCApprox(testX, U, V, testOmegaList, self.numRecordAucSamples, r))
                     
                 printStr = "Iteration: " + str(ind)
-                printStr += " local AUC~" + str(trainAucs[-1]) + " objective~" + str(trainObjs[-1])
+                printStr += " LAUC~" + str(trainAucs[-1]) + " obj~" + str(trainObjs[-1])
+                if testX != None:
+                    printStr += " test LAUC~" + str(testAucs[-1]) + " obj~" + str(testObjs[-1])    
                 printStr += " sigma=" + str(self.sigma)
                 #printStr += " normV=" + str(numpy.linalg.norm(V))
                 logging.debug(printStr)
@@ -383,8 +386,9 @@ class MaxLocalAUC(object):
         Perform model selection on X and return the best parameters. 
         """
         m, n = X.shape
-        cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
-        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(cvInds)))
+        #cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
+        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.testSize)
+        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection")
         paramList = []        
@@ -393,12 +397,12 @@ class MaxLocalAUC(object):
             self.k = k
             U, V = self.initUV(X)
             
-            for icv, (trainInds, testInds) in enumerate(cvInds):
+            for icv, (trainX, testX) in enumerate(trainTestXs):
                 maxLocalAuc = self.copy()
                 maxLocalAuc.k = k                
                 
-                trainX = SparseUtils.submatrix(X, trainInds)
-                testX = SparseUtils.submatrix(X, testInds)
+                #trainX = SparseUtils.submatrix(X, trainInds)
+                #testX = SparseUtils.submatrix(X, testInds)
             
                 paramList.append((trainX, testX, U, V, maxLocalAuc))
             
@@ -411,7 +415,7 @@ class MaxLocalAUC(object):
 
         
         for i, k in enumerate(self.ks):
-            for icv, (trainInds, testInds) in enumerate(cvInds):             
+            for icv in range(len(trainTestXs)):             
                 testAucs[i, :, icv] = resultsIterator.next()
         
         if self.numProcesses != 1: 
