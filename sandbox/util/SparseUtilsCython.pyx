@@ -95,44 +95,7 @@ class SparseUtilsCython(object):
         
         return r  
     
-    @staticmethod    
-    def precisionAtk(omegaList, numpy.ndarray[int, ndim=2] indices): 
-        """
-        Take a list of nonzero indices, and also a list of predicted indices and compute 
-        the precision. 
-        """
-        cdef unsigned int i, j
-        cdef double count
-        cdef unsigned int k = indices.shape[1]
-        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] precisions = numpy.zeros(indices.shape[0], numpy.float)
-        
-        for i in range(indices.shape[0]):
-            count = 0 
-            for j in range(k): 
-                if indices[i, j] in omegaList[i]: 
-                    count += 1
-            precisions[i] = count/k
-        
-        return precisions
-            
-    @staticmethod    
-    def recallAtk(omegaList, numpy.ndarray[int, ndim=2] indices): 
-        """
-        Take a list of nonzero indices, and also a list of predicted indices and compute 
-        the precision. 
-        """
-        cdef unsigned int i, j
-        cdef double count
-        cdef unsigned int k = indices.shape[1]
-        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] recalls = numpy.zeros(indices.shape[0], numpy.float)
-        
-        for i in range(indices.shape[0]):
-            count = 0 
-            for j in range(k): 
-                if indices[i, j] in omegaList[i]: 
-                    count += 1
-            if omegaList[i].shape[0] != 0: 
-                recalls[i] = count/omegaList[i].shape[0]
-        
-        return recalls            
-        
+ 
+
+
+                
