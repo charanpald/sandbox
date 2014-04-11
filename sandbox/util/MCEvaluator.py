@@ -3,6 +3,7 @@ import logging
 from sandbox.util.Util import Util 
 from sandbox.util.SparseUtils import SparseUtils 
 from sandbox.util.SparseUtilsCython import SparseUtilsCython 
+from sandbox.util.MCEvaluatorCython import MCEvaluatorCython
 from math import ceil 
 
 class MCEvaluator(object):
@@ -64,7 +65,7 @@ class MCEvaluator(object):
             omegaList = SparseUtils.getOmegaList(X)
         
         orderedItems = orderedItems[:, 0:k]
-        precisions = SparseUtilsCython.precisionAtk(omegaList, orderedItems)
+        precisions = MCEvaluatorCython.precisionAtk(omegaList, orderedItems)
         
         if verbose: 
             return precisions.mean(), orderedItems
@@ -83,7 +84,7 @@ class MCEvaluator(object):
             omegaList = SparseUtils.getOmegaList(X)
         
         orderedItems = orderedItems[:, 0:k]
-        recalls = SparseUtilsCython.recallAtk(omegaList, orderedItems)
+        recalls = MCEvaluatorCython.recallAtk(omegaList, orderedItems)
         
         if verbose: 
             return recalls.mean(), orderedItems
@@ -91,7 +92,7 @@ class MCEvaluator(object):
             return recalls.mean()
 
     @staticmethod 
-    def recommendAtk(U, V, k, blockSize=1000): 
+    def recommendAtk(U, V, k, blockSize=1000, omegaList=None): 
         """
         Compute the matrix Z = U V^T and then find the k largest indices for each row. 
         """
@@ -105,6 +106,14 @@ class MCEvaluator(object):
             scores = U[j*blocksize:endInd, :].dot(V.T)     
             orderedItems[j*blocksize:endInd, :] = Util.argmaxN(scores, k)
             #orderedItems[j*blocksize:endInd, :] = Util.argmaxN2d(scores, k)
+            
+            #Now delete items in omegaList if given 
+            if omegaList != None: 
+                for i in range(j*blocksize, endInd):
+                    
+                    nonTrainItems = orderedItems[i, :][numpy.logical_not(numpy.in1d(orderedItems[i, :], omegaList[i]))]
+                    orderedItems[i, 0:nonTrainItems.shape[0]] = nonTrainItems
+                    orderedItems[i, nonTrainItems.shape[0]:] = -1
             
         return orderedItems 
         
