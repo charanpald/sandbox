@@ -175,7 +175,7 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             q = omegaBari[indsQ[j]]  
         
             uivp = dot(U, i, V, p, k)
-            kappa = exp(nu*(ri-uivp))
+            kappa = exp(ri-uivp)
             onePlusKappa = 1+kappa
             onePlusKappaSq = square(onePlusKappa)
             
@@ -338,7 +338,7 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             p = j 
             uivp = dot(U, i, V, p, k)
 
-            kappa = exp(nu*(ri - uivp))
+            kappa = exp(ri - uivp)
             onePlusKappa = 1+kappa
             onePlusTwoKappa = 1+kappa*2
             
@@ -360,7 +360,7 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             for p in omegai: 
                 uivp = dot(U, i, V, p, k)
                 
-                gamma = exp(nu*(uivq - uivp))
+                gamma = exp(uivq - uivp)
                 kappa = exp(nu*(ri - uivp))
                 
                 betaScale += gamma/(square(1+gamma) * (1+kappa))
