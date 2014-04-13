@@ -19,7 +19,8 @@ setup(
     license = "GPLv3",
     keywords = "numpy",
     url = "http://packages.python.org/sandbox",
-    packages=['sandbox'],
+    packages=['sandbox', 'sandbox.recommendation', 'sandbox.util',
+    'sandbox.data'],
     install_requires=['numpy>=1.5.0', 'scipy>=0.7.1', "scikit-learn>=0.13"],
     long_description="A collection of machine learning algorithms",
     classifiers=[
