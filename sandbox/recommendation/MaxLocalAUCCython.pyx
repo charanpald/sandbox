@@ -360,8 +360,8 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             for p in omegai: 
                 uivp = dot(U, i, V, p, k)
                 
-                gamma = exp(nu*(uivq - uivp))
-                kappa = exp(ri - uivp)
+                gamma = exp(uivq - uivp)
+                kappa = exp(nu*(ri - uivp))
                 
                 betaScale += gamma/(square(1+gamma) * (1+kappa))
             #Note we use numOmegaBari*numOmegai to normalise

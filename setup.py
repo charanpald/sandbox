@@ -7,7 +7,8 @@ from Cython.Distutils import build_ext
 ext_modules = [Extension("sandbox.predictors.TreeCriterion", ["sandbox/predictors/TreeCriterion.pyx"]),
     Extension("sandbox.util.SparseUtilsCython", ["sandbox/util/SparseUtilsCython.pyx"], include_dirs=[numpy.get_include()]),
     Extension("sandbox.recommendation.SGDNorm2RegCython", ["sandbox/recommendation/SGDNorm2RegCython.pyx"], include_dirs=[numpy.get_include()]), 
-    Extension("sandbox.recommendation.MaxLocalAUCCython", ["sandbox/recommendation/MaxLocalAUCCython.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ])
+    Extension("sandbox.recommendation.MaxLocalAUCCython", ["sandbox/recommendation/MaxLocalAUCCython.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ]),
+    Extension("sandbox.util.MCEvaluatorCython", ["sandbox/util/MCEvaluatorCython.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ])
 ]
 
 setup(

@@ -30,7 +30,7 @@ class  MCEvaluatorTest(unittest.TestCase):
         self.assertEquals(error, error2)
 
     def testRecommendAtk(self): 
-        m = 100 
+        m = 20 
         n = 50 
         r = 3 
 
@@ -48,6 +48,29 @@ class  MCEvaluatorTest(unittest.TestCase):
         orderedItems2 = Util.argmaxN(Z, k)
         
         nptst.assert_array_equal(orderedItems, orderedItems2)
+        
+        
+        #Test case where we have a set of training indices to remove 
+        #Let's create a random omegaList 
+        omegaList = []
+        for i in range(m): 
+            omegaList.append(numpy.random.permutation(n)[0:5])
+        
+        
+        orderedItems = MCEvaluator.recommendAtk(U, V, k, omegaList=omegaList)
+        orderedItems2 = MCEvaluator.recommendAtk(U, V, k)
+        
+        #print(omegaList)
+        #print(orderedItems)
+        #print(orderedItems2)
+        
+        for i in range(m): 
+            items = numpy.intersect1d(omegaList[i], orderedItems[i, :])
+            self.assertEquals(items.shape[0], 0)
+            
+            items = numpy.union1d(omegaList[i], orderedItems[i, :])
+            items = numpy.intersect1d(items, orderedItems2[i, :])
+            nptst.assert_array_equal(items, numpy.sort(orderedItems2[i, :]))
         
         
     def testPrecisionAtK(self): 
