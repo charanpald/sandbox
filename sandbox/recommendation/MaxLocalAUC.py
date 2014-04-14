@@ -23,8 +23,8 @@ def computeObjective(args):
     X, omegaList, U, V, maxLocalAuc  = args 
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
     
-    muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1)))
-    muAuc = -numpy.average(trainAucs, weights=numpy.flipud(1/numpy.arange(1, len(trainAucs)+1)))
+    muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1, dtype=numpy.float)))
+    muAuc = -numpy.average(trainAucs, weights=numpy.flipud(1/numpy.arange(1, len(trainAucs)+1, dtype=numpy.float)))
     
     #logging.debug("Weighted objective: " + str(muObj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
     logging.debug("Weighted AUC: " + str(muAuc) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
@@ -48,7 +48,7 @@ def computeTestAucs(args):
 
         U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
             
-        muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1)))
+        muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
         testAucScores[i] = muAuc
         
         logging.debug("Weighted local AUC: " + str(muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda))
@@ -185,7 +185,7 @@ class MaxLocalAUC(object):
             
             U  = numpy.ascontiguousarray(U)
             
-            self.updateUV(X, U, V, lastU, lastV, rowInds, colInds, ind, omegaList, sigma)                          
+            self.updateUV(X, U, V, lastU, lastV, rowInds, colInds, ind, omegaList, sigma)                       
                             
             if self.stochastic: 
                 ind += self.numStepIterations
@@ -242,10 +242,11 @@ class MaxLocalAUC(object):
             raise ValueError("Unknown initialisation: " + str(self.initialAlg))  
          
         U = numpy.ascontiguousarray(U)
-        #U = Standardiser().normaliseArray(U.T).T    
+        U = Standardiser().normaliseArray(U.T).T    
         
         V = numpy.ascontiguousarray(V) 
-        #V = Standardiser().normaliseArray(V.T).T 
+        maxNorm = numpy.sqrt(numpy.max(numpy.sum(V**2, 1)))
+        V = V/maxNorm
         
         return U, V
         
