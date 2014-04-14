@@ -237,15 +237,15 @@ class MaxLocalAUC(object):
         elif self.initialAlg == "wrmf": 
             logging.debug("Initialising with wrmf")
             learner = WeightedMf(self.k, w=self.w)
-            U, V = learner.learn(X)            
+            U, V = learner.learnModel(X.toScipyCsr())            
         else:
             raise ValueError("Unknown initialisation: " + str(self.initialAlg))  
          
         U = numpy.ascontiguousarray(U)
-        U = Standardiser().normaliseArray(U.T).T    
+        #U = Standardiser().normaliseArray(U.T).T    
         
         V = numpy.ascontiguousarray(V) 
-        V = Standardiser().normaliseArray(V.T).T 
+        #V = Standardiser().normaliseArray(V.T).T 
         
         return U, V
         
