@@ -22,10 +22,13 @@ def computeObjective(args):
     """
     X, omegaList, U, V, maxLocalAuc  = args 
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
-    muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1)))
     
-    logging.debug("Weighted objective: " + str(muObj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
-    return muObj
+    muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1)))
+    muAuc = -numpy.average(trainAucs, weights=numpy.flipud(1/numpy.arange(1, len(trainAucs)+1)))
+    
+    #logging.debug("Weighted objective: " + str(muObj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
+    logging.debug("Weighted AUC: " + str(muAuc) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
+    return muAuc
     
 def computeTestAucs(args): 
     trainX, testX, U, V, maxLocalAuc  = args 
@@ -353,12 +356,11 @@ class MaxLocalAUC(object):
         
         paramList = []   
         
-        if self.initialAlg != "svd": 
+        if self.initialAlg != "svd" and self.initialAlg != "softimpute": 
             numInitalUVs = self.folds
         else: 
             numInitalUVs = 1
             
-        
         for k in range(numInitalUVs):
             U, V = self.initUV(X)
                         
@@ -380,7 +382,9 @@ class MaxLocalAUC(object):
                     objectives[i, j] += resultsIterator.next()
             
         pool.terminate()
-        objectives /= numInitalUVs    
+        objectives /= numInitalUVs   
+        logging.debug("t0s=" + str(self.t0s))
+        logging.debug("alphas=" + str(self.alphas))
         logging.debug(objectives)
         
         t0 = self.t0s[numpy.unravel_index(numpy.argmin(objectives), objectives.shape)[0]]

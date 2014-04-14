@@ -44,7 +44,7 @@ class WeightedMf(object):
         
         self.folds = 3
         self.u = u
-        self.numAucSamples = 100
+        self.numAucSamples = 500
         self.numProcesses = multiprocessing.cpu_count()
         self.chunkSize = 1
         
