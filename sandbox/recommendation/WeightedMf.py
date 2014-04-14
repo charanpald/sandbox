@@ -10,30 +10,31 @@ from sandbox.util.Util import Util
 from mrec.mf.wrmf import WRMFRecommender
 from sandbox.util.MCEvaluator import MCEvaluator 
 
-def localAucsLmbdas(args): 
-    trainX, testX, testOmegaList, learner  = args 
+def computeTestAucs(args): 
+    trainX, testX, learner  = args 
+    testOmegaList = SparseUtils.getOmegaList(testX)
+    X = testX+trainX
     
-    (m, n) = trainX.shape
-                        
-    localAucs = numpy.zeros(learner.lmbdas.shape[0])
-
-    for j, lmbda in enumerate(learner.lmbdas): 
+    testAucScores = numpy.zeros(learner.lmbdas.shape[0])
+    logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
+    
+    for i, lmbda in enumerate(learner.lmbdas):         
         learner.lmbda = lmbda 
-        
+
         U, V = learner.learnModel(trainX)
+        r = SparseUtilsCython.computeR(U, V, learner.w, learner.numRecordAucSamples)
+        testAucScores[i] = localAUCApprox(X, U, V, testOmegaList, learner.numRecordAucSamples, r)
         
-        r = SparseUtilsCython.computeR(U, V, 1-learner.u, learner.numAucSamples)
-        localAucs[j] = localAUCApprox(testX, U, V, testOmegaList, learner.numAucSamples, r) 
-        logging.debug("Local AUC: " + str(localAucs[j]) + " with k = " + str(learner.k) + " and lmbda= " + str(learner.lmbda))
+        logging.debug("Local AUC: " + str(testAucScores[i]) + " with k=" + str(learner.k) + " lmbda=" + str(learner.lmbda))
         
-    return localAucs
+    return testAucScores
 
 class WeightedMf(object): 
     """
     A wrapper for the mrec class WRMFRecommender. 
     """
     
-    def __init__(self, k, alpha=1, lmbda=0.015, numIterations=15, u=0.1): 
+    def __init__(self, k, alpha=1, lmbda=0.015, numIterations=15, w=0.9): 
         self.k = k 
         self.alpha = alpha 
         self.lmbda = lmbda 
@@ -43,8 +44,9 @@ class WeightedMf(object):
         self.lmbdas = numpy.flipud(numpy.logspace(-3, -1, 11)*2) 
         
         self.folds = 3
-        self.u = u
-        self.numAucSamples = 500
+        self.testSize = 3
+        self.w = w
+        self.numRecordAucSamples = 500
         self.numProcesses = multiprocessing.cpu_count()
         self.chunkSize = 1
         
@@ -66,69 +68,62 @@ class WeightedMf(object):
         Perform model selection on X and return the best parameters. 
         """
         m, n = X.shape
-        cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
-        localAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(cvInds)))
+        #cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
+        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.testSize)
+        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection")
-        paramList = []  
+        paramList = []        
         
-        omegaList = SparseUtils.getOmegaList(X)
-        
-        for icv, (trainInds, testInds) in enumerate(cvInds):
-            Util.printIteration(icv, 1, self.folds, "Fold: ")
-
-            trainX = SparseUtils.submatrix(X, trainInds)
-            testX = X
+        for i, k in enumerate(self.ks): 
+            self.k = k
             
-            for i, k in enumerate(self.ks): 
-                maxLocalAuc = self.copy()
-                maxLocalAuc.k = k
-                paramList.append((trainX, testX, omegaList, maxLocalAuc))
-        
-        if self.numProcesses != 1:             
+            for icv, (trainX, testX) in enumerate(trainTestXs):                
+                learner = self.copy()
+                learner.k = k                
+            
+                paramList.append((trainX.toScipyCsr(), testX.toScipyCsr(), learner))
+            
+        if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-            resultsIterator = pool.imap(localAucsLmbdas, paramList, self.chunkSize)
+            resultsIterator = pool.imap(computeTestAucs, paramList, self.chunkSize)
         else: 
             import itertools
-            resultsIterator = itertools.imap(localAucsLmbdas, paramList)
+            resultsIterator = itertools.imap(computeTestAucs, paramList)
         
-        for icv, (trainInds, testInds) in enumerate(cvInds):        
-            for i, k in enumerate(self.ks): 
-                tempAucs = resultsIterator.next()
-                localAucs[i, :, icv] = tempAucs
+        for i, k in enumerate(self.ks):
+            for icv in range(len(trainTestXs)):             
+                testAucs[i, :, icv] = resultsIterator.next()
         
-        if self.numProcesses != 1:
+        if self.numProcesses != 1: 
             pool.terminate()
         
-        meanLocalAucs = numpy.mean(localAucs, 2)
-        stdLocalAucs = numpy.std(localAucs, 2)
+        meanTestLocalAucs = numpy.mean(testAucs, 2)
+        stdTestLocalAucs = numpy.std(testAucs, 2)
         
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdas=" + str(self.lmbdas)) 
-        logging.debug("Mean local AUCs=" + str(meanLocalAucs))
+        logging.debug("Mean local AUCs=" + str(meanTestLocalAucs))
         
-        k = self.ks[numpy.unravel_index(numpy.argmax(meanLocalAucs), meanLocalAucs.shape)[0]]
-        lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanLocalAucs), meanLocalAucs.shape)[1]]
-        
-        logging.debug("Model parameters: k=" + str(k) + " lmbda=" + str(lmbda))
-        
-        self.k = k 
-        self.lmbda = lmbda 
-        
-        return meanLocalAucs, stdLocalAucs
+        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[0]]
+        self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[1]]
+
+        logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda))
+         
+        return meanTestLocalAucs, stdTestLocalAucs
     
     def copy(self): 
         learner = WeightedMf(self.k, self.alpha, self.lmbda, self.numIterations)
         learner.ks = self.ks
         learner.lmbdas = self.lmbdas
-        learner.u = self.u
+        learner.w = self.w
         learner.folds = self.folds 
-        learner.numAucSamples = self.numAucSamples
+        learner.numRecordAucSamples = self.numRecordAucSamples
         
         return learner 
 
     def __str__(self): 
         outputStr = "WeightedMf: lmbda=" + str(self.lmbda) + " k=" + str(self.k) + " alpha=" + str(self.alpha)
-        outputStr += " numAucSamples=" + str(self.numAucSamples) + " numIterations=" + str(self.numIterations)
+        outputStr += " numRecordAucSamples=" + str(self.numRecordAucSamples) + " numIterations=" + str(self.numIterations)
         
         return outputStr         

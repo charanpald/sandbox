@@ -14,7 +14,7 @@ from sandbox.util.Util import Util
 from sandbox.data.Standardiser import Standardiser 
 from sandbox.util.MCEvaluator import MCEvaluator 
 from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
-
+from sandbox.recommendation.WeightedMf import WeightedMf
 
 def computeObjective(args): 
     """
@@ -23,8 +23,8 @@ def computeObjective(args):
     X, omegaList, U, V, maxLocalAuc  = args 
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
     
-    muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1)))
-    muAuc = -numpy.average(trainAucs, weights=numpy.flipud(1/numpy.arange(1, len(trainAucs)+1)))
+    muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1, dtype=numpy.float)))
+    muAuc = -numpy.average(trainAucs, weights=numpy.flipud(1/numpy.arange(1, len(trainAucs)+1, dtype=numpy.float)))
     
     #logging.debug("Weighted objective: " + str(muObj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
     logging.debug("Weighted AUC: " + str(muAuc) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
@@ -42,13 +42,13 @@ def computeTestAucs(args):
         maxLocalAuc.lmbda = lmbda 
 
         #Don't use warm restarts for the SVD
-        if maxLocalAuc.initialAlg == "svd" or maxLocalAuc.initialAlg == "softimpute": 
+        if maxLocalAuc.initialAlg != "rand": 
             U = inputU.copy()
             V = inputV.copy()
 
         U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
             
-        muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1)))
+        muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
         testAucScores[i] = muAuc
         
         logging.debug("Weighted local AUC: " + str(muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda))
@@ -89,6 +89,7 @@ class MaxLocalAUC(object):
         self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
         
         self.nu = 20.0 
+        self.nuPrime = 1.0
         self.lmbda = lmbda 
         self.rho = 0.00 #Penalty on orthogonality constraint ||U^TU - I|| + ||V^TV - I|| 
         
@@ -101,7 +102,7 @@ class MaxLocalAUC(object):
         self.initialAlg = "rand"
         
         #Model selection parameters 
-        self.folds = 5 
+        self.folds = 3 
         self.testSize = 3
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 2.0**-numpy.arange(1, 10, 2)
@@ -172,7 +173,8 @@ class MaxLocalAUC(object):
                 if testX != None:
                     printStr += " test LAUC~" + str(testAucs[-1]) + " obj~" + str(testObjs[-1])    
                 printStr += " sigma=" + str(sigma)
-                #printStr += " normV=" + str(numpy.linalg.norm(V))
+                printStr += " normU=" + str(numpy.linalg.norm(U))
+                printStr += " normV=" + str(numpy.linalg.norm(V))
                 logging.debug(printStr)
 
             lastMuObj = muObj
@@ -183,7 +185,7 @@ class MaxLocalAUC(object):
             
             U  = numpy.ascontiguousarray(U)
             
-            self.updateUV(X, U, V, lastU, lastV, rowInds, colInds, ind, omegaList, sigma)                          
+            self.updateUV(X, U, V, lastU, lastV, rowInds, colInds, ind, omegaList, sigma)                       
                             
             if self.stochastic: 
                 ind += self.numStepIterations
@@ -218,31 +220,33 @@ class MaxLocalAUC(object):
         if self.initialAlg == "rand": 
             U = numpy.random.randn(m, self.k)
             V = numpy.random.randn(n, self.k)
-            
-            #U, R = numpy.linalg.qr(U)
-            #V, R = numpy.linalg.qr(V)
         elif self.initialAlg == "svd":
             logging.debug("Initialising with SVD")
             try: 
                 U, s, V = SparseUtils.svdPropack(X, self.k, kmax=numpy.min([self.k*15, m-1, n-1]))
             except ImportError: 
                 U, s, V = SparseUtils.svdArpack(X, self.k)
-            U = numpy.ascontiguousarray(U)
-            V = numpy.ascontiguousarray(V)
         elif self.initialAlg == "softimpute": 
+            logging.debug("Initialising with softimpute")
             trainIterator = iter([X.toScipyCsc()])
             rho = 0.01
             learner = IterativeSoftImpute(rho, k=self.k, svdAlg="propack", postProcess=True)
             ZList = learner.learnModel(trainIterator)    
             U, s, V = ZList.next()
             U = U*s
-            U = numpy.ascontiguousarray(U)
-            V = numpy.ascontiguousarray(V)
+        elif self.initialAlg == "wrmf": 
+            logging.debug("Initialising with wrmf")
+            learner = WeightedMf(self.k, w=self.w)
+            U, V = learner.learnModel(X.toScipyCsr())            
         else:
             raise ValueError("Unknown initialisation: " + str(self.initialAlg))  
-            
+         
+        U = numpy.ascontiguousarray(U)
         U = Standardiser().normaliseArray(U.T).T    
-        V = Standardiser().normaliseArray(V.T).T 
+        
+        V = numpy.ascontiguousarray(V) 
+        maxNorm = numpy.sqrt(numpy.max(numpy.sum(V**2, 1)))
+        V = V/maxNorm
         
         return U, V
         
@@ -255,7 +259,7 @@ class MaxLocalAUC(object):
             updateU(X, U, V, omegaList, sigma, r, self.nu)
             updateV(X, U, V, omegaList, sigma, r, self.nu, self.lmbda)
         else: 
-            updateUVApprox(X, U, V, omegaList, rowInds, colInds, ind, sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.nu, self.lmbda, self.rho)
+            updateUVApprox(X, U, V, omegaList, rowInds, colInds, ind, sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.nu, self.nuPrime, self.lmbda, self.rho)
        
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, r): 
@@ -356,7 +360,7 @@ class MaxLocalAUC(object):
         
         paramList = []   
         
-        if self.initialAlg != "svd" and self.initialAlg != "softimpute": 
+        if self.initialAlg == "rand": 
             numInitalUVs = self.folds
         else: 
             numInitalUVs = 1
@@ -411,9 +415,10 @@ class MaxLocalAUC(object):
         
         for i, k in enumerate(self.ks): 
             self.k = k
-            U, V = self.initUV(X)
             
             for icv, (trainX, testX) in enumerate(trainTestXs):
+                U, V = self.initUV(X)
+                
                 maxLocalAuc = self.copy()
                 maxLocalAuc.k = k                
             
