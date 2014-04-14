@@ -18,7 +18,7 @@ except:
         
         
 
-class Climf(object): 
+class CLiMF(object): 
     """
     An interface to use CLiMF recommender system. 
     """
@@ -83,7 +83,7 @@ def main():
     trainX, testX = trainTestXs[0]
     trainX = trainX.toScipyCsr()
 
-    learner = Climf(k=20, lmbda=0.001, gamma=0.0001)
+    learner = CLiMF(k=20, lmbda=0.001, gamma=0.0001)
     learner.learnModel(trainX)
     
 if __name__=='__main__':
