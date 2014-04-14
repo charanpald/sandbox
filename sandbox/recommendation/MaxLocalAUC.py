@@ -101,7 +101,7 @@ class MaxLocalAUC(object):
         self.initialAlg = "rand"
         
         #Model selection parameters 
-        self.folds = 5 
+        self.folds = 3 
         self.testSize = 3
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 2.0**-numpy.arange(1, 10, 2)
@@ -172,7 +172,8 @@ class MaxLocalAUC(object):
                 if testX != None:
                     printStr += " test LAUC~" + str(testAucs[-1]) + " obj~" + str(testObjs[-1])    
                 printStr += " sigma=" + str(sigma)
-                #printStr += " normV=" + str(numpy.linalg.norm(V))
+                printStr += " normU=" + str(numpy.linalg.norm(U))
+                printStr += " normV=" + str(numpy.linalg.norm(V))
                 logging.debug(printStr)
 
             lastMuObj = muObj
@@ -411,9 +412,10 @@ class MaxLocalAUC(object):
         
         for i, k in enumerate(self.ks): 
             self.k = k
-            U, V = self.initUV(X)
             
             for icv, (trainX, testX) in enumerate(trainTestXs):
+                U, V = self.initUV(X)
+                
                 maxLocalAuc = self.copy()
                 maxLocalAuc.k = k                
             
