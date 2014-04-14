@@ -14,7 +14,7 @@ from sandbox.util.Util import Util
 from sandbox.data.Standardiser import Standardiser 
 from sandbox.util.MCEvaluator import MCEvaluator 
 from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
-
+from sandbox.recommendation.WeightedMf import WeightedMf
 
 def computeObjective(args): 
     """
@@ -42,7 +42,7 @@ def computeTestAucs(args):
         maxLocalAuc.lmbda = lmbda 
 
         #Don't use warm restarts for the SVD
-        if maxLocalAuc.initialAlg == "svd" or maxLocalAuc.initialAlg == "softimpute": 
+        if maxLocalAuc.initialAlg != "rand": 
             U = inputU.copy()
             V = inputV.copy()
 
@@ -89,6 +89,7 @@ class MaxLocalAUC(object):
         self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
         
         self.nu = 20.0 
+        self.nuPrime = 1.0
         self.lmbda = lmbda 
         self.rho = 0.00 #Penalty on orthogonality constraint ||U^TU - I|| + ||V^TV - I|| 
         
@@ -219,30 +220,31 @@ class MaxLocalAUC(object):
         if self.initialAlg == "rand": 
             U = numpy.random.randn(m, self.k)
             V = numpy.random.randn(n, self.k)
-            
-            #U, R = numpy.linalg.qr(U)
-            #V, R = numpy.linalg.qr(V)
         elif self.initialAlg == "svd":
             logging.debug("Initialising with SVD")
             try: 
                 U, s, V = SparseUtils.svdPropack(X, self.k, kmax=numpy.min([self.k*15, m-1, n-1]))
             except ImportError: 
                 U, s, V = SparseUtils.svdArpack(X, self.k)
-            U = numpy.ascontiguousarray(U)
-            V = numpy.ascontiguousarray(V)
         elif self.initialAlg == "softimpute": 
+            logging.debug("Initialising with softimpute")
             trainIterator = iter([X.toScipyCsc()])
             rho = 0.01
             learner = IterativeSoftImpute(rho, k=self.k, svdAlg="propack", postProcess=True)
             ZList = learner.learnModel(trainIterator)    
             U, s, V = ZList.next()
             U = U*s
-            U = numpy.ascontiguousarray(U)
-            V = numpy.ascontiguousarray(V)
+        elif self.initialAlg == "wrmf": 
+            logging.debug("Initialising with wrmf")
+            learner = WeightedMf(self.k, w=self.w)
+            U, V = learner.learn(X)            
         else:
             raise ValueError("Unknown initialisation: " + str(self.initialAlg))  
-            
+         
+        U = numpy.ascontiguousarray(U)
         U = Standardiser().normaliseArray(U.T).T    
+        
+        V = numpy.ascontiguousarray(V) 
         V = Standardiser().normaliseArray(V.T).T 
         
         return U, V
@@ -256,7 +258,7 @@ class MaxLocalAUC(object):
             updateU(X, U, V, omegaList, sigma, r, self.nu)
             updateV(X, U, V, omegaList, sigma, r, self.nu, self.lmbda)
         else: 
-            updateUVApprox(X, U, V, omegaList, rowInds, colInds, ind, sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.nu, self.lmbda, self.rho)
+            updateUVApprox(X, U, V, omegaList, rowInds, colInds, ind, sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.nu, self.nuPrime, self.lmbda, self.rho)
        
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, r): 
@@ -357,7 +359,7 @@ class MaxLocalAUC(object):
         
         paramList = []   
         
-        if self.initialAlg != "svd" and self.initialAlg != "softimpute": 
+        if self.initialAlg == "rand": 
             numInitalUVs = self.folds
         else: 
             numInitalUVs = 1
