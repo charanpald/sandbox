@@ -39,8 +39,8 @@ cdef inline numpy.ndarray[double, ndim = 1, mode="c"] scale(numpy.ndarray[double
         ui[s] = U[i, s]*d
     return ui
 
-#@cython.boundscheck(False) 
-#@cython.wraparound(False) 
+@cython.boundscheck(False) 
+@cython.wraparound(False) 
 cdef inline numpy.ndarray[double, ndim = 1, mode="c"] plusEquals(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, numpy.ndarray[double, ndim = 1, mode="c"] d, unsigned int k):
     """
     Computes U[i, :] += d[i] where k is U.shape[1]
@@ -213,8 +213,8 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
 
 
 
-#@cython.boundscheck(False)
-#@cython.wraparound(False)
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def derivativeUiApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double lmbda, double rho):
     """
     Find an approximation of delta phi/delta u_i using the simple objective without 
@@ -443,8 +443,8 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     
     return deltaTheta
 
-#@cython.boundscheck(False)
-#@cython.wraparound(False)
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def derivativeViApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int j, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double lmbda, double rho): 
     """
     delta phi/delta v_i  using the simple objective without 
@@ -456,12 +456,11 @@ def derivativeViApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1], ind
     cdef unsigned int s = 0
-    cdef double uivp, kappa, onePlusKappa, uivq, gamma, onePlusGamma, denom, riExp, uivpExp, betaScale, uivqExp, onePlusTwoKappa, ri, alpha, normTheta
+    cdef double uivp, uivq,  betaScale, ri, normTheta
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowInds = numpy.unique(numpy.array(numpy.random.randint(0, m, numRowSamples), dtype=numpy.uint))
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowVInds = numpy.unique(numpy.array(numpy.random.randint(0, n, numRowSamples), dtype=numpy.uint))
     
      
     for i in rowInds: 
@@ -497,7 +496,7 @@ def derivativeViApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
     
     if rowInds.shape[0]!= 0: 
         deltaBeta = deltaBeta/rowInds.shape[0]
-    deltaTheta = scale(V, i, lmbda/m, k) - deltaBeta
+    deltaTheta = scale(V, j, lmbda/m, k) - deltaBeta
     
     #Make gradient unit norm 
     normTheta = numpy.linalg.norm(deltaTheta)
@@ -522,11 +521,13 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
     
     for s in range(numIterations):
         i = rowInds[(ind + s) % m]
-        dUi = derivativeUiApprox2(X, U, V, omegaList, i, numRowSamples, numAucSamples, r, nu, lmbda, rho)
+        dUi = derivativeUiApprox(X, U, V, omegaList, i, numRowSamples, numAucSamples, r, nu, lmbda, rho)
+        #dUi = derivativeUiApprox2(X, U, V, omegaList, i, numRowSamples, numAucSamples, r, nu, lmbda, rho)
         #dUi = derivativeUi(X, U, V, omegaList, i, r, nu)
         
         j = colInds[(ind + s) % n]
-        dVj = derivativeViApprox2(X, U, V, omegaList, j, numRowSamples, numAucSamples, r, nu, lmbda, rho)
+        dVj = derivativeViApprox(X, U, V, omegaList, j, numRowSamples, numAucSamples, r, nu, lmbda, rho)
+        #dVj = derivativeViApprox2(X, U, V, omegaList, j, numRowSamples, numAucSamples, r, nu, lmbda, rho)
         #dVi = derivativeVi(X, U, V, omegaList, j, r, nu)
 
         plusEquals(U, i, -sigma*dUi, k)
