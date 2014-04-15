@@ -506,13 +506,13 @@ def derivativeViApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
     return deltaTheta
 
 
-#@cython.boundscheck(False)
-#@cython.wraparound(False)
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned int, ndim=1, mode="c"] rowInds, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, unsigned int ind, double sigma, unsigned int numIterations, unsigned int numRowSamples, unsigned int numAucSamples, double w, double nu, double nuPrime, double lmbda, double rho): 
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1]    
     cdef unsigned int k = U.shape[1] 
-    cdef unsigned int numAucSamplesR = 100
+    cdef unsigned int numAucSamplesR = 500
     #cdef numpy.ndarray[double, ndim=1, mode="c"] r = numpy.ones(m)*-1
     cdef numpy.ndarray[double, ndim=1, mode="c"] r = SparseUtilsCython.computeR(U, V, w, numAucSamplesR) 
     cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(k)
@@ -538,19 +538,18 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
         
         plusEquals(V, j, -sigma*dVj, k)  
         
-        #Note that we are penalising the norm of V in this derivative, however 
-        #we renormalise to reduce instabilities in r. 
         normVj = numpy.linalg.norm(V[j,:])
         if normVj > 1: 
             V[j,:] = scale(V, j, 1/normVj, k)  
         
-    
-def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double lmbda):         
+@cython.boundscheck(False)
+@cython.wraparound(False)   
+def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double nuPrime, double lmbda):         
     cdef double obj = 0 
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1]
     cdef unsigned int i, j, k, p, q
-    cdef double kappa, onePlusKappa, uivp, uivq, gamma, partialAuc
+    cdef double kappa, uivp, uivq, gamma, partialObj
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(10, numpy.uint)  
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP
     
@@ -574,10 +573,10 @@ def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[
                 q = getNonZeroRow(X, i, n)                  
             
                 uivp = dot(U, i, V, p, k)
-                kappa = exp(-uivp+ri)
+                kappa = exp(nuPrime*(ri-uivp))
                 
                 uivq = dot(U, i, V, q, k)
-                gamma = exp(-uivp+uivq)
+                gamma = exp(nu*(uivq-uivp))
 
                 partialObj += 1/((1+gamma) * (1+kappa))
                         
