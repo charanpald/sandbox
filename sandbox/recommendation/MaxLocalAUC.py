@@ -161,11 +161,11 @@ class MaxLocalAUC(object):
             
             if ind % self.recordStep == 0: 
                 r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)
-                trainObjs.append(objectiveApprox(X, U, V, omegaList, self.numRecordAucSamples, r, self.lmbda))
+                trainObjs.append(objectiveApprox(X, U, V, omegaList, self.numRecordAucSamples, r, self.nu, self.nuPrime, self.lmbda))
                 trainAucs.append(localAUCApprox(X, U, V, omegaList, self.numRecordAucSamples, r))
                 
                 if testX != None:
-                    testObjs.append(objectiveApprox(testX, U, V, testOmegaList, self.numRecordAucSamples, r, self.lmbda))
+                    testObjs.append(objectiveApprox(testX, U, V, testOmegaList, self.numRecordAucSamples, r, self.nu, self.nuPrime, self.lmbda))
                     testAucs.append(localAUCApprox(testX, U, V, testOmegaList, self.numRecordAucSamples, r))
                     
                 printStr = "Iteration: " + str(ind)
@@ -242,7 +242,8 @@ class MaxLocalAUC(object):
             raise ValueError("Unknown initialisation: " + str(self.initialAlg))  
          
         U = numpy.ascontiguousarray(U)
-        U = Standardiser().normaliseArray(U.T).T    
+        maxNorm = numpy.sqrt(numpy.max(numpy.sum(U**2, 1)))
+        U = U/maxNorm  
         
         V = numpy.ascontiguousarray(V) 
         maxNorm = numpy.sqrt(numpy.max(numpy.sum(V**2, 1)))
@@ -457,7 +458,7 @@ class MaxLocalAUC(object):
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numStepIterations=" + str(self.numStepIterations)
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
-        outputStr += " nu=" + str(self.nu) + " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho) + " numProcesses=" + str(self.numProcesses) + " testSize=" + str(self.testSize)
+        outputStr += " nu=" + str(self.nu) + " nuPrime=" + str(self.nuPrime) + " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho) + " numProcesses=" + str(self.numProcesses) + " testSize=" + str(self.testSize)
         
         return outputStr 
 
@@ -482,6 +483,9 @@ class MaxLocalAUC(object):
         maxLocalAuc.lmbdas = self.lmbdas
         maxLocalAuc.folds = self.folds
         maxLocalAuc.testSize = self.testSize
+        
+        maxLocalAuc.nu = self.nu 
+        maxLocalAuc.nuPrime = self.nuPrime 
         
         return maxLocalAuc
         
