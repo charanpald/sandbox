@@ -24,14 +24,14 @@ except:
         
         
 def computeTestAucs(args): 
-    trainX, testX, testOmegaList, maxLocalAuc, w, numRecordAucSamples = args 
+    trainX, testX, testOmegaList, learner, w, numRecordAucSamples = args 
     logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
     
-    maxLocalAuc.learnModel(trainX.toScipyCsr(), U=maxLocalAuc.U, V=maxLocalAuc.V)
-    r = SparseUtilsCython.computeR(maxLocalAuc.U, maxLocalAuc.V, w, numRecordAucSamples) 
-    localAUC = localAUCApprox(testX, maxLocalAuc.U, maxLocalAuc.V, testOmegaList, numRecordAucSamples, r)
+    learner.learnModel(trainX.toScipyCsr(), U=learner.U, V=learner.V)
+    r = SparseUtilsCython.computeR(learner.U, learner.V, w, numRecordAucSamples) 
+    localAUC = localAUCApprox(testX, learner.U, learner.V, testOmegaList, numRecordAucSamples, r)
     
-    logging.debug("local AUC: " + str(localAUC) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " gamma=" + str(maxLocalAuc.gamma))
+    logging.debug("local AUC: " + str(localAUC) + " with k=" + str(learner.k) + " lmbda=" + str(learner.lmbda) + " gamma=" + str(learner.gamma))
         
     return localAUC
 
@@ -100,14 +100,14 @@ class CLiMF(object):
             for lmbda in self.lmbdas:
                 for gamma in self.gammas:
                     for (trainX, testX, testOmegaList) in datas:
-                        maxLocalAuc = self.copy()
-                        maxLocalAuc.k = k
-                        maxLocalAuc.U = U.copy()
-                        maxLocalAuc.V = V.copy()
-                        maxLocalAuc.lmbda = lmbda
-                        maxLocalAuc.gamma = gamma
+                        learner = self.copy()
+                        learner.k = k
+                        learner.U = U.copy()
+                        learner.V = V.copy()
+                        learner.lmbda = lmbda
+                        learner.gamma = gamma
                     
-                        paramList.append((trainX, testX, testOmegaList, maxLocalAuc, self.w, self.numRecordAucSamples))
+                        paramList.append((trainX, testX, testOmegaList, learner, self.w, self.numRecordAucSamples))
             
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
@@ -141,11 +141,6 @@ class CLiMF(object):
          
         return meanTestLocalAucs, stdTestLocalAucs
 
-        """
-        Perform model selection on X and return the best parameters. 
-        """
-        cat("modelSelect is not implemented for CLiMF")
-        stop()
             
     def copy(self): 
         learner = CLiMF(self.k, self.lmbda, self.gamma)
