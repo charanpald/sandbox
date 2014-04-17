@@ -533,7 +533,7 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
         plusEquals(U, i, -sigma*dUi, k)
         
         normUi = numpy.linalg.norm(U[i,:])
-        if normUi > 1: 
+        if normUi != 0: 
             U[i,:] = scale(U, i, 1/normUi, k)             
         
         plusEquals(V, j, -sigma*dVj, k)  
