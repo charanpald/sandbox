@@ -122,7 +122,7 @@ class MaxLocalAUC(object):
         #Not that to compute the test AUC we pick i \in X and j \notin X \cup testX        
         if testX != None: 
             testOmegaList = SparseUtils.getOmegaList(testX)
-            testX = X+testX
+            allX = X+testX
 
         if U==None or V==None:
             U, V = self.initUV(X)
@@ -165,8 +165,8 @@ class MaxLocalAUC(object):
                 trainAucs.append(localAUCApprox(X, U, V, omegaList, self.numRecordAucSamples, r))
                 
                 if testX != None:
-                    testObjs.append(objectiveApprox(testX, U, V, testOmegaList, self.numRecordAucSamples, r, self.nu, self.nuPrime, self.lmbda))
-                    testAucs.append(localAUCApprox(testX, U, V, testOmegaList, self.numRecordAucSamples, r))
+                    testObjs.append(objectiveApprox(allX, U, V, testOmegaList, self.numRecordAucSamples, r, self.nu, self.nuPrime, self.lmbda))
+                    testAucs.append(localAUCApprox(allX, U, V, testOmegaList, self.numRecordAucSamples, r))
                     
                 printStr = "Iteration: " + str(ind)
                 printStr += " LAUC~" + str(trainAucs[-1]) + " obj~" + str(trainObjs[-1])
@@ -411,14 +411,14 @@ class MaxLocalAUC(object):
         trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.testSize)
         testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
         
-        logging.debug("Performing model selection")
+        logging.debug("Performing model selection with test leave out per row of " + str(self.testSize))
         paramList = []        
         
         for i, k in enumerate(self.ks): 
             self.k = k
             
             for icv, (trainX, testX) in enumerate(trainTestXs):
-                U, V = self.initUV(X)
+                U, V = self.initUV(trainX)
                 
                 maxLocalAuc = self.copy()
                 maxLocalAuc.k = k                
