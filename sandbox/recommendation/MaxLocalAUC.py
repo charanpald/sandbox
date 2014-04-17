@@ -108,8 +108,8 @@ class MaxLocalAUC(object):
         self.lmbdas = 2.0**-numpy.arange(1, 10, 2)
 
         #Learning rate selection 
-        self.alphas = 2.0**-numpy.arange(0, 5, 1)
-        self.t0s = numpy.logspace(-2, -5, 6, base=10)
+        self.alphas = 2.0**-numpy.arange(0, 11, 1)
+        self.t0s = numpy.logspace(-1, -5, 7, base=10)
     
     def learnModel(self, X, verbose=False, U=None, V=None, testX=None): 
         """
@@ -360,6 +360,8 @@ class MaxLocalAUC(object):
         objectives = numpy.zeros((self.t0s.shape[0], self.alphas.shape[0]))
         
         paramList = []   
+        logging.debug("t0s=" + str(self.t0s))
+        logging.debug("alphas=" + str(self.alphas))
         
         if self.initialAlg == "rand": 
             numInitalUVs = self.folds
