@@ -201,7 +201,7 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
         alpha +=  dot(U, i, U, j, k)
     alpha = (alpha - 2)/rowUInds.shape[0]
 
-    deltaTheta += scale(U, i, lmbda/m + rho*alpha, k)    
+    deltaTheta += scale(U, i, rho*alpha, k)    
        
     #Normalise gradient to have unit norm 
     normDeltaTheta = numpy.linalg.norm(deltaTheta)
