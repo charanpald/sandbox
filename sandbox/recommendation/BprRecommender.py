@@ -29,7 +29,7 @@ def computeTestAuc(args):
     
     #r = SparseUtilsCython.computeR(U, V, learner.w, learner.numRecordAucSamples)
     testAuc = MCEvaluator.localAUCApprox(allX, U, V, learner.w, learner.numRecordAucSamples, testOmegaList)
-    logging.debug("Weighted local AUC: " + str(testAuc) + " with k=" + str(learner.k) + " lmbda=" + str(learner.lmbda))
+    logging.debug("Weighted local AUC: " + str(testAuc) + " with " + str(learner))
         
     return testAuc
 
@@ -38,12 +38,14 @@ class BprRecommender(object):
     An interface to the BPR recommender system. 
     """
     
-    def __init__(self, k, lmbda, gamma, w=0.9): 
+    def __init__(self, k, lmbdaUser=0.1, lmbdaPos=0.1, lmbdaNeg=0.1, gamma=0.1, w=0.9): 
         """
         k is the number of factors, lambda is the regularistion and gamma is the learning rate 
         """
         self.k = k 
-        self.lmbda = lmbda
+        self.lmbdaUser = lmbdaUser
+        self.lmbdaPos = lmbdaPos
+        self.lmbdaNeg = lmbdaNeg
         self.gamma = gamma
                 
         self.maxIterations = 25
@@ -52,7 +54,9 @@ class BprRecommender(object):
         self.folds = 5 
         self.testSize = 3
         self.ks = 2**numpy.arange(3, 8)
-        self.lmbdas = 2.0**-numpy.arange(1, 20, 4)
+        self.lmbdaUsers = 2.0**-numpy.arange(1, 20, 4)
+        self.lmbdaPoses = 2.0**-numpy.arange(1, 20, 4)
+        self.lmbdaNegs = 2.0**-numpy.arange(1, 20, 4)
         self.gammas = 2.0**-numpy.arange(1, 20, 4)
         
         
@@ -66,9 +70,9 @@ class BprRecommender(object):
     def learnModel(self, X, U=None, V=None):
         args = BPRArgs()
         args.learning_rate = self.gamma
-        #args.bias_regularization = self.lmbda
-        args.negative_item_regularization = self.lmbda 
-        args.positive_item_regularization = self.lmbda
+        args.user_regularization = self.lmbdaUser
+        args.negative_item_regularization = self.lmbdaPos 
+        args.positive_item_regularization = self.lmbdaNeg
         
         model = BPR(self.k, args)
     
@@ -89,19 +93,23 @@ class BprRecommender(object):
         m, n = X.shape
         #cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
         trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.testSize, csarray=False)
-        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
+        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdaUsers.shape[0], self.lmbdaPoses.shape[0], self.lmbdaNegs.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection with test leave out per row of " + str(self.testSize))
         paramList = []        
         
         for i, k in enumerate(self.ks): 
-            for j, lmbda in enumerate(self.lmbdas): 
-                for icv, (trainX, testX) in enumerate(trainTestXs):
-                    learner = self.copy()
-                    learner.k = k  
-                    learner.lmbda = lmbda 
-                
-                    paramList.append((trainX, testX, learner))
+            for j, lmbdaUser in enumerate(self.lmbdaUsers): 
+                for s, lmbdaPos in enumerate(self.lmbdaPoses): 
+                    for t, lmbdaNeg in enumerate(self.lmbdaNegs): 
+                        for icv, (trainX, testX) in enumerate(trainTestXs):
+                            learner = self.copy()
+                            learner.k = k  
+                            learner.lmbdaUser = lmbdaUser 
+                            learner.lmbdaPos = lmbdaPos
+                            learner.lmbdaNeg = lmbdaNeg
+                        
+                            paramList.append((trainX, testX, learner))
             
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
@@ -111,37 +119,45 @@ class BprRecommender(object):
             resultsIterator = itertools.imap(computeTestAuc, paramList)
         
         for i, k in enumerate(self.ks): 
-            for j, lmbda in enumerate(self.lmbdas): 
-                for icv, (trainX, testX) in enumerate(trainTestXs):         
-                    testAucs[i, j, icv] = resultsIterator.next()
-        
+            for j, lmbdaUser in enumerate(self.lmbdaUsers): 
+                for s, lmbdaPos in enumerate(self.lmbdaPoses): 
+                    for t, lmbdaNeg in enumerate(self.lmbdaNegs): 
+                        for icv, (trainX, testX) in enumerate(trainTestXs):        
+                            testAucs[i, j, s, t, icv] = resultsIterator.next()
+                
         if self.numProcesses != 1: 
             pool.terminate()
         
-        meanTestLocalAucs = numpy.mean(testAucs, 2)
-        stdTestLocalAucs = numpy.std(testAucs, 2)
+        meanTestLocalAucs = numpy.mean(testAucs, 4)
+        stdTestLocalAucs = numpy.std(testAucs, 4)
         
         logging.debug("ks=" + str(self.ks)) 
-        logging.debug("lmbdas=" + str(self.lmbdas)) 
+        logging.debug("lmbdaUsers=" + str(self.lmbdaUsers)) 
+        logging.debug("lmbdaPoses=" + str(self.lmbdaPoses)) 
+        logging.debug("lmbdaNegs=" + str(self.lmbdaNegs)) 
         logging.debug("Mean local AUCs=" + str(meanTestLocalAucs))
         
         self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[0]]
-        self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[1]]
+        self.lmbdaUser = self.lmbdaUsers[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[1]]
+        self.lmbdaPose = self.lmbdaPoses[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[2]]
+        self.lmbdaNeg = self.lmbdaNegs[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[3]]
 
-        logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda))
+        logging.debug("Model parameters: " + str(self))
          
         return meanTestLocalAucs, stdTestLocalAucs
         
         
     def copy(self): 
-        learner = BprRecommender(self.k, self.lmbda, self.gamma)
+        learner = BprRecommender(self.k, self.lmbdaUser, self.lmbdaPos, self.lmbdaNeg, self.gamma)
         learner.maxIterations = self.maxIterations
         
         return learner 
 
     def __str__(self): 
         outputStr = "BPR Recommender: k=" + str(self.k) 
-        outputStr += " lambda=" + str(self.lmbda)
+        outputStr += " lmbdaUser=" + str(self.lmbdaUser)
+        outputStr += " lmbdaPos=" + str(self.lmbdaPos)
+        outputStr += " lmbdaNeg=" + str(self.lmbdaNeg)
         outputStr += " gamma=" + str(self.gamma)
         outputStr += " maxIterations=" + str(self.maxIterations)
         

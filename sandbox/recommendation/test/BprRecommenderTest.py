@@ -46,11 +46,17 @@ class BprRecommenderTest(unittest.TestCase):
         u = 0.2
         lmbda = 0.1 
         gamma = 0.01
-        maxLocalAuc = BprRecommender(k, lmbda, gamma)
-        maxLocalAuc.maxIterations = 20
+        learner = BprRecommender(k, lmbda, gamma)
+        learner.maxIterations = 10        
+        learner.ks = 2**numpy.arange(3, 5)
+        learner.lmbdaUsers = 2.0**-numpy.arange(1, 3)
+        learner.lmbdaPoses = 2.0**-numpy.arange(1, 3)
+        learner.lmbdaNegs = 2.0**-numpy.arange(1, 3)
+        learner.gammas = 2.0**-numpy.arange(1, 3)
+        learner.folds = 2
         #maxLocalAuc.numProcesses = 1 
         
-        maxLocalAuc.modelSelect(X)
+        learner.modelSelect(X)
 
     
 if __name__ == "__main__":
