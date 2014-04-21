@@ -3,6 +3,7 @@ from sandbox.util.Parameter import Parameter
 from sandbox.util.SparseUtils import SparseUtils
 import numpy
 import array 
+import scipy.sparse
 
 
 class Sampling(object):
@@ -190,7 +191,7 @@ class Sampling(object):
         return indexList 
         
     @staticmethod 
-    def shuffleSplitRows(X, k, testSize): 
+    def shuffleSplitRows(X, k, testSize, csarray=True): 
         """
         Take a sparse binary matrix and create k number of train-test splits 
         in which the test split contains at most testSize elements and the train 
@@ -229,12 +230,16 @@ class Sampling(object):
       
             testRowInds = testRowInds[0:testInd]   
             testColInds = testColInds[0:testInd]
-                
-            trainX = sppy.csarray(X.shape,  dtype=numpy.int)
-            trainX.put(numpy.ones(trainRowInds.shape[0], numpy.int), trainRowInds, trainColInds, True)
             
-            testX = sppy.csarray(X.shape,  dtype=numpy.int)
-            testX.put(numpy.ones(testRowInds.shape[0], numpy.int), testRowInds, testColInds, True)
+            if csarray: 
+                trainX = sppy.csarray(X.shape,  dtype=numpy.int)
+                trainX.put(numpy.ones(trainRowInds.shape[0], numpy.int), trainRowInds, trainColInds, True)
+                
+                testX = sppy.csarray(X.shape,  dtype=numpy.int)
+                testX.put(numpy.ones(testRowInds.shape[0], numpy.int), testRowInds, testColInds, True)
+            else: 
+                trainX = scipy.sparse.csr_matrix((numpy.ones(trainRowInds.shape[0], numpy.int), (trainRowInds, trainColInds)), shape=X.shape)
+                testX = scipy.sparse.csr_matrix((numpy.ones(testRowInds.shape[0], numpy.int), (testRowInds, testColInds)), shape=X.shape)
             
             trainTestXList.append((trainX, testX))
         
