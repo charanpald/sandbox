@@ -23,7 +23,7 @@ def computeObjective(args):
     X, omegaList, U, V, maxLocalAuc  = args 
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
     
-    muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1, dtype=numpy.float)))
+    #muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1, dtype=numpy.float)))
     muAuc = -numpy.average(trainAucs, weights=numpy.flipud(1/numpy.arange(1, len(trainAucs)+1, dtype=numpy.float)))
     
     #logging.debug("Weighted objective: " + str(muObj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
@@ -151,7 +151,7 @@ class MaxLocalAUC(object):
         
         startTime = time.time()
     
-        while (abs(muObj - lastMuObj) > self.eps) and ind < self.maxIterations:             
+        while ind < self.maxIterations:             
             if self.rate == "constant": 
                 pass
             elif self.rate == "optimal":
@@ -169,9 +169,9 @@ class MaxLocalAUC(object):
                     testAucs.append(localAUCApprox(allX, U, V, testOmegaList, self.numRecordAucSamples, r))
                     
                 printStr = "Iteration: " + str(ind)
-                printStr += " LAUC~" + str(trainAucs[-1]) + " obj~" + str(trainObjs[-1])
+                printStr += " LAUC~" + str(trainAucs[-1]) 
                 if testX != None:
-                    printStr += " test LAUC~" + str(testAucs[-1]) + " obj~" + str(testObjs[-1])    
+                    printStr += " test LAUC~" + str(testAucs[-1])
                 printStr += " sigma=" + str(sigma)
                 printStr += " normU=" + str(numpy.linalg.norm(U))
                 printStr += " normV=" + str(numpy.linalg.norm(V))
@@ -194,7 +194,7 @@ class MaxLocalAUC(object):
             
         totalTime = time.time() - startTime
         logging.debug("normU=" + str(numpy.linalg.norm(U)) + " normV=" + str(numpy.linalg.norm(V)))
-        logging.debug("abs(muObj - lastMuObj)=" + str(abs(muObj - lastMuObj)))
+        #logging.debug("abs(muObj - lastMuObj)=" + str(abs(muObj - lastMuObj)))
         logging.debug("Total time taken " + str(totalTime))
         logging.debug("Number of iterations: " + str(ind))
         printStr = "Final train local AUC=" + str(trainAucs[-1])
@@ -478,6 +478,7 @@ class MaxLocalAUC(object):
         maxLocalAuc.numRowSamples = self.numRowSamples
         maxLocalAuc.numStepIterations = self.numStepIterations
         maxLocalAuc.numAucSamples = self.numAucSamples
+        maxLocalAuc.numRecordAucSamples = self.numRecordAucSamples
         maxLocalAuc.maxIterations = self.maxIterations
         maxLocalAuc.initialAlg = self.initialAlg
         
