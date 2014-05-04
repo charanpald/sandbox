@@ -42,13 +42,14 @@ class MaxLocalAUCProfile(object):
         u = 0.2
         w = 1-u
         eps = 10**-6
-        sigma = 0.1
+        alpha = 0.1
         k = self.k*10
-        maxLocalAuc = MaxLocalAUC(k, w, sigma=sigma, eps=eps, stochastic=True)
+        maxLocalAuc = MaxLocalAUC(k, w, alpha=alpha, eps=eps, stochastic=True)
         maxLocalAuc.numRowSamples = 50
         maxLocalAuc.numColSamples = 50
         maxLocalAuc.numAucSamples = 50
         maxLocalAuc.maxIterations = 1000
+        maxLocalAuc.numRecordAucSamples = 100
         maxLocalAuc.initialAlg = "rand"
         maxLocalAuc.rate = "optimal"
                 
