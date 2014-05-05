@@ -276,10 +276,14 @@ def derivativeUiApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
                 deltaTheta += (V[q, :] - V[p, :])*(1-gamma)
             
             if kappa <= 1: 
-                deltaTheta -= V[p, :]*(1-kappa)
+                deltaTheta -= V[p, :]*(1-kappa)*rho
                 
         deltaTheta /= float(numAucSamples)
             
+            
+    #Add regularisation 
+    deltaTheta = scale(U, i, lmbda/m, k) + deltaTheta        
+        
     #Normalise gradient to have unit norm 
     normDeltaTheta = numpy.linalg.norm(deltaTheta)
     
@@ -509,14 +513,14 @@ def derivativeViApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
                     betaScale += 1-gamma 
 
                 if kappa <= 1: 
-                    betaScale += 1-kappa             
+                    betaScale += (1-kappa)*rho              
                 
             #Note we  use numAucSamples*numOmegai to normalise
             deltaBeta = scale(U, i, -betaScale/(numAucSamples*numOmegai), k)
         else:
+            #Choose this branch with probability numAucSamples/OmegaBari? 
             q = j 
             uivq = dot(U, i, V, q, k)
-            #uivqExp = exp(uivq) 
                             
             for p in omegai: 
                 uivp = dot(U, i, V, p, k)
@@ -525,12 +529,11 @@ def derivativeViApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
                 
                 if gamma <= 1: 
                     betaScale += 1-gamma
-            #Note we use numOmegaBari*numOmegai to normalise
+
             if numOmegai != 0:
-                deltaBeta = scale(U, i, betaScale/(numOmegai*numOmegaBari), k)  
+                deltaBeta = scale(U, i, betaScale/(numOmegai*numAucSamples), k)  
                 
         deltaTheta += deltaBeta
-    
     
     if rowInds.shape[0]!= 0: 
         deltaTheta = deltaTheta/rowInds.shape[0]
