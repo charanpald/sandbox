@@ -87,6 +87,7 @@ class MaxLocalAUC(object):
         self.rate = "constant"
         self.alpha = alpha #Initial learning rate 
         self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
+        self.beta = 0.5
         
         self.nu = 20.0 
         self.nuPrime = 1.0
@@ -153,9 +154,9 @@ class MaxLocalAUC(object):
     
         while ind < self.maxIterations:             
             if self.rate == "constant": 
-                pass
+                sigma = self.alpha 
             elif self.rate == "optimal":
-                sigma = self.alpha/((1 + self.alpha*self.t0*ind))
+                sigma = self.alpha/((1 + self.alpha*self.t0*ind**self.beta))
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
             
