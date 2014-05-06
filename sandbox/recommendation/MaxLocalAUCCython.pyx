@@ -517,8 +517,8 @@ def derivativeViApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
                 
             #Note we  use numAucSamples*numOmegai to normalise
             deltaBeta = scale(U, i, -betaScale/(numAucSamples*numOmegai), k)
-        else:
-            #Choose this branch with probability numAucSamples/OmegaBari? 
+        elif numpy.random.rand() < numAucSamples/float(numOmegaBari):
+            #Choose this branch with probability numAucSamples/numOmegaBari? 
             q = j 
             uivq = dot(U, i, V, q, k)
                             
