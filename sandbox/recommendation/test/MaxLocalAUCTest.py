@@ -131,7 +131,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         #print(deltaV2.T*10)                   
         nptst.assert_almost_equal(deltaV, deltaV2, 2)
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testModelSelect(self): 
         m = 10 
         n = 20 
@@ -181,7 +181,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         u= 0.1
         eps = 0.001
         k = 10 
-        maxLocalAuc = MaxLocalAUC(k, u, sigma=5.0, eps=eps)
+        maxLocalAuc = MaxLocalAUC(k, u, alpha=5.0, eps=eps)
         maxLocalAuc.copy()
 
 if __name__ == "__main__":
