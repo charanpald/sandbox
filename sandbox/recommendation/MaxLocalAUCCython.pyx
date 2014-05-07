@@ -91,53 +91,53 @@ cdef unsigned int getNonZeroRow(X, unsigned int i, unsigned int n):
     return q
 
 @cython.boundscheck(False)
-def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, numpy.ndarray[double, ndim=1, mode="c"] r, double nu): 
+@cython.wraparound(False)
+def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, numpy.ndarray[double, ndim=1, mode="c"] r, double lmbda, double rho, bint normalise):
     """
-    delta phi/delta u_i
+    Find  delta phi/delta u_i using the hinge loss.  
     """
-    cdef unsigned int p, q, m, n 
+    cdef unsigned int p, q, ind, j, s
     cdef unsigned int k = U.shape[1]
-    cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappaSq, gamma, onePlusGamma
-    cdef double denom, denom2, alphaScale
+    cdef double uivp, ri, uivq, gamma, kappa
+    cdef double denom, denom2, normDeltaTheta, alpha 
+    cdef unsigned int m = X.shape[0], n = X.shape[1], numOmegai, numOmegaBari
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaAlpha = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
-    
-    m = X.shape[0]
-    n = X.shape[1]
-    #deltaTheta = scale(U, i, lmbda, k) 
-    
+      
     omegai = omegaList[i]
     omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
+    numOmegai = omegai.shape[0]
+    numOmegaBari = n-numOmegai
     
-    deltaAlpha = numpy.zeros(k)
+    deltaTheta = numpy.zeros(k)
     ri = r[i]
     
-    for p in omegai: 
-        uivp = dot(U, i, V, p, k)
-        kappa = exp(-uivp +ri)
-        onePlusKappa = 1+kappa
-        onePlusKappaSq = square(onePlusKappa)
-        
-        for q in omegaBari: 
-            uivq = dot(U, i, V, q, k)
-            gamma = exp(nu*(uivq - uivp))
-            onePlusGamma = 1+gamma
-            onePlusGammaSq = square(onePlusGamma)
+    if numOmegai * numOmegaBari != 0:         
+        for p in omegai: 
+            for q in omegaBari: 
+                uivp = dot(U, i, V, p, k)
+                uivq = dot(U, i, V, q, k)
+                
+                gamma = uivp - uivq
+                kappa = uivp - ri
+                
+                if gamma <= 1: 
+                    deltaTheta += (V[q, :] - V[p, :])*(1-gamma)*(1-rho)
+                
+                if kappa <= 1: 
+                    deltaTheta -= V[p, :]*(1-kappa)*rho
+                
+        deltaTheta /= float(numOmegai * numOmegaBari * m)
             
-            denom = onePlusGammaSq * onePlusKappaSq
-            denom2 = onePlusGammaSq * onePlusKappa
-            deltaAlpha += scale(V, p, (gamma+kappa+2*gamma*kappa)/denom, k) - scale(V, q, (gamma/denom2), k) 
-            
-    if omegai.shape[0] * omegaBari.shape[0] != 0: 
-        deltaAlpha /= float(omegai.shape[0] * omegaBari.shape[0]*m)
+    #Add regularisation 
+    deltaTheta = scale(U, i, lmbda/m, k) + deltaTheta        
         
-    deltaTheta -= deltaAlpha
+    #Normalise gradient to have unit norm 
     normDeltaTheta = numpy.linalg.norm(deltaTheta)
     
-    if normDeltaTheta != 0: 
-        deltaTheta = deltaTheta/normDeltaTheta    
+    if normDeltaTheta != 0 and normalise: 
+        deltaTheta = deltaTheta/normDeltaTheta
     
     return deltaTheta
 
@@ -159,81 +159,11 @@ def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, 
     for i in range(m):
         U[i,:] = scale(U, i, 1/numpy.linalg.norm(U[i,:]), k)   
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double nuPrime, double lmbda, double rho):
-    """
-    Find an approximation of delta phi/delta u_i
-    """
-    cdef unsigned int p, q, ind, j, s
-    cdef unsigned int k = U.shape[1]
-    cdef double uivp, ri, uivq, kappa, onePlusKappa, onePlusKappaSq, gamma, onePlusGamma
-    cdef double denom, denom2, normDeltaBeta, alpha 
-    cdef unsigned int m = X.shape[0], n = X.shape[1], numOmegai, numOmegaBari
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaAlpha = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP = numpy.zeros(k, numpy.int)
-    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowUInds = numpy.unique(numpy.array(numpy.random.randint(0, m, numRowSamples), dtype=numpy.uint))
-         
-    omegai = omegaList[i]
-    omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
-    numOmegai = omegai.shape[0]
-    numOmegaBari = n-numOmegai
-    
-    deltaAlpha = numpy.zeros(k)
-    ri = r[i]
-    
-    if numOmegai * numOmegaBari != 0: 
-        indsP = numpy.random.randint(0, numOmegai, numAucSamples)
-        indsQ = numpy.random.randint(0, numOmegaBari, numAucSamples)        
-        
-        for j in range(numAucSamples):
-            p = omegai[indsP[j]] 
-            q = omegaBari[indsQ[j]]  
-        
-            uivp = dot(U, i, V, p, k)
-            kappa = exp(nuPrime*(ri-uivp))
-            onePlusKappa = 1+kappa
-            onePlusKappaSq = square(onePlusKappa)
-            
-            uivq = dot(U, i, V, q, k)
-            gamma = exp(nu*(uivq-uivp))
-            onePlusGamma = 1+gamma
-            onePlusGammaSq = square(onePlusGamma)
-            
-            denom = onePlusGammaSq * onePlusKappaSq
-            denom2 = onePlusGammaSq * onePlusKappa
-            if denom != 0 and denom2 != 0: 
-                deltaAlpha += scale(V, p, ((gamma+kappa+2*gamma*kappa)/denom), k) - scale(V, q, (gamma/denom2), k) 
-                
-        deltaAlpha /= float(numAucSamples)
-        deltaTheta -= deltaAlpha
-    
-    #Penalise non orthogonal directions 
-    rowUInds = numpy.union1d(rowUInds, numpy.array([i], dtype=numpy.uint)) 
-
-    for j in rowUInds: 
-        alpha +=  dot(U, i, U, j, k)
-    alpha = (alpha - 2)/rowUInds.shape[0]
-
-    deltaTheta += scale(U, i, rho*alpha, k)    
-       
-    #Normalise gradient to have unit norm 
-    normDeltaTheta = numpy.linalg.norm(deltaTheta)
-    
-    if normDeltaTheta != 0: 
-        deltaTheta = deltaTheta/normDeltaTheta
-    
-    return deltaTheta
-
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def derivativeUiApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double lmbda, double rho):
+def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double lmbda, double rho, bint normalise):
     """
     Find an approximation of delta phi/delta u_i using the simple objective without 
     sigmoid functions. 
@@ -241,14 +171,13 @@ def derivativeUiApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
     cdef unsigned int p, q, ind, j, s
     cdef unsigned int k = U.shape[1]
     cdef double uivp, ri, uivq, gamma, kappa
-    cdef double denom, denom2, normDeltaTheta, alpha 
+    cdef double normDeltaTheta 
     cdef unsigned int m = X.shape[0], n = X.shape[1], numOmegai, numOmegaBari
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP = numpy.zeros(k, numpy.int)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowUInds = numpy.unique(numpy.array(numpy.random.randint(0, m, numRowSamples), dtype=numpy.uint))
          
     omegai = omegaList[i]
     omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
@@ -260,11 +189,12 @@ def derivativeUiApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
     
     if numOmegai * numOmegaBari != 0: 
         indsP = numpy.random.randint(0, numOmegai, numAucSamples)
-        indsQ = numpy.random.randint(0, numOmegaBari, numAucSamples)        
+        #indsQ = numpy.random.randint(0, numOmegaBari, numAucSamples)        
         
         for j in range(numAucSamples):
             p = omegai[indsP[j]] 
-            q = omegaBari[indsQ[j]]  
+            #q = omegaBari[indsQ[j]]  
+            q = getNonZeroRow(X, i, n) 
         
             uivp = dot(U, i, V, p, k)
             uivq = dot(U, i, V, q, k)
@@ -273,13 +203,12 @@ def derivativeUiApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
             kappa = uivp - ri
             
             if gamma <= 1: 
-                deltaTheta += (V[q, :] - V[p, :])*(1-gamma)
+                deltaTheta += (V[q, :] - V[p, :])*(1-gamma)*(1-rho)
             
             if kappa <= 1: 
                 deltaTheta -= V[p, :]*(1-kappa)*rho
                 
-        deltaTheta /= float(numAucSamples)
-            
+        deltaTheta /= float(numAucSamples * m)
             
     #Add regularisation 
     deltaTheta = scale(U, i, lmbda/m, k) + deltaTheta        
@@ -287,194 +216,16 @@ def derivativeUiApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
     #Normalise gradient to have unit norm 
     normDeltaTheta = numpy.linalg.norm(deltaTheta)
     
-    if normDeltaTheta != 0: 
+    if normDeltaTheta != 0 and normalise: 
         deltaTheta = deltaTheta/normDeltaTheta
     
     return deltaTheta
 
 @cython.boundscheck(False)
-def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int j, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double lmbda): 
-    """
-    delta phi/delta v_j
-    """
-    cdef unsigned int i = 0
-    cdef unsigned int p, q, numOmegai, numOmegaBari
-    cdef unsigned int m = X.shape[0]
-    cdef unsigned int n = X.shape[1]
-    cdef unsigned int k = U.shape[1]
-    cdef double uivp, kappa, onePlusKappa, uivq, gamma, onePlusGamma, denom, ri, betaScale
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaAlpha = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] ui = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] allInds = numpy.arange(n, dtype=numpy.uint)
-    
-    deltaTheta = scale(V, j, lmbda, k)
-
-    for i in range(m): 
-        omegai = omegaList[i]
-        
-        deltaBeta = numpy.zeros(k) 
-        betaScale = 0
-        ui = U[i, :]
-        ri = r[i]
-        
-        if X[i, j] != 0: 
-            omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
-            
-            p = j 
-            uivp = dot(U, i, V, p, k)
-            kappa = exp(-uivp+ri)
-            onePlusKappa = 1+kappa
-            onePlusKappaSq = onePlusKappa**2
-            twoKappa = 2*kappa
-            
-            for q in omegaBari: 
-                uivq = dot(U, i, V, q, k)
-                gamma = exp(nu*(uivq - uivp))
-                onePlusGamma = 1+gamma
-                
-                denom = onePlusGamma**2 * onePlusKappaSq 
-                betaScale += ((gamma+kappa+gamma*twoKappa)/denom)
-                
-            deltaBeta = scale(U, i, betaScale, k)
-        else:
-            q = j 
-            uivq = dot(U, i, V, q, k)
-            
-            for p in omegai: 
-                uivp = dot(U, i, V, p, k)
-                
-                gamma = exp(nu*(uivq - uivp))
-                kappa = exp(-uivp+ri)
-                
-                betaScale -= (gamma/((1+gamma)**2 * (1+kappa)))
-                
-            deltaBeta = scale(U, i, betaScale, k)
-        
-        numOmegai = omegai.shape[0]       
-        numOmegaBari = n-numOmegai
-        
-        if numOmegai*numOmegaBari != 0: 
-            deltaBeta /= float(numOmegai*numOmegaBari)
-            
-        deltaAlpha += deltaBeta 
-    
-    deltaAlpha /= float(m)
-    deltaTheta -= deltaAlpha
-    deltaTheta = deltaTheta/numpy.linalg.norm(deltaTheta)
-    
-    return deltaTheta
- 
-
-def updateV(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, double sigma, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double lmbda): 
-    """
-    Compute the full gradient descent update of V
-    """
-    cdef numpy.ndarray[numpy.float_t, ndim=2, mode="c"] dV = numpy.zeros((V.shape[0], V.shape[1]), numpy.float)
-    cdef unsigned int i 
-    cdef unsigned int n = X.shape[1]
-    cdef unsigned int k = V.shape[1]
-    
-    for i in range(n): 
-        dV[i, :] = derivativeVi(X, U, V, omegaList, i, r, nu, lmbda) 
-    
-    V -= sigma*dV
-
-    #for i in range(n):
-    #    V[i,:] = scale(V, i, 1/numpy.linalg.norm(V[i,:]), k)   
-       
-   
-@cython.boundscheck(False)
 @cython.wraparound(False)
-def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int j, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double nuPrime, double lmbda, double rho): 
+def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int j, numpy.ndarray[double, ndim=1, mode="c"] r, double lmbda, double rho, bint normalise): 
     """
-    delta phi/delta v_i
-    """
-    cdef unsigned int i = 0
-    cdef unsigned int k = U.shape[1]
-    cdef unsigned int p, q, numOmegai, numOmegaBari, t
-    cdef unsigned int m = X.shape[0]
-    cdef unsigned int n = X.shape[1], ind
-    cdef unsigned int s = 0
-    cdef double uivp, kappa, onePlusKappa, uivq, gamma, onePlusGamma, denom, riExp, uivpExp, betaScale, uivqExp, onePlusTwoKappa, ri, alpha
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowInds = numpy.unique(numpy.array(numpy.random.randint(0, m, numRowSamples), dtype=numpy.uint))
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowVInds = numpy.unique(numpy.array(numpy.random.randint(0, n, numRowSamples), dtype=numpy.uint))
-    
-     
-    for i in rowInds: 
-        omegai = omegaList[i]
-        numOmegai = omegai.shape[0]       
-        numOmegaBari = n-numOmegai
-        
-        ri = r[i]
-        betaScale = 0
-        deltaBeta = numpy.zeros(k, numpy.float)
-        
-        if X[i, j] != 0:                 
-            p = j 
-            uivp = dot(U, i, V, p, k)
-
-            kappa = exp(nuPrime*(ri - uivp))
-            onePlusKappa = 1+kappa
-            onePlusTwoKappa = 1+kappa*2
-            
-            for s in range(numAucSamples): 
-                q = getNonZeroRow(X, i, n)
-            
-                uivq = dot(U, i, V, q, k)
-                gamma = exp(nu*(uivq - uivp)) #Faster to do this                     
-                
-                denom = square(1+gamma)
-                betaScale += (kappa+gamma*onePlusTwoKappa)/denom
-            #Note we  use numAucSamples*numOmegai to normalise
-            deltaBeta = scale(U, i, betaScale/(numAucSamples*numOmegai*square(onePlusKappa)), k)
-        else:
-            q = j 
-            uivq = dot(U, i, V, q, k)
-            #uivqExp = exp(uivq) 
-                            
-            for p in omegai: 
-                uivp = dot(U, i, V, p, k)
-                
-                gamma = exp(nu*(uivq - uivp))
-                kappa = exp(nuPrime*(ri - uivp))
-                
-                betaScale += gamma/(square(1+gamma) * (1+kappa))
-            #Note we use numOmegaBari*numOmegai to normalise
-            if numOmegai != 0:
-                deltaBeta = scale(U, i, -betaScale/(numOmegai*numOmegaBari), k)             
-        
-        plusEquals1d(deltaTheta, -deltaBeta, k)
-    
-    #Normalise gradient vector 
-    deltaTheta = deltaTheta/rowInds.shape[0]
-    
-    #Penalise non orthogonal directions using rho*||V^T V - I||^2_F
-    rowVInds = numpy.union1d(rowVInds, numpy.array([j], dtype=numpy.uint))
-
-    for i in rowVInds: 
-        alpha +=  dot(V, j, V, i, k)
-    alpha = (alpha - 2)/rowVInds.shape[0]
-    
-    deltaTheta += scale(V, j, lmbda/m + rho*alpha, k)       
-    
-    #Make gradient unit norm 
-    deltaTheta = deltaTheta/numpy.linalg.norm(deltaTheta)
-    
-    return deltaTheta
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-def derivativeViApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int j, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double lmbda, double rho): 
-    """
-    delta phi/delta v_i  using the simple objective without 
-    sigmoid functions. 
+    delta phi/delta v_i using hinge loss. 
     """
     cdef unsigned int i = 0
     cdef unsigned int k = U.shape[1]
@@ -486,39 +237,35 @@ def derivativeViApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowInds = numpy.unique(numpy.array(numpy.random.randint(0, m, numRowSamples), dtype=numpy.uint))
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
     
-    for i in rowInds: 
+    for i in range(m): 
         omegai = omegaList[i]
+        omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
         numOmegai = omegai.shape[0]       
         numOmegaBari = n-numOmegai
         
         ri = r[i]
         betaScale = 0
-        #deltaBeta = numpy.zeros(k, numpy.float)
         
         if X[i, j] != 0:                 
             p = j 
             uivp = dot(U, i, V, p, k)
             
-            for s in range(numAucSamples): 
-                q = getNonZeroRow(X, i, n)
-            
+            for q in omegaBari: 
                 uivq = dot(U, i, V, q, k)
                 
                 gamma = uivp - uivq
                 kappa = uivp - ri
                 
                 if gamma <= 1: 
-                    betaScale += 1-gamma 
+                    betaScale += (1-gamma)*(1-rho) 
 
                 if kappa <= 1: 
                     betaScale += (1-kappa)*rho              
                 
-            #Note we  use numAucSamples*numOmegai to normalise
-            deltaBeta = scale(U, i, -betaScale/(numAucSamples*numOmegai), k)
-        elif numpy.random.rand() < numAucSamples/float(numOmegaBari):
-            #Choose this branch with probability numAucSamples/numOmegaBari? 
+            deltaBeta = scale(U, i, -betaScale/(numOmegaBari*numOmegai), k)
+        else:
             q = j 
             uivq = dot(U, i, V, q, k)
                             
@@ -528,22 +275,121 @@ def derivativeViApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
                 gamma = uivp - uivq               
                 
                 if gamma <= 1: 
-                    betaScale += 1-gamma
+                    betaScale += (1-gamma)*(1-rho)
 
             if numOmegai != 0:
-                deltaBeta = scale(U, i, betaScale/(numOmegai*numAucSamples), k)  
+                deltaBeta = scale(U, i, betaScale/(numOmegai*numOmegaBari), k)  
                 
         deltaTheta += deltaBeta
     
-    if rowInds.shape[0]!= 0: 
-        deltaTheta = deltaTheta/rowInds.shape[0]
+    deltaTheta = deltaTheta/float(m)
         
     #Add regularisation 
     deltaTheta = scale(V, j, lmbda/m, k) + deltaTheta
     
     #Make gradient unit norm 
     normTheta = numpy.linalg.norm(deltaTheta)
-    if normTheta != 0: 
+    if normTheta != 0 and normalise: 
+        deltaTheta = deltaTheta/normTheta
+    
+    return deltaTheta
+ 
+
+def updateV(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, double sigma, numpy.ndarray[double, ndim=1, mode="c"] r, double lmbda): 
+    """
+    Compute the full gradient descent update of V
+    """
+    cdef numpy.ndarray[numpy.float_t, ndim=2, mode="c"] dV = numpy.zeros((V.shape[0], V.shape[1]), numpy.float)
+    cdef unsigned int i 
+    cdef unsigned int n = X.shape[1]
+    cdef unsigned int k = V.shape[1]
+    
+    for i in range(n): 
+        dV[i, :] = derivativeVi(X, U, V, omegaList, i, r, lmbda) 
+    
+    V -= sigma*dV
+
+    #for i in range(n):
+    #    V[i,:] = scale(V, i, 1/numpy.linalg.norm(V[i,:]), k)   
+       
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int j, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double lmbda, double rho, bint normalise): 
+    """
+    delta phi/delta v_i  using the hinge loss. 
+    """
+    cdef unsigned int i = 0
+    cdef unsigned int k = U.shape[1]
+    cdef unsigned int p, q, numOmegai, numOmegaBari, t
+    cdef unsigned int m = X.shape[0]
+    cdef unsigned int n = X.shape[1], ind
+    cdef unsigned int s = 0
+    cdef double uivp, uivq,  betaScale, ri, normTheta
+    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
+    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
+    #cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowInds = numpy.unique(numpy.array(numpy.random.randint(0, m, numRowSamples), dtype=numpy.uint))
+    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] rowInds = numpy.random.permutation(m)[0:numRowSamples]
+    
+    for i in rowInds: 
+        omegai = omegaList[i]
+        numOmegai = omegai.shape[0]       
+        numOmegaBari = n-numOmegai
+        
+        ri = r[i]
+        betaScale = 0
+        
+        if X[i, j] != 0:                 
+            p = j 
+            uivp = dot(U, i, V, p, k)
+            
+            #omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
+            #omegaBari = numpy.random.permutation(omegaBari)[0:numAucSamples]
+            
+            for s in range(numAucSamples): 
+                q = getNonZeroRow(X, i, n)
+                #for q in omegaBari: 
+            
+                uivq = dot(U, i, V, q, k)
+                
+                gamma = uivp - uivq
+                kappa = uivp - ri
+                
+                if gamma <= 1: 
+                    betaScale += (1-gamma)*(1-rho) 
+
+                if kappa <= 1: 
+                    betaScale += (1-kappa)*rho              
+                
+            #Note we  use numAucSamples*numOmegai to normalise
+            deltaBeta = scale(U, i, -betaScale/(numAucSamples*numOmegai), k)
+        else:
+            q = j 
+            uivq = dot(U, i, V, q, k)
+                            
+            for p in omegai: 
+                uivp = dot(U, i, V, p, k)
+                
+                gamma = uivp - uivq               
+                
+                if gamma <= 1: 
+                    betaScale += (1-gamma)*(1-rho)
+
+            if numOmegai != 0:
+                deltaBeta = scale(U, i, betaScale/(numOmegai*numOmegaBari), k)  
+                
+        deltaTheta += deltaBeta
+    
+    if rowInds.shape[0]!= 0: 
+        deltaTheta = deltaTheta/float(rowInds.shape[0])
+        
+    #Add regularisation 
+    deltaTheta = scale(V, j, lmbda/m, k) + deltaTheta
+    
+    #Make gradient unit norm 
+    normTheta = numpy.linalg.norm(deltaTheta)
+    if normTheta != 0 and normalise: 
         deltaTheta = deltaTheta/normTheta
     
     return deltaTheta
@@ -551,7 +397,7 @@ def derivativeViApprox2(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned int, ndim=1, mode="c"] rowInds, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, unsigned int ind, double sigma, unsigned int numIterations, unsigned int numRowSamples, unsigned int numAucSamples, double w, double nu, double nuPrime, double lmbda, double rho): 
+def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, numpy.ndarray[unsigned int, ndim=1, mode="c"] rowInds, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, unsigned int ind, double sigma, unsigned int numIterations, unsigned int numRowSamples, unsigned int numAucSamples, double w, double lmbda, double rho, bint normalise): 
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1]    
     cdef unsigned int k = U.shape[1] 
@@ -564,13 +410,11 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
     
     for s in range(numIterations):
         i = rowInds[(ind + s) % m]
-        #dUi = derivativeUiApprox(X, U, V, omegaList, i, numRowSamples, numAucSamples, r, nu, nuPrime, lmbda, rho)
-        dUi = derivativeUiApprox2(X, U, V, omegaList, i, numRowSamples, numAucSamples, r, nu, lmbda, rho)
+        dUi = derivativeUiApprox(X, U, V, omegaList, i, numRowSamples, numAucSamples, r, lmbda, rho, normalise)
         #dUi = derivativeUi(X, U, V, omegaList, i, r, nu)
         
         j = colInds[(ind + s) % n]
-        #dVj = derivativeViApprox(X, U, V, omegaList, j, numRowSamples, numAucSamples, r, nu, nuPrime, lmbda, rho)
-        dVj = derivativeViApprox2(X, U, V, omegaList, j, numRowSamples, numAucSamples, r, nu, lmbda, rho)
+        dVj = derivativeViApprox(X, U, V, omegaList, j, numRowSamples, numAucSamples, r, lmbda, rho, normalise)
         #dVi = derivativeVi(X, U, V, omegaList, j, r, nu)
 
         plusEquals(U, i, -sigma*dUi, k)
