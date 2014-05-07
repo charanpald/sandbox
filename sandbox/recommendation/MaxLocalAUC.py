@@ -89,8 +89,7 @@ class MaxLocalAUC(object):
         self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
         self.beta = 0.5
         
-        self.nu = 20.0 
-        self.nuPrime = 1.0
+        self.normalise = True
         self.lmbda = lmbda 
         self.rho = 0.00 #Penalty on orthogonality constraint ||U^TU - I|| + ||V^TV - I|| 
         
@@ -162,11 +161,11 @@ class MaxLocalAUC(object):
             
             if ind % self.recordStep == 0: 
                 r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)
-                trainObjs.append(objectiveApprox(X, U, V, omegaList, self.numRecordAucSamples, r, self.nu, self.nuPrime, self.lmbda))
+                #trainObjs.append(objectiveApprox(X, U, V, omegaList, self.numRecordAucSamples, r, self.nu, self.nuPrime, self.lmbda))
                 trainAucs.append(localAUCApprox(X, U, V, omegaList, self.numRecordAucSamples, r))
                 
                 if testX != None:
-                    testObjs.append(objectiveApprox(allX, U, V, testOmegaList, self.numRecordAucSamples, r, self.nu, self.nuPrime, self.lmbda))
+                    #testObjs.append(objectiveApprox(allX, U, V, testOmegaList, self.numRecordAucSamples, r, self.nu, self.nuPrime, self.lmbda))
                     testAucs.append(localAUCApprox(allX, U, V, testOmegaList, self.numRecordAucSamples, r))
                     
                 printStr = "Iteration: " + str(ind)
@@ -179,7 +178,7 @@ class MaxLocalAUC(object):
                 logging.debug(printStr)
 
             lastMuObj = muObj
-            muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1)))
+            #muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1)))
             
             lastU = U.copy() 
             lastV = V.copy()
@@ -261,7 +260,7 @@ class MaxLocalAUC(object):
             updateU(X, U, V, omegaList, sigma, r, self.nu)
             updateV(X, U, V, omegaList, sigma, r, self.nu, self.lmbda)
         else: 
-            updateUVApprox(X, U, V, omegaList, rowInds, colInds, ind, sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.nu, self.nuPrime, self.lmbda, self.rho)
+            updateUVApprox(X, U, V, omegaList, rowInds, colInds, ind, sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
        
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, r): 
@@ -276,82 +275,6 @@ class MaxLocalAUC(object):
         """
         return derivativeVi(X, U, V, omegaList, i, r, self.nu, self.lmbda)           
 
-    #@profile
-    def objective(self, X, U, V, omegaList, r):         
-        obj = 0 
-        m = X.shape[0]
-        
-        allInds = numpy.arange(X.shape[1])        
-        
-        for i in range(X.shape[0]): 
-            omegai = omegaList[i]
-            omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
-            
-            ui = U[i, :]       
-            uiV = ui.dot(V.T)
-            ri = r[i]
-            
-            if omegai.shape[0] * omegaBari.shape[0] != 0: 
-                partialAuc = 0                
-                
-                for p in omegai: 
-                    uivp = uiV[p]
-                    kappa = numpy.exp(-uivp+ri)
-                    onePlusKappa = 1+kappa
-                    
-                    for q in omegaBari: 
-                        uivq = uiV[q]
-                        gamma = exp(-uivp+uivq)
-
-                        partialAuc += 1/((1+gamma) * onePlusKappa)
-                            
-                obj += partialAuc/float(omegai.shape[0] * omegaBari.shape[0])
-        
-        obj /= m       
-        obj = - obj
-        
-        return obj 
-
-    #@profile
-    def objectiveApprox(self, X, U, V, omegaList):         
-        obj = 0 
-        m = X.shape[0]
-        
-        allInds = numpy.arange(X.shape[1])        
-        
-        for i in range(X.shape[0]): 
-            omegai = omegaList[i]
-            omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
-            
-            ui = U[i, :]       
-            uiV = ui.dot(V.T)
-            ri = self.r[i]
-            
-            if omegai.shape[0] * omegaBari.shape[0] != 0: 
-                partialAuc = 0                
-                
-                indsP = numpy.random.randint(0, omegai.shape[0], self.numAucSamples)  
-                indsQ = numpy.random.randint(0, omegaBari.shape[0], self.numAucSamples)
-                
-                for j in range(self.numAucSamples):                    
-                    p = omegai[indsP[j]] 
-                    q = omegaBari[indsQ[j]]                  
-                
-                    uivp = uiV[p]
-                    kappa = exp(-uivp+ri)
-                    
-                    uivq = uiV[q]
-                    gamma = exp(-uivp+uivq)
-
-                    partialAuc += 1/((1+gamma) * 1+kappa)
-                            
-                obj += partialAuc/float(self.numAucSamples)
-        
-        obj /= m       
-        obj = - obj
-        
-        return obj 
-        
     def learningRateSelect(self, X): 
         """
         Let's set the initial learning rate. 
@@ -461,7 +384,7 @@ class MaxLocalAUC(object):
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numStepIterations=" + str(self.numStepIterations)
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
-        outputStr += " nu=" + str(self.nu) + " nuPrime=" + str(self.nuPrime) + " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho) + " numProcesses=" + str(self.numProcesses) + " testSize=" + str(self.testSize)
+        outputStr += " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho) + " numProcesses=" + str(self.numProcesses) + " testSize=" + str(self.testSize)
         
         return outputStr 
 
@@ -487,9 +410,6 @@ class MaxLocalAUC(object):
         maxLocalAuc.lmbdas = self.lmbdas
         maxLocalAuc.folds = self.folds
         maxLocalAuc.testSize = self.testSize
-        
-        maxLocalAuc.nu = self.nu 
-        maxLocalAuc.nuPrime = self.nuPrime 
         
         return maxLocalAuc
         
