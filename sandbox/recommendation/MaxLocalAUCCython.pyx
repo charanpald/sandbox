@@ -447,7 +447,7 @@ def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[
     
     for i in range(m): 
         omegai = omegaList[i]
-        #omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
+        #omegaBari = numpy.setdiff1d(numpy.arange(n), omegai, assume_unique=True)
         
         ri = r[i]
         
@@ -469,10 +469,10 @@ def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[
                 kappa = uivp - ri
                 
                 if gamma <= 1: 
-                    partialObj += (1-gamma)**2 * (1-rho)
+                    partialObj += ((1-gamma)**2) * (1-rho)
                     
                 if kappa <= 1: 
-                    partialObj += (1-kappa)**2 * rho
+                    partialObj += ((1-kappa)**2) * rho
                         
             obj += partialObj/float(numAucSamples)
     
