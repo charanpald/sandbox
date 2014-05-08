@@ -161,17 +161,19 @@ class MaxLocalAUC(object):
             
             if ind % self.recordStep == 0: 
                 r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)
-                #trainObjs.append(objectiveApprox(X, U, V, omegaList, self.numRecordAucSamples, r, self.nu, self.nuPrime, self.lmbda))
+                trainObjs.append(objectiveApprox(X, U, V, omegaList, self.numRecordAucSamples, r, self.lmbda, self.rho))
                 trainAucs.append(localAUCApprox(X, U, V, omegaList, self.numRecordAucSamples, r))
                 
                 if testX != None:
-                    #testObjs.append(objectiveApprox(allX, U, V, testOmegaList, self.numRecordAucSamples, r, self.nu, self.nuPrime, self.lmbda))
+                    testObjs.append(objectiveApprox(allX, U, V, testOmegaList, self.numRecordAucSamples, r, self.lmbda, self.rho))
                     testAucs.append(localAUCApprox(allX, U, V, testOmegaList, self.numRecordAucSamples, r))
                     
                 printStr = "Iteration: " + str(ind)
                 printStr += " LAUC~" + str(trainAucs[-1]) 
+                printStr += " obj~" + str(trainObjs[-1]) 
                 if testX != None:
                     printStr += " test LAUC~" + str(testAucs[-1])
+                    printStr += " test obj~" + str(testObjs[-1])
                 printStr += " sigma=" + str(sigma)
                 printStr += " normU=" + str(numpy.linalg.norm(U))
                 printStr += " normV=" + str(numpy.linalg.norm(V))
