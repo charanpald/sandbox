@@ -251,20 +251,22 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
         if X[i, j] != 0:                 
             p = j 
             uivp = dot(U, i, V, p, k)
+            kappa = uivp - ri
             
             for q in omegaBari: 
                 uivq = dot(U, i, V, q, k)
-                
                 gamma = uivp - uivq
-                kappa = uivp - ri
+                
                 
                 if gamma <= 1: 
                     betaScale += (1-gamma)*(1-rho) 
 
-                if kappa <= 1: 
-                    betaScale += (1-kappa)*rho              
+            betaScale /= numOmegaBari
+
+            if kappa <= 1: 
+                betaScale += (1-kappa)*rho              
                 
-            deltaBeta = scale(U, i, -betaScale/(numOmegaBari*numOmegai), k)
+            deltaBeta = scale(U, i, -betaScale/numOmegai, k)
         else:
             q = j 
             uivq = dot(U, i, V, q, k)
@@ -343,7 +345,7 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
         if X[i, j] != 0:                 
             p = j 
             uivp = dot(U, i, V, p, k)
-            
+            kappa = uivp - ri
             #omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
             #omegaBari = numpy.random.permutation(omegaBari)[0:numAucSamples]
             
@@ -352,18 +354,19 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
                 #for q in omegaBari: 
             
                 uivq = dot(U, i, V, q, k)
-                
                 gamma = uivp - uivq
-                kappa = uivp - ri
+                
                 
                 if gamma <= 1: 
                     betaScale += (1-gamma)*(1-rho) 
 
-                if kappa <= 1: 
-                    betaScale += (1-kappa)*rho              
+            betaScale /= numAucSamples
+
+            if kappa <= 1: 
+                betaScale += (1-kappa)*rho              
                 
             #Note we  use numAucSamples*numOmegai to normalise
-            deltaBeta = scale(U, i, -betaScale/(numAucSamples*numOmegai), k)
+            deltaBeta = scale(U, i, -betaScale/numOmegai, k)
         else:
             q = j 
             uivq = dot(U, i, V, q, k)
@@ -431,7 +434,7 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
         
 @cython.boundscheck(False)
 @cython.wraparound(False)   
-def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double nu, double nuPrime, double lmbda):         
+def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r, double lmbda, double rho):         
     cdef double obj = 0 
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1]
@@ -460,17 +463,21 @@ def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[
                 q = getNonZeroRow(X, i, n)                  
             
                 uivp = dot(U, i, V, p, k)
-                kappa = exp(nuPrime*(ri-uivp))
+                gamma = uivp - uivq
                 
                 uivq = dot(U, i, V, q, k)
-                gamma = exp(nu*(uivq-uivp))
-
-                partialObj += 1/((1+gamma) * (1+kappa))
+                kappa = uivp - ri
+                
+                if gamma <= 1: 
+                    partialObj += (1-gamma)**2 * (1-rho)
+                    
+                if kappa <= 1: 
+                    partialObj += (1-kappa)**2 * rho
                         
             obj += partialObj/float(numAucSamples)
     
-    obj /= m       
-    obj = (lmbda/(2*m))*(numpy.linalg.norm(U)**2 + numpy.linalg.norm(V)**2) - obj
+    obj /= 2*m       
+    obj += (lmbda/(2*m))*numpy.linalg.norm(V)**2 
     
     return obj 
   
