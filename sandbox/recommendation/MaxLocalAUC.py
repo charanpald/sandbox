@@ -33,27 +33,13 @@ def computeObjective(args):
 def computeTestAucs(args): 
     trainX, testX, U, V, maxLocalAuc  = args 
     
-    inputU = U.copy() 
-    inputV = V.copy()
-    testAucScores = numpy.zeros(maxLocalAuc.lmbdas.shape[0])
     logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
     
-    for i, lmbda in enumerate(maxLocalAuc.lmbdas):         
-        maxLocalAuc.lmbda = lmbda 
-
-        #Don't use warm restarts for the SVD
-        if maxLocalAuc.initialAlg != "rand": 
-            U = inputU.copy()
-            V = inputV.copy()
-
-        U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
-            
-        muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
-        testAucScores[i] = muAuc
+    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
+    muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
+    logging.debug("Weighted local AUC: " + str(muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda))
         
-        logging.debug("Weighted local AUC: " + str(muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda))
-        
-    return testAucScores
+    return muAuc
       
 class MaxLocalAUC(object): 
     def __init__(self, k, w, alpha=0.05, eps=0.01, lmbda=0.001, stochastic=False, numProcesses=None): 
@@ -335,7 +321,6 @@ class MaxLocalAUC(object):
         Perform model selection on X and return the best parameters. 
         """
         m, n = X.shape
-        #cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
         trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.testSize)
         testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
         
@@ -347,11 +332,12 @@ class MaxLocalAUC(object):
             
             for icv, (trainX, testX) in enumerate(trainTestXs):
                 U, V = self.initUV(trainX)
+                for j, lmbda in enumerate(self.lmbdas): 
+                    maxLocalAuc = self.copy()
+                    maxLocalAuc.k = k    
+                    maxLocalAuc.lmbda = lmbda
                 
-                maxLocalAuc = self.copy()
-                maxLocalAuc.k = k                
-            
-                paramList.append((trainX, testX, U, V, maxLocalAuc))
+                    paramList.append((trainX, testX, U, V, maxLocalAuc))
             
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
@@ -361,8 +347,10 @@ class MaxLocalAUC(object):
             resultsIterator = itertools.imap(computeTestAucs, paramList)
         
         for i, k in enumerate(self.ks):
-            for icv in range(len(trainTestXs)):             
-                testAucs[i, :, icv] = resultsIterator.next()
+            for icv in range(len(trainTestXs)): 
+                for j, lmbda in enumerate(self.lmbdas): 
+                            
+                    testAucs[i, j, icv] = resultsIterator.next()
         
         if self.numProcesses != 1: 
             pool.terminate()
