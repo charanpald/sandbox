@@ -171,7 +171,7 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef unsigned int p, q, ind, j, s
     cdef unsigned int k = U.shape[1]
     cdef double uivp, ri, uivq, gamma, kappa
-    cdef double normDeltaTheta 
+    cdef double normDeltaTheta, vqScale, vpScale, zeta 
     cdef unsigned int m = X.shape[0], n = X.shape[1], numOmegai, numOmegaBari
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
@@ -193,7 +193,6 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
         
         for j in range(numAucSamples):
             p = omegai[indsP[j]] 
-            #q = omegaBari[indsQ[j]]  
             q = getNonZeroRow(X, i, n) 
         
             uivp = dot(U, i, V, p, k)
@@ -202,12 +201,19 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             gamma = uivp - uivq
             kappa = uivp - ri
             
+            vpScale = 0
+            vqScale = 0             
+            
             if gamma <= 1: 
-                deltaTheta += (V[q, :] - V[p, :])*(1-gamma)*(1-rho)
+                zeta = (1-gamma)*(1-rho)
+                vqScale += zeta
+                vpScale -= zeta
             
             if kappa <= 1: 
-                deltaTheta -= V[p, :]*(1-kappa)*rho
-                
+                vpScale -= (1-kappa)*rho
+        
+            deltaTheta += V[p, :]*vpScale + V[q, :]*vqScale
+            
         deltaTheta /= float(numAucSamples * m)
             
     #Add regularisation 
@@ -328,6 +334,7 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef unsigned int n = X.shape[1], ind
     cdef unsigned int s = 0
     cdef double uivp, uivq,  betaScale, ri, normTheta
+    cdef double oneMinusRho = 1-rho
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
@@ -351,21 +358,18 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             
             for s in range(numAucSamples): 
                 q = getNonZeroRow(X, i, n)
-                #for q in omegaBari: 
             
                 uivq = dot(U, i, V, q, k)
                 gamma = uivp - uivq
-                
-                
+                                
                 if gamma <= 1: 
-                    betaScale += (1-gamma)*(1-rho) 
+                    betaScale += (1-gamma)*oneMinusRho 
 
             betaScale /= numAucSamples
 
             if kappa <= 1: 
                 betaScale += (1-kappa)*rho              
                 
-            #Note we  use numAucSamples*numOmegai to normalise
             deltaBeta = scale(U, i, -betaScale/numOmegai, k)
         else:
             q = j 
@@ -373,11 +377,10 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
                             
             for p in omegai: 
                 uivp = dot(U, i, V, p, k)
-                
                 gamma = uivp - uivq               
                 
                 if gamma <= 1: 
-                    betaScale += (1-gamma)*(1-rho)
+                    betaScale += (1-gamma)*oneMinusRho
 
             if numOmegai != 0:
                 deltaBeta = scale(U, i, betaScale/(numOmegai*numOmegaBari), k)  
