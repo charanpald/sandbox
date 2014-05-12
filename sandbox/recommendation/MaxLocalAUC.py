@@ -13,6 +13,7 @@ from sandbox.util.Sampling import Sampling
 from sandbox.util.Util import Util 
 from sandbox.data.Standardiser import Standardiser 
 from sandbox.util.MCEvaluator import MCEvaluator 
+from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
 from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
 from sandbox.recommendation.WeightedMf import WeightedMf
 
@@ -30,7 +31,7 @@ def computeObjective(args):
     logging.debug("Weighted AUC: " + str(muAuc) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
     return muAuc
     
-def computeTestAucs(args): 
+def computeTestAuc(args): 
     trainX, testX, U, V, maxLocalAuc  = args 
     
     logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
@@ -40,6 +41,21 @@ def computeTestAucs(args):
     logging.debug("Weighted local AUC: " + str(muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda))
         
     return muAuc
+    
+def computeTestPrecision(args): 
+    trainX, testX, U, V, maxLocalAuc = args 
+    p = 5
+    testOmegaList = SparseUtils.getOmegaList(testX)
+    
+    logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
+    
+    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
+    
+    testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, p, trainX)
+    precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)
+    logging.debug("Precision@5: " + str(precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda))
+        
+    return precision
       
 class MaxLocalAUC(object): 
     def __init__(self, k, w, alpha=0.05, eps=0.01, lmbda=0.001, stochastic=False, numProcesses=None): 
@@ -92,6 +108,7 @@ class MaxLocalAUC(object):
         self.testSize = 3
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 2.0**-numpy.arange(1, 10, 2)
+        self.metric = "auc"
 
         #Learning rate selection 
         self.alphas = 2.0**-numpy.arange(2, 11, 1)
@@ -341,10 +358,16 @@ class MaxLocalAUC(object):
             
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-            resultsIterator = pool.imap(computeTestAucs, paramList, self.chunkSize)
+            if self.metric == "auc": 
+                resultsIterator = pool.imap(computeTestAuc, paramList, self.chunkSize)
+            elif self.metric == "precision": 
+                resultsIterator = pool.imap(computeTestPrecision, paramList, self.chunkSize)
         else: 
             import itertools
-            resultsIterator = itertools.imap(computeTestAucs, paramList)
+            if self.metric == "auc": 
+                resultsIterator = itertools.imap(computeTestAuc, paramList)
+            elif self.metric == "precision": 
+                resultsIterator = itertools.imap(computeTestPrecision, paramList)
         
         for i, k in enumerate(self.ks):
             for icv in range(len(trainTestXs)): 
@@ -360,7 +383,7 @@ class MaxLocalAUC(object):
         
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdas=" + str(self.lmbdas)) 
-        logging.debug("Mean local AUCs=" + str(meanTestLocalAucs))
+        logging.debug("Mean metrics =" + str(meanTestLocalAucs))
         
         self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[0]]
         self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[1]]
