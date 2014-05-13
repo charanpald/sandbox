@@ -11,7 +11,8 @@ cdef extern from "limits.h":
 
 cdef extern from "math.h":
     double exp(double x)
-    bint isnan(double x)    
+    bint isnan(double x)  
+    double sqrt(double x)
     
 
 @cython.nonecheck(False)
@@ -45,6 +46,20 @@ cdef inline double dot(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int
         result += e1*e2
     return result
 
+
+@cython.nonecheck(False)
+@cython.boundscheck(False) 
+@cython.wraparound(False) 
+cdef inline double normRow(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, unsigned int k):
+    """
+    Compute the dot product between U[i, :] and V[j, :]
+    """
+    cdef double result = 0
+    cdef unsigned int s = 0
+    for s in range(k):
+        result += square(U[i, s])
+
+    return sqrt(result)
 
 @cython.nonecheck(False)
 @cython.boundscheck(False) 
@@ -175,7 +190,7 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef unsigned int p, q, ind, j, s
     cdef unsigned int k = U.shape[1]
     cdef double uivp, ri, uivq, gamma, kappa
-    cdef double normDeltaTheta, vqScale, vpScale, zeta 
+    cdef double normDeltaTheta, vqScale, vpScale, zeta, oneMinusRho = 1-rho  
     cdef unsigned int m = X.shape[0], n = X.shape[1], numOmegai, numOmegaBari
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
@@ -209,7 +224,7 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             vqScale = 0             
             
             if gamma <= 1: 
-                zeta = (1-gamma)*(1-rho)
+                zeta = (1-gamma)*oneMinusRho
                 vqScale += zeta
                 vpScale -= zeta
             
@@ -283,7 +298,6 @@ def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
                             
             for p in omegai: 
                 uivp = dot(U, i, V, p, k)
-                
                 gamma = uivp - uivq               
                 
                 if gamma <= 1: 
@@ -338,7 +352,7 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef unsigned int n = X.shape[1], ind
     cdef unsigned int s = 0
     cdef double uivp, uivq,  betaScale, ri, normTheta, kappa, gamma
-    cdef double oneMinusRho = 1-rho
+    cdef double oneMinusRho = 1-rho, oneMinusGamma, onePlusUivq, oneMinusKappa, oneMinusUivp
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
@@ -352,44 +366,43 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
         
         ri = r[i]
         betaScale = 0
-        #ui = U[i, :]
         
         if X[i, j] != 0:                 
             p = j 
             uivp = dot(U, i, V, p, k)
-
             kappa = uivp - ri
-            #omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
-            #omegaBari = numpy.random.permutation(omegaBari)[0:numAucSamples]
-            
+            oneMinusKappa = 1 - kappa
+            oneMinusUivp = 1 - uivp
+
             for s in range(numAucSamples): 
                 q = getNonZeroRow(X, i, n)
                 uivq = dot(U, i, V, q, k)
-                gamma = uivp - uivq
+                #gamma = uivp - uivq
+                oneMinusGamma = oneMinusUivp + uivq
                                 
-                if gamma <= 1: 
-                    betaScale += (1-gamma)*oneMinusRho 
+                if oneMinusGamma >= 0: 
+                    betaScale += oneMinusGamma 
 
-            betaScale /= numAucSamples
+            betaScale *= oneMinusRho/numAucSamples
 
-            if kappa <= 1: 
-                betaScale += (1-kappa)*rho              
+            if oneMinusKappa >= 0: 
+                betaScale += oneMinusKappa*rho              
                 
             deltaBeta = scale(U, i, -betaScale/numOmegai, k)
         else:
             q = j 
             uivq = dot(U, i, V, q, k)
-            #uivq = numpy.dot(U[i, :], V[q, :])
-                            
+            onePlusUivq = 1 + uivq
+            
             for p in omegai: 
                 uivp = dot(U, i, V, p, k)
-                gamma = uivp - uivq               
+                oneMinusGamma = onePlusUivq - uivp
                 
-                if gamma <= 1: 
-                    betaScale += (1-gamma)*oneMinusRho
+                if oneMinusGamma >= 0: 
+                    betaScale += oneMinusGamma
 
             if numOmegai != 0:
-                deltaBeta = scale(U, i, betaScale/(numOmegai*numOmegaBari), k)  
+                deltaBeta = scale(U, i, betaScale*oneMinusRho/(numOmegai*numOmegaBari), k)  
                 
         deltaTheta += deltaBeta
     
@@ -414,11 +427,12 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
     cdef unsigned int n = X.shape[1]    
     cdef unsigned int k = U.shape[1] 
     cdef unsigned int numAucSamplesR = 500
-    #cdef numpy.ndarray[double, ndim=1, mode="c"] r = numpy.ones(m)*-1
+    cdef double normUi
     cdef numpy.ndarray[double, ndim=1, mode="c"] r = SparseUtilsCython.computeR(U, V, w, numAucSamplesR) 
     cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(k)
     cdef numpy.ndarray[double, ndim=1, mode="c"] dVj = numpy.zeros(k)
-    cdef unsigned int i, j, s
+    cdef unsigned int i, j, s, ind2
+    cdef unsigned int startAverage = 10
     
     for s in range(numIterations):
         i = rowInds[(ind + s) % m]
@@ -432,13 +446,16 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
         plusEquals(U, i, -sigma*dUi, k)
         
         normUi = numpy.linalg.norm(U[i,:])
+        #normUi = normRow(U, i, k)
+        
         if normUi != 0: 
             U[i,:] = scale(U, i, 1/normUi, k)             
         
         plusEquals(V, j, -sigma*dVj, k)
         
         ind2 = ind/m
-        if ind2 > 10: 
+        
+        if ind2 > startAverage: 
             muU[i, :] = muU[i, :]*ind2/float(ind2+1) + U[i, :]/float(ind2+1)
             muV[j, :] = muV[j, :]*ind2/float(ind2+1) + V[j, :]/float(ind2+1)
         else: 
