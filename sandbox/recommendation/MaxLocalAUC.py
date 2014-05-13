@@ -5,13 +5,10 @@ import multiprocessing
 import sppy 
 import time
 import scipy.sparse
-from math import exp
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
 from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, updateUVApprox, objectiveApprox, localAUCApprox, updateV, updateU
 from sandbox.util.Sampling import Sampling 
-from sandbox.util.Util import Util 
-from sandbox.data.Standardiser import Standardiser 
 from sandbox.util.MCEvaluator import MCEvaluator 
 from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
 from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
@@ -23,13 +20,10 @@ def computeObjective(args):
     """
     X, omegaList, U, V, maxLocalAuc  = args 
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
-    
-    muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1, dtype=numpy.float)))
-    #muAuc = -numpy.average(trainAucs, weights=numpy.flipud(1/numpy.arange(1, len(trainAucs)+1, dtype=numpy.float)))
-    
-    logging.debug("Weighted objective: " + str(muObj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
-    #logging.debug("Weighted AUC: " + str(muAuc) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
-    return muObj
+    obj = trainObjs[-1]
+        
+    logging.debug("Final objective: " + str(obj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
+    return obj
     
 def computeTestAuc(args): 
     trainX, testX, U, V, maxLocalAuc  = args 
@@ -89,7 +83,7 @@ class MaxLocalAUC(object):
         self.rate = "constant"
         self.alpha = alpha #Initial learning rate 
         self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
-        self.beta = 0.5
+        self.beta = 1.0
         
         self.normalise = True
         self.lmbda = lmbda 
@@ -139,10 +133,8 @@ class MaxLocalAUC(object):
         muV = V.copy()
         
         trainObjs = []
-        trainMuObjs = []
         trainAucs = []
         testObjs = []
-        testMuObjs = []
         testAucs = []
         
         ind = 0
@@ -202,18 +194,30 @@ class MaxLocalAUC(object):
             else: 
                 ind += 1
             
-        totalTime = time.time() - startTime
-        logging.debug("normU=" + str(numpy.linalg.norm(U)) + " normV=" + str(numpy.linalg.norm(V)))
-        #logging.debug("abs(muObj - lastMuObj)=" + str(abs(muObj - lastMuObj)))
-        logging.debug("Total time taken " + str(totalTime))
-        logging.debug("Number of iterations: " + str(ind))
-        printStr = "Final train local AUC=" + str(trainAucs[-1])
+        #Compute quantities for last U and V 
+        r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
+        trainObjs.append(objectiveApprox(X, muU, muV, omegaList, self.numRecordAucSamples, r, self.lmbda, self.rho))
+        trainAucs.append(localAUCApprox(X, muU, muV, omegaList, self.numRecordAucSamples, r))
+        
         if testX != None:
-            printStr += " test local AUC=" + str(testAucs[-1])
+            testObjs.append(objectiveApprox(allX, muU, muV, testOmegaList, self.numRecordAucSamples, r, self.lmbda, self.rho))
+            testAucs.append(localAUCApprox(allX, muU, muV, testOmegaList, self.numRecordAucSamples, r))            
+            
+        totalTime = time.time() - startTime
+        printStr = "Total iterations: " + str(ind)
+        printStr += " time=" + str('%.1f' % totalTime) 
+        printStr += " LAUC~" + str('%.4f' % trainAucs[-1]) 
+        printStr += " obj~" + str('%.4f' % trainObjs[-1]) 
+        if testX != None:
+            printStr += " test LAUC~" + str('%.4f' % testAucs[-1])
+            printStr += " test obj~" + str('%.4f' % testObjs[-1])
+        printStr += " sigma=" + str('%.4f' % sigma)
+        printStr += " normU=" + str('%.3f' % numpy.linalg.norm(U))
+        printStr += " normV=" + str('%.3f' %  numpy.linalg.norm(V))
         logging.debug(printStr)
                   
-        self.U = U 
-        self.V = V                  
+        self.U = muU 
+        self.V = muV                  
                   
         if verbose:     
             return muU, muV, numpy.array(trainObjs), numpy.array(trainAucs), numpy.array(testObjs), numpy.array(testAucs), ind, totalTime
@@ -323,7 +327,7 @@ class MaxLocalAUC(object):
                     objectives[i, j] += resultsIterator.next()
             
         pool.terminate()
-        objectives /= numInitalUVs   
+        objectives /= float(numInitalUVs)   
         logging.debug("t0s=" + str(self.t0s))
         logging.debug("alphas=" + str(self.alphas))
         logging.debug(objectives)
@@ -415,6 +419,7 @@ class MaxLocalAUC(object):
         maxLocalAuc.rate = self.rate
         maxLocalAuc.alpha = self.alpha
         maxLocalAuc.t0 = self.t0
+        maxLocalAuc.beta = self.beta
         
         maxLocalAuc.recordStep = self.recordStep
         maxLocalAuc.numRowSamples = self.numRowSamples
