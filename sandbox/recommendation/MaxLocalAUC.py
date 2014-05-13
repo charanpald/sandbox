@@ -24,12 +24,12 @@ def computeObjective(args):
     X, omegaList, U, V, maxLocalAuc  = args 
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
     
-    #muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1, dtype=numpy.float)))
-    muAuc = -numpy.average(trainAucs, weights=numpy.flipud(1/numpy.arange(1, len(trainAucs)+1, dtype=numpy.float)))
+    muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1, dtype=numpy.float)))
+    #muAuc = -numpy.average(trainAucs, weights=numpy.flipud(1/numpy.arange(1, len(trainAucs)+1, dtype=numpy.float)))
     
-    #logging.debug("Weighted objective: " + str(muObj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
-    logging.debug("Weighted AUC: " + str(muAuc) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
-    return muAuc
+    logging.debug("Weighted objective: " + str(muObj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
+    #logging.debug("Weighted AUC: " + str(muAuc) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
+    return muObj
     
 def computeTestAuc(args): 
     trainX, testX, U, V, maxLocalAuc  = args 
