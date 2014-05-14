@@ -83,7 +83,7 @@ class MaxLocalAUC(object):
         self.rate = "constant"
         self.alpha = alpha #Initial learning rate 
         self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
-        self.beta = 1.0
+        self.beta = 0.75
         
         self.normalise = True
         self.lmbda = lmbda 
@@ -94,18 +94,19 @@ class MaxLocalAUC(object):
         self.numStepIterations = 100
         self.numAucSamples = 50
         self.numRecordAucSamples = 500
-        self.maxIterations = 1000
+        #1 iterations is a complete run over the dataset (i.e. m gradients)
+        self.maxIterations = 50
         self.initialAlg = "rand"
         
         #Model selection parameters 
-        self.folds = 3 
+        self.folds = 2 
         self.testSize = 3
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 2.0**-numpy.arange(1, 10, 2)
         self.metric = "auc"
 
         #Learning rate selection 
-        self.alphas = 2.0**-numpy.arange(2, 11, 1)
+        self.alphas = 2.0**-numpy.arange(0, 9, 1)
         self.t0s = numpy.logspace(-1, -4, 6, base=10)
     
     def learnModel(self, X, verbose=False, U=None, V=None, testX=None): 
@@ -151,7 +152,7 @@ class MaxLocalAUC(object):
         
         startTime = time.time()
     
-        while ind < self.maxIterations:             
+        while ind < self.maxIterations*m:             
             if self.rate == "constant": 
                 sigma = self.alpha 
             elif self.rate == "optimal":
