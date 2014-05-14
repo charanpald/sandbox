@@ -38,7 +38,7 @@ def computeTestAuc(args):
     
 def computeTestPrecision(args): 
     trainX, testX, U, V, maxLocalAuc = args 
-    p = 5
+    p = maxLocalAuc.testSize 
     testOmegaList = SparseUtils.getOmegaList(testX)
     
     logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
@@ -47,7 +47,7 @@ def computeTestPrecision(args):
     
     testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, p, trainX)
     precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)
-    logging.debug("Precision@5: " + str(precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda))
+    logging.debug("Precision@" + str(maxLocalAuc.testSize) + ": " + str(precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda))
         
     return precision
       
