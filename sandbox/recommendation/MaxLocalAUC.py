@@ -32,7 +32,7 @@ def computeTestAuc(args):
     
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
     muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
-    logging.debug("Weighted local AUC: " + str(muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda))
+    logging.debug("Weighted local AUC: " + str(muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
         
     return muAuc
     
@@ -47,7 +47,7 @@ def computeTestPrecision(args):
     
     testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, p, trainX)
     precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)
-    logging.debug("Precision@" + str(maxLocalAuc.testSize) + ": " + str(precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda))
+    logging.debug("Precision@" + str(maxLocalAuc.testSize) + ": " + str(precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
         
     return precision
       
@@ -103,6 +103,7 @@ class MaxLocalAUC(object):
         self.testSize = 3
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 2.0**-numpy.arange(1, 10, 2)
+        self.rhos = numpy.linspace(0, 1, 5)
         self.metric = "auc"
 
         #Learning rate selection 
@@ -284,13 +285,13 @@ class MaxLocalAUC(object):
         """
         delta phi/delta u_i
         """
-        return derivativeUi(X, U, V, omegaList, i, r, self.nu)
+        return derivativeUi(X, U, V, omegaList, i, r, self.lmbda, self.rho, self.normalise)
         
     def derivativeVi(self, X, U, V, omegaList, i, r): 
         """
         delta phi/delta v_i
         """
-        return derivativeVi(X, U, V, omegaList, i, r, self.nu, self.lmbda)           
+        return derivativeVi(X, U, V, omegaList, i, r, self.lmbda, self.rho, self.normalise)           
 
     def learningRateSelect(self, X): 
         """
@@ -351,7 +352,7 @@ class MaxLocalAUC(object):
         """
         m, n = X.shape
         trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.testSize)
-        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
+        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], self.rhos.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection with test leave out per row of " + str(self.testSize))
         paramList = []        
@@ -362,11 +363,13 @@ class MaxLocalAUC(object):
             for icv, (trainX, testX) in enumerate(trainTestXs):
                 U, V = self.initUV(trainX)
                 for j, lmbda in enumerate(self.lmbdas): 
-                    maxLocalAuc = self.copy()
-                    maxLocalAuc.k = k    
-                    maxLocalAuc.lmbda = lmbda
-                
-                    paramList.append((trainX, testX, U, V, maxLocalAuc))
+                    for s, rho in enumerate(self.rhos):
+                        maxLocalAuc = self.copy()
+                        maxLocalAuc.k = k    
+                        maxLocalAuc.lmbda = lmbda
+                        maxLocalAuc.rho = rho 
+                    
+                        paramList.append((trainX, testX, U, V, maxLocalAuc))
             
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
@@ -384,25 +387,27 @@ class MaxLocalAUC(object):
         for i, k in enumerate(self.ks):
             for icv in range(len(trainTestXs)): 
                 for j, lmbda in enumerate(self.lmbdas): 
-                            
-                    testAucs[i, j, icv] = resultsIterator.next()
+                    for s, rho in enumerate(self.rhos):
+                        testAucs[i, j, s, icv] = resultsIterator.next()
         
         if self.numProcesses != 1: 
             pool.terminate()
         
-        meanTestLocalAucs = numpy.mean(testAucs, 2)
-        stdTestLocalAucs = numpy.std(testAucs, 2)
+        meanTestMetrics = numpy.mean(testAucs, 3)
+        stdTestMetrics = numpy.std(testAucs, 3)
         
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdas=" + str(self.lmbdas)) 
-        logging.debug("Mean metrics =" + str(meanTestLocalAucs))
+        logging.debug("rhos=" + str(self.rhos)) 
+        logging.debug("Mean metrics =" + str(meanTestMetrics))
         
-        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[0]]
-        self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[1]]
+        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[0]]
+        self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
+        self.rho = self.rhos[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[2]]
 
-        logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda))
+        logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho))
          
-        return meanTestLocalAucs, stdTestLocalAucs
+        return meanTestMetrics, stdTestMetrics
     
     def __str__(self): 
         outputStr = "MaxLocalAUC: k=" + str(self.k) + " eps=" + str(self.eps) 
