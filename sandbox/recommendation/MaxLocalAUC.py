@@ -183,7 +183,7 @@ class MaxLocalAUC(object):
                 
                 lastObj = obj
                 obj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1, dtype=numpy.float)))
-                print(abs(lastObj-obj))
+                #print(abs(lastObj-obj))
             
             lastU = U.copy() 
             lastV = V.copy()
