@@ -52,7 +52,7 @@ def computeTestPrecision(args):
     return precision
       
 class MaxLocalAUC(object): 
-    def __init__(self, k, w, alpha=0.05, eps=0.01, lmbda=0.001, stochastic=False, numProcesses=None): 
+    def __init__(self, k, w, alpha=0.05, eps=10**-6, lmbda=0.001, stochastic=False, numProcesses=None): 
         """
         Create an object for  maximising the local AUC with a penalty term using the matrix
         decomposition UV.T 
@@ -127,8 +127,8 @@ class MaxLocalAUC(object):
         
         lastU = numpy.random.rand(m, self.k)
         lastV = numpy.random.rand(n, self.k)
-        lastMuObj = 0
-        muObj = -1
+        lastObj = 0
+        obj = 2
         
         muU = U.copy() 
         muV = V.copy()
@@ -152,7 +152,7 @@ class MaxLocalAUC(object):
         
         startTime = time.time()
     
-        while ind < self.maxIterations*m:             
+        while ind < self.maxIterations*m and abs(obj- lastObj) > self.eps:           
             if self.rate == "constant": 
                 sigma = self.alpha 
             elif self.rate == "optimal":
@@ -179,9 +179,11 @@ class MaxLocalAUC(object):
                 printStr += " normU=" + str('%.3f' % numpy.linalg.norm(U))
                 printStr += " normV=" + str('%.3f' %  numpy.linalg.norm(V))
                 logging.debug(printStr)
-
-            lastMuObj = muObj
-            #muObj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1)))
+                
+                
+                lastObj = obj
+                obj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1, dtype=numpy.float)))
+                print(abs(lastObj-obj))
             
             lastU = U.copy() 
             lastV = V.copy()
