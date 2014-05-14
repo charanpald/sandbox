@@ -160,7 +160,7 @@ def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     
     return deltaTheta
 
-def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, double sigma, numpy.ndarray[double, ndim=1, mode="c"] r, double nu): 
+def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, double sigma, numpy.ndarray[double, ndim=1, mode="c"] r, double lmbda, double rho, bint normalise): 
     """
     Compute the full gradient descent update of U
     """    
@@ -171,7 +171,7 @@ def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, 
     cdef unsigned int k = U.shape[1]
     
     for i in range(m): 
-        dU[i, :] = derivativeUi(X, U, V, omegaList, i, r, nu) 
+        dU[i, :] = derivativeUi(X, U, V, omegaList, i, r, lmbda, rho, normalise) 
     
     U -= sigma*dU
     
