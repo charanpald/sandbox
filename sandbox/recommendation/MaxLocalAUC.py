@@ -13,6 +13,7 @@ from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
 from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
 from sandbox.recommendation.WeightedMf import WeightedMf
+from sandbox.recommendation.RecommenderUtils import computeTestPrecision
 
 def computeObjective(args): 
     """
@@ -38,7 +39,7 @@ def computeTestAuc(args):
     
 def computeTestPrecision(args): 
     trainX, testX, U, V, maxLocalAuc = args 
-    p = maxLocalAuc.testSize 
+    p = maxLocalAuc.validationSize 
     testOmegaList = SparseUtils.getOmegaList(testX)
     
     logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
@@ -47,7 +48,7 @@ def computeTestPrecision(args):
     
     testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, p, trainX)
     precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)
-    logging.debug("Precision@" + str(maxLocalAuc.testSize) + ": " + str(precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
+    logging.debug("Precision@" + str(maxLocalAuc.validationSize) + ": " + str(precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
         
     return precision
       
@@ -100,7 +101,7 @@ class MaxLocalAUC(object):
         
         #Model selection parameters 
         self.folds = 2 
-        self.testSize = 3
+        self.validationSize = 3
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 2.0**-numpy.arange(1, 10, 2)
         self.rhos = numpy.linspace(0, 1, 5)
@@ -351,10 +352,10 @@ class MaxLocalAUC(object):
         Perform model selection on X and return the best parameters. 
         """
         m, n = X.shape
-        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.testSize)
+        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize)
         testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], self.rhos.shape[0], len(trainTestXs)))
         
-        logging.debug("Performing model selection with test leave out per row of " + str(self.testSize))
+        logging.debug("Performing model selection with test leave out per row of " + str(self.validationSize))
         paramList = []        
         
         for i, k in enumerate(self.ks): 
@@ -414,7 +415,7 @@ class MaxLocalAUC(object):
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numStepIterations=" + str(self.numStepIterations)
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
-        outputStr += " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho) + " numProcesses=" + str(self.numProcesses) + " testSize=" + str(self.testSize)
+        outputStr += " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho) + " numProcesses=" + str(self.numProcesses) + " validationSize=" + str(self.validationSize)
         
         return outputStr 
 
@@ -440,7 +441,7 @@ class MaxLocalAUC(object):
         maxLocalAuc.ks = self.ks
         maxLocalAuc.lmbdas = self.lmbdas
         maxLocalAuc.folds = self.folds
-        maxLocalAuc.testSize = self.testSize
+        maxLocalAuc.validationSize = self.validationSize
         
         return maxLocalAuc
         
