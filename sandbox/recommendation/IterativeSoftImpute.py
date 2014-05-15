@@ -17,9 +17,11 @@ from sandbox.util.SparseUtilsCython import SparseUtilsCython
 from sandbox.misc.SVDUpdate import SVDUpdate
 from sandbox.util.LinOperatorUtils import LinOperatorUtils
 from sandbox.util.SparseUtils import SparseUtils
+from sandbox.util.MCEvaluatorCython import MCEvaluatorCython
+from sandbox.util.Sampling import Sampling 
 from sppy.linalg.GeneralLinearOperator import GeneralLinearOperator
 
-def learnPredict(args): 
+def learnPredictMSE(args): 
     """
     A function to train on a training set and test on a test set, for a number 
     of values of rho. 
@@ -49,6 +51,44 @@ def learnPredict(args):
         gc.collect()
         
     return errors 
+
+def learnPredictPrecision(args): 
+    """
+    A function to train on a training set and test on a test set, for a number 
+    of values of rho. 
+    """
+    learner, trainX, testX, rhos = args 
+    logging.debug("k=" + str(learner.getK()))
+    logging.debug(learner) 
+    
+    testInds = testX.nonzero()
+    trainXIter = []
+    testIndList = []    
+    
+    for rho in rhos: 
+        trainXIter.append(trainX)
+        testIndList.append(testInds)
+    
+    trainXIter = iter(trainXIter)
+
+    ZIter = learner.learnModel(trainXIter, iter(rhos))
+    p = learner.validationSize 
+    
+    precisions = numpy.zeros(rhos.shape[0])
+    testOmegaList = SparseUtils.getOmegaList(testX)
+    
+    for j, Z in enumerate(ZIter): 
+        U, s, V = Z
+        U = U*s
+        U = numpy.ascontiguousarray(U)
+        V = numpy.ascontiguousarray(V)
+        
+        testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, p, trainX)
+        precisions[j] = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)
+        logging.debug("Precision@" + str(learner.validationSize) +  ": " + str('%.4f' % precisions[j]) + " " + str(learner))
+        gc.collect()
+        
+    return precisions 
 
 class IterativeSoftImpute(AbstractMatrixCompleter):
     """
@@ -97,6 +137,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         self.verbose = verbose 
         self.numProcesses = multiprocessing.cpu_count()
         self.metric = "mse"
+        self.validationSize = 3
 
     def learnModel(self, XIterator, rhos=None):
         """
@@ -325,7 +366,12 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
             raise ValueError("rhos must be in descending order")    
 
         errors = numpy.zeros((rhos.shape[0], ks.shape[0], len(cvInds)))
-
+        
+        if self.metric == "mse": 
+            metricFuction = learnPredictMSE
+        elif self.metric == "precision": 
+            metricFuction = learnPredictPrecision
+            
         for i, (trainInds, testInds) in enumerate(cvInds):
             Util.printIteration(i, 1, len(cvInds), "Fold: ")
             trainX = SparseUtils.submatrix(X, trainInds)
@@ -345,9 +391,9 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
             
             if self.numProcesses != 1: 
                 pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()/2, maxtasksperchild=10)
-                results = pool.imap(learnPredict, paramList)
+                results = pool.imap(metricFuction, paramList)
             else: 
-                results = itertools.imap(learnPredict, paramList)
+                results = itertools.imap(metricFuction, paramList)
             
             for m, rhoErrors in enumerate(results): 
                 errors[:, m, i] = rhoErrors
@@ -355,18 +401,84 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
             if self.numProcesses != 1: 
                 pool.terminate()
 
-        meanErrors = errors.mean(2)
-        stdErrors = errors.std(2)
+        meanMetrics = errors.mean(2)
+        stdMetrics = errors.std(2)
         
-        logging.debug(meanErrors)
+        logging.debug(meanMetrics)
         
         #Set the parameters 
-        self.setRho(rhos[numpy.unravel_index(numpy.argmin(meanErrors), meanErrors.shape)[0]]) 
-        self.setK(ks[numpy.unravel_index(numpy.argmin(meanErrors), meanErrors.shape)[1]])
-                
+        if self.metric == "mse": 
+            self.setRho(rhos[numpy.unravel_index(numpy.argmin(meanMetrics), meanMetrics.shape)[0]]) 
+            self.setK(ks[numpy.unravel_index(numpy.argmin(meanMetrics), meanMetrics.shape)[1]])
+        elif self.metric == "precision":
+            self.setRho(rhos[numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)[0]]) 
+            self.setK(ks[numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)[1]])
+            
         logging.debug("Model parameters: k=" + str(self.k) + " rho=" + str(self.rho))
 
-        return meanErrors, stdErrors
+        return meanMetrics, stdMetrics
+
+    def modelSelect2(self, X, rhos, ks, cvInds):
+        """
+        Pick a value of rho based on a single matrix X. We do cross validation
+        within, and return the best value of lambda (according to the mean
+        squared error). The rhos must be in decreasing order and we use 
+        warm restarts. In this case we remove a few non zeros from each row 
+        to form the test set. 
+        """
+        if (numpy.flipud(numpy.sort(rhos)) != rhos).all(): 
+            raise ValueError("rhos must be in descending order")    
+
+        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, csarray=False, rowMajor=False)
+        metrics = numpy.zeros((rhos.shape[0], ks.shape[0], len(cvInds)))
+        
+        if self.metric == "mse": 
+            metricFuction = learnPredictMSE
+        elif self.metric == "precision": 
+            metricFuction = learnPredictPrecision
+            
+        for i, (trainX, testX) in enumerate(trainTestXs):
+            Util.printIteration(i, 1, len(cvInds), "Fold: ")
+
+            paramList = []
+        
+            for m, k in enumerate(ks): 
+                learner = self.copy()
+                learner.updateAlg="initial" 
+                learner.setK(k)
+                paramList.append((learner, trainX, testX, rhos)) 
+            
+            if self.numProcesses != 1: 
+                pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()/2, maxtasksperchild=10)
+                results = pool.imap(metricFuction, paramList)
+            else: 
+                results = itertools.imap(metricFuction, paramList)
+            
+            for m, rhoMetrics in enumerate(results): 
+                metrics[:, m, i] = rhoMetrics
+            
+            if self.numProcesses != 1: 
+                pool.terminate()
+
+        meanMetrics = metrics.mean(2)
+        stdMetrics = metrics.std(2)
+        
+        logging.debug("ks=" + str(ks))
+        logging.debug("rhos=" + str(rhos))
+        logging.debug(meanMetrics)
+        
+        #Set the parameters 
+        if self.metric == "mse": 
+            self.setRho(rhos[numpy.unravel_index(numpy.argmin(meanMetrics), meanMetrics.shape)[0]]) 
+            self.setK(ks[numpy.unravel_index(numpy.argmin(meanMetrics), meanMetrics.shape)[1]])
+        elif self.metric == "precision":
+            self.setRho(rhos[numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)[0]]) 
+            self.setK(ks[numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)[1]])
+            
+
+        logging.debug("Model parameters: k=" + str(self.k) + " rho=" + str(self.rho))
+
+        return meanMetrics, stdMetrics
 
     def unshrink(self, X, U, V): 
         """
