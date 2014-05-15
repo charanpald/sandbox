@@ -20,7 +20,7 @@ def computeTestPrecision(args):
     
     testOrderedItems = MCEvaluatorCython.recommendAtk(learner.U, learner.V, p, trainX)
     precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)
-    logging.debug("Precision@" + str(learner.validationSize) +  ": " + str(precision) + str(learner))
+    logging.debug("Precision@" + str(learner.validationSize) +  ": " + str('%.4f' % precision) + " " + str(learner))
         
     return precision
     
