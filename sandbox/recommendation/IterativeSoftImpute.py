@@ -6,6 +6,7 @@ import itertools
 import scipy.sparse.linalg
 import sandbox.util.SparseUtils as ExpSU
 import numpy.testing as nptst 
+import multiprocessing 
 from sppy import csarray 
 from sandbox.misc.RandomisedSVD import RandomisedSVD
 from sandbox.util.MCEvaluator import MCEvaluator
@@ -94,6 +95,8 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         self.maxIterations = 30
         self.weighted = weighted 
         self.verbose = verbose 
+        self.numProcesses = multiprocessing.cpu_count()
+        self.metric = "mse"
 
     def learnModel(self, XIterator, rhos=None):
         """
@@ -339,16 +342,18 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
                 learner.updateAlg="initial" 
                 learner.setK(k)
                 paramList.append((learner, trainX, testX, rhos)) 
-                
-            #pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()/2, maxtasksperchild=10)
-            #results = pool.imap(learnPredict, paramList)
-
-            results = itertools.imap(learnPredict, paramList)
+            
+            if self.numProcesses != 1: 
+                pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()/2, maxtasksperchild=10)
+                results = pool.imap(learnPredict, paramList)
+            else: 
+                results = itertools.imap(learnPredict, paramList)
             
             for m, rhoErrors in enumerate(results): 
                 errors[:, m, i] = rhoErrors
-                
-            #pool.terminate()
+            
+            if self.numProcesses != 1: 
+                pool.terminate()
 
         meanErrors = errors.mean(2)
         stdErrors = errors.std(2)
@@ -420,6 +425,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         outputStr = self.name() + ":" 
         outputStr += " rho=" + str(self.rho)+" eps="+str(self.eps)+" k="+str(self.k) + " svdAlg="+str(self.svdAlg) + " kmax="+str(self.kmax)
         outputStr += " postProcess=" + str(self.postProcess) + " weighted="+str(self.weighted) + " p="+str(self.p) + " q="+str(self.q)
+        outputStr += " maxIterations=" + str(self.maxIterations)
         return outputStr
 
     def name(self):
