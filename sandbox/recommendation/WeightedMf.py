@@ -3,25 +3,12 @@ import numpy
 import logging
 import multiprocessing 
 from sandbox.util.SparseUtils import SparseUtils
-from sandbox.util.MCEvaluatorCython import MCEvaluatorCython
-from sandbox.recommendation.MaxLocalAUCCython import  localAUCApprox
+from sandbox.recommendation.RecommenderUtils import computeTestPrecision
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.Util import Util 
 from mrec.mf.wrmf import WRMFRecommender
 from sandbox.util.MCEvaluator import MCEvaluator 
 
-def computeTestPrecision(args): 
-    trainX, testX, learner = args 
-    p = learner.testSize 
-    testOmegaList = SparseUtils.getOmegaList(testX)
-        
-    learner.learnModel(trainX)
-    
-    testOrderedItems = MCEvaluatorCython.recommendAtk(learner.U, learner.V, p, trainX)
-    precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)
-    logging.debug("Precision@" + str(learner.testSize) + ": " + str(precision) + " with k=" + str(learner.k) + " lmbda=" + str(learner.lmbda))
-        
-    return precision
 
 class WeightedMf(object): 
     """
@@ -39,7 +26,7 @@ class WeightedMf(object):
         self.lmbdas = numpy.flipud(numpy.logspace(-3, -1, 11)*2) 
         
         self.folds = 3
-        self.testSize = 3
+        self.validationSize = 3
         self.w = w
         self.numRecordAucSamples = 500
         self.numProcesses = multiprocessing.cpu_count()
@@ -64,7 +51,7 @@ class WeightedMf(object):
         """
         m, n = X.shape
         #cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
-        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.testSize)
+        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize)
         testPrecisions = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection")
