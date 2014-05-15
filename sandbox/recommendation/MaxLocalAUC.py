@@ -13,7 +13,6 @@ from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
 from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
 from sandbox.recommendation.WeightedMf import WeightedMf
-from sandbox.recommendation.RecommenderUtils import computeTestPrecision
 
 def computeObjective(args): 
     """
