@@ -228,8 +228,8 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
                 vqScale += zeta
                 vpScale -= zeta
             
-            if kappa <= 0: 
-                vpScale -= -kappa*rho
+            if kappa <= 1: 
+                vpScale -= (1-kappa)*rho
         
             deltaTheta += V[p, :]*vpScale + V[q, :]*vqScale
             
@@ -385,8 +385,8 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
 
             betaScale *= oneMinusRho/numAucSamples
 
-            if kappa <= 0: 
-                betaScale -= kappa*rho              
+            if oneMinusKappa >= 0: 
+                betaScale += oneMinusKappa*rho              
                 
             deltaBeta = scale(U, i, -betaScale/numOmegai, k)
         else:
