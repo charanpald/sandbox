@@ -223,14 +223,11 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             vpScale = 0
             vqScale = 0             
             
-            if gamma <= 1: 
-                zeta = (1-gamma)*oneMinusRho
-                vqScale += zeta
+            if oneMinusRho*gamma + rho*kappa <= 1: 
+                zeta = (1-oneMinusRho*gamma-rho*kappa)
+                vqScale += zeta*oneMinusRho
                 vpScale -= zeta
-            
-            if kappa <= 1: 
-                vpScale -= (1-kappa)*rho
-        
+
             deltaTheta += V[p, :]*vpScale + V[q, :]*vqScale
             
         deltaTheta /= float(numAucSamples * m)
@@ -380,13 +377,10 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
                 #gamma = uivp - uivq
                 oneMinusGamma = oneMinusUivp + uivq
                                 
-                if oneMinusGamma >= 0: 
-                    betaScale += oneMinusGamma 
+                if oneMinusRho*gamma + rho*kappa <= 1: 
+                    betaScale += 1 - oneMinusRho*gamma - rho*kappa 
 
-            betaScale *= oneMinusRho/numAucSamples
-
-            if oneMinusKappa >= 0: 
-                betaScale += oneMinusKappa*rho              
+            betaScale *= 1/numAucSamples           
                 
             deltaBeta = scale(U, i, -betaScale/numOmegai, k)
         else:
@@ -398,11 +392,11 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
                 uivp = dot(U, i, V, p, k)
                 oneMinusGamma = onePlusUivq - uivp
                 
-                if oneMinusGamma >= 0: 
-                    betaScale += oneMinusGamma
+                if oneMinusRho*gamma + rho*kappa <= 1: 
+                    betaScale += 1- oneMinusRho*gamma - rho*kappa 
 
             if numOmegai != 0:
-                deltaBeta = scale(U, i, betaScale*oneMinusRho/(numOmegai*numOmegaBari), k)  
+                deltaBeta = scale(U, i, oneMinusRho*betaScale/(numOmegai*numOmegaBari), k)  
                 
         deltaTheta += deltaBeta
     
