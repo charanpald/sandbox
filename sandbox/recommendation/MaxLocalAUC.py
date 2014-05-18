@@ -264,8 +264,8 @@ class MaxLocalAUC(object):
         U = U/maxNorm  
         
         V = numpy.ascontiguousarray(V) 
-        maxNorm = numpy.sqrt(numpy.max(numpy.sum(V**2, 1)))
-        V = V/maxNorm
+        #maxNorm = numpy.sqrt(numpy.max(numpy.sum(V**2, 1)))
+        #V = V/maxNorm
         
         return U, V
         
