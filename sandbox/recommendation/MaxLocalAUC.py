@@ -41,7 +41,7 @@ def computeTestPrecision(args):
     p = maxLocalAuc.validationSize 
     testOmegaList = SparseUtils.getOmegaList(testX)
     
-    logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
+    #logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
     
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
     
@@ -169,6 +169,9 @@ class MaxLocalAUC(object):
                 if testX != None:
                     testObjs.append(objectiveApprox(allX, muU, muV, testOmegaList, self.numRecordAucSamples, r, self.lmbda, self.rho))
                     testAucs.append(localAUCApprox(allX, muU, muV, testOmegaList, self.numRecordAucSamples, r))
+                    p = 5
+                    testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, p, X)
+                    precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)                    
                     
                 printStr = "Iteration: " + str(ind)
                 printStr += " LAUC~" + str('%.4f' % trainAucs[-1]) 
@@ -176,9 +179,11 @@ class MaxLocalAUC(object):
                 if testX != None:
                     printStr += " test LAUC~" + str('%.4f' % testAucs[-1])
                     printStr += " test obj~" + str('%.4f' % testObjs[-1])
+                    printStr += " test precision=" + str('%.3f' % precision) 
                 printStr += " sigma=" + str('%.4f' % sigma)
                 printStr += " normU=" + str('%.3f' % numpy.linalg.norm(U))
                 printStr += " normV=" + str('%.3f' %  numpy.linalg.norm(V))
+                
                 logging.debug(printStr)
                 
                 
@@ -264,8 +269,8 @@ class MaxLocalAUC(object):
         U = U/maxNorm  
         
         V = numpy.ascontiguousarray(V) 
-        #maxNorm = numpy.sqrt(numpy.max(numpy.sum(V**2, 1)))
-        #V = V/maxNorm
+        maxNorm = numpy.sqrt(numpy.max(numpy.sum(V**2, 1)))
+        V = V/maxNorm
         
         return U, V
         
