@@ -223,17 +223,20 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             vpScale = 0
             vqScale = 0             
             
-            if oneMinusRho*gamma + rho*kappa <= 1: 
-                zeta = (1-oneMinusRho*gamma-rho*kappa)
-                vqScale += zeta*oneMinusRho
+            if gamma <= 1: 
+                zeta = (1-gamma)*oneMinusRho
+                vqScale += zeta
                 vpScale -= zeta
-
+            
+            if kappa <= 1: 
+                vpScale -= (1-kappa)*rho
+        
             deltaTheta += V[p, :]*vpScale + V[q, :]*vqScale
             
         deltaTheta /= float(numAucSamples * m)
             
     #Add regularisation 
-    deltaTheta = scale(U, i, lmbda/m, k) + deltaTheta        
+    #deltaTheta = scale(U, i, lmbda/m, k) + deltaTheta        
         
     #Normalise gradient to have unit norm 
     normDeltaTheta = numpy.linalg.norm(deltaTheta)
@@ -377,10 +380,13 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
                 #gamma = uivp - uivq
                 oneMinusGamma = oneMinusUivp + uivq
                                 
-                if oneMinusRho*gamma + rho*kappa <= 1: 
-                    betaScale += 1 - oneMinusRho*gamma - rho*kappa 
+                if oneMinusGamma >= 0: 
+                    betaScale += oneMinusGamma 
 
-            betaScale *= 1/numAucSamples           
+            betaScale *= oneMinusRho/numAucSamples
+
+            if oneMinusKappa >= 0: 
+                betaScale += oneMinusKappa*rho              
                 
             deltaBeta = scale(U, i, -betaScale/numOmegai, k)
         else:
@@ -392,11 +398,11 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
                 uivp = dot(U, i, V, p, k)
                 oneMinusGamma = onePlusUivq - uivp
                 
-                if oneMinusRho*gamma + rho*kappa <= 1: 
-                    betaScale += 1- oneMinusRho*gamma - rho*kappa 
+                if oneMinusGamma >= 0: 
+                    betaScale += oneMinusGamma
 
             if numOmegai != 0:
-                deltaBeta = scale(U, i, oneMinusRho*betaScale/(numOmegai*numOmegaBari), k)  
+                deltaBeta = scale(U, i, betaScale*oneMinusRho/(numOmegai*numOmegaBari), k)  
                 
         deltaTheta += deltaBeta
     
