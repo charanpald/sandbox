@@ -103,7 +103,7 @@ class MaxLocalAUC(object):
         self.validationSize = 3
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 2.0**-numpy.arange(1, 10, 2)
-        self.Cs = numpy.linspace(0, 1, 5)
+        self.Cs = 2.0**-numpy.arange(0, 10, 2)
         self.metric = "auc"
 
         #Learning rate selection 
