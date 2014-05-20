@@ -522,7 +522,7 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
         #if normVj > 1: 
         #    V[j,:] = scale(V, j, 1/normVj, k)  
         
-        #xi[i] -= sigma*dXii
+        xi[i] -= sigma*dXii
 
         if xi[i] < 0: 
             xi[i] = 0
