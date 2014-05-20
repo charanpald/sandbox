@@ -12,7 +12,7 @@ from sandbox.util.PathDefaults import PathDefaults
 from sandbox.util.Sampling import Sampling
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.recommendation.MaxLocalAUCCython import localAUCApprox
-from sandbox.util.SparseUtilsCython import SparseUtilsCython
+from sandbox.recommendation.RecommenderUtils import computeTestPrecision
 
 import itertools
 
@@ -27,18 +27,6 @@ except:
         raise NameError("climf is not installed, so 'climf_fast' is not defined")
         
         
-def computeTestAucs(args): 
-    trainX, testX, testOmegaList, learner, w, numRecordAucSamples = args 
-    logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
-    
-    learner.learnModel(trainX.toScipyCsr(), U=learner.U, V=learner.V)
-    r = SparseUtilsCython.computeR(learner.U, learner.V, w, numRecordAucSamples) 
-    localAUC = localAUCApprox(testX, learner.U, learner.V, testOmegaList, numRecordAucSamples, r)
-    
-    logging.debug("local AUC: " + str(localAUC) + " with k=" + str(learner.k) + " lmbda=" + str(learner.lmbda) + " gamma=" + str(learner.gamma))
-        
-    return localAUC
-
 class CLiMF(object): 
     """
     An interface to use CLiMF recommender system. 
@@ -53,7 +41,7 @@ class CLiMF(object):
         
         #Model selection parameters 
         self.folds = 5 
-        self.testSize = 3
+        self.validationSize = 3
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 2.0**-numpy.arange(1, 20, 4)
         self.gammas = 2.0**-numpy.arange(1, 20, 4)
@@ -92,8 +80,8 @@ class CLiMF(object):
         Perform model selection on X and return the best parameters. 
         """
         m, n = X.shape
-        #cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
-        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.testSize)
+
+        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, csarray=False)
         datas = []
         for (trainX, testX) in trainTestXs:
             testOmegaList = SparseUtils.getOmegaList(testX)
@@ -116,13 +104,13 @@ class CLiMF(object):
                         learner.lmbda = lmbda
                         learner.gamma = gamma
                     
-                        paramList.append((trainX, testX, testOmegaList, learner, self.w, self.numRecordAucSamples))
+                        paramList.append((trainX, testX, learner))
             
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-            resultsIterator = pool.imap(computeTestAucs, paramList, self.chunkSize)
+            resultsIterator = pool.imap(computeTestPrecision, paramList, self.chunkSize)
         else: 
-            resultsIterator = itertools.imap(computeTestAucs, paramList)
+            resultsIterator = itertools.imap(computeTestPrecision, paramList)
         
         for i_k in range(len(self.ks)):
             for i_lmbda in range(len(self.lmbdas)):
@@ -133,22 +121,22 @@ class CLiMF(object):
         if self.numProcesses != 1: 
             pool.terminate()
         
-        meanTestLocalAucs = numpy.mean(testAucs, 3)
-        stdTestLocalAucs = numpy.std(testAucs, 3)
+        meanTestMetrics = numpy.mean(testAucs, 3)
+        stdTestMetrics = numpy.std(testAucs, 3)
         
         logging.debug("ks=" + str(self.ks))
         logging.debug("lmbdas=" + str(self.lmbdas))
         logging.debug("gammas=" + str(self.gammas))
-        logging.debug("Mean local AUCs=" + str(meanTestLocalAucs))
+        logging.debug("Mean metrics=" + str(meanTestMetrics))
         
-        i_k, i_lmbda, i_gamma = numpy.unravel_index(meanTestLocalAucs.argmax(), meanTestLocalAucs.shape)
+        i_k, i_lmbda, i_gamma = numpy.unravel_index(meanTestMetrics.argmax(), meanTestMetrics.shape)
         self.k = self.ks[i_k]
         self.lmbda = self.lmbdas[i_lmbda]
         self.gamma = self.gammas[i_gamma]
 
         logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda) + " gamma=" + str(self.gamma))
          
-        return meanTestLocalAucs, stdTestLocalAucs
+        return meanTestMetrics, stdTestMetrics
 
             
     def copy(self): 
@@ -180,8 +168,8 @@ def main():
     w = 1-u
     (m, n) = X.shape
 
-    testSize = 5
-    trainTestXs = Sampling.shuffleSplitRows(X, 1, testSize)
+    validationSize = 5
+    trainTestXs = Sampling.shuffleSplitRows(X, 1, validationSize)
     trainX, testX = trainTestXs[0]
     trainX = trainX.toScipyCsr()
 

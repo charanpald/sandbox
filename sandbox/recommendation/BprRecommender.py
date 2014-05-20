@@ -10,28 +10,11 @@ from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.PathDefaults import PathDefaults
 from sandbox.util.Sampling import Sampling
 from sandbox.util.SparseUtils import SparseUtils
-from sandbox.util.SparseUtilsCython import SparseUtilsCython
+from sandbox.util.MCEvaluatorCython import MCEvaluatorCython
 from sandbox.recommendation.MaxLocalAUCCython import localAUCApprox
 from bpr import BPRArgs, BPR, UniformPairWithoutReplacement 
+from sandbox.recommendation.RecommenderUtils import computeTestPrecision
 
-
-def computeTestAuc(args): 
-    trainX, testX, learner  = args 
-    
-    allX = trainX + testX
-    testOmegaList = SparseUtils.getOmegaList(testX)
-    logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
-    
-    learner.learnModel(trainX)
-    
-    U = learner.U 
-    V = learner.V 
-    
-    #r = SparseUtilsCython.computeR(U, V, learner.w, learner.numRecordAucSamples)
-    testAuc = MCEvaluator.localAUCApprox(allX, U, V, learner.w, learner.numRecordAucSamples, testOmegaList)
-    logging.debug("Weighted local AUC: " + str(testAuc) + " with " + str(learner))
-        
-    return testAuc
 
 class BprRecommender(object): 
     """
@@ -52,13 +35,12 @@ class BprRecommender(object):
         
         #Model selection parameters 
         self.folds = 5 
-        self.testSize = 3
+        self.validationSize = 3
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdaUsers = 2.0**-numpy.arange(1, 20, 4)
         self.lmbdaPoses = 2.0**-numpy.arange(1, 20, 4)
         self.lmbdaNegs = 2.0**-numpy.arange(1, 20, 4)
         self.gammas = 2.0**-numpy.arange(1, 20, 4)
-        
         
         self.numRecordAucSamples = 500
         self.w = w
@@ -92,10 +74,10 @@ class BprRecommender(object):
         """
         m, n = X.shape
         #cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
-        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.testSize, csarray=False)
+        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, csarray=False)
         testAucs = numpy.zeros((self.ks.shape[0], self.lmbdaUsers.shape[0], self.lmbdaPoses.shape[0], self.lmbdaNegs.shape[0], len(trainTestXs)))
         
-        logging.debug("Performing model selection with test leave out per row of " + str(self.testSize))
+        logging.debug("Performing model selection with test leave out per row of " + str(self.validationSize))
         paramList = []        
         
         for i, k in enumerate(self.ks): 
@@ -113,10 +95,10 @@ class BprRecommender(object):
             
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-            resultsIterator = pool.imap(computeTestAuc, paramList, self.chunkSize)
+            resultsIterator = pool.imap(computeTestPrecision, paramList, self.chunkSize)
         else: 
             import itertools
-            resultsIterator = itertools.imap(computeTestAuc, paramList)
+            resultsIterator = itertools.imap(computeTestPrecision, paramList)
         
         for i, k in enumerate(self.ks): 
             for j, lmbdaUser in enumerate(self.lmbdaUsers): 

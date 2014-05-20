@@ -3,48 +3,30 @@ import numpy
 import logging
 import multiprocessing 
 from sandbox.util.SparseUtils import SparseUtils
-from sandbox.util.SparseUtilsCython import SparseUtilsCython
-from sandbox.recommendation.MaxLocalAUCCython import  localAUCApprox
+from sandbox.recommendation.RecommenderUtils import computeTestPrecision
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.Util import Util 
 from mrec.mf.wrmf import WRMFRecommender
 from sandbox.util.MCEvaluator import MCEvaluator 
 
-def computeTestAucs(args): 
-    trainX, testX, learner  = args 
-    testOmegaList = SparseUtils.getOmegaList(testX)
-    X = testX+trainX
-    
-    testAucScores = numpy.zeros(learner.lmbdas.shape[0])
-    logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
-    
-    for i, lmbda in enumerate(learner.lmbdas):         
-        learner.lmbda = lmbda 
-
-        U, V = learner.learnModel(trainX)
-        r = SparseUtilsCython.computeR(U, V, learner.w, learner.numRecordAucSamples)
-        testAucScores[i] = localAUCApprox(X, U, V, testOmegaList, learner.numRecordAucSamples, r)
-        
-        logging.debug("Local AUC: " + str(testAucScores[i]) + " with k=" + str(learner.k) + " lmbda=" + str(learner.lmbda))
-        
-    return testAucScores
 
 class WeightedMf(object): 
     """
     A wrapper for the mrec class WRMFRecommender. 
     """
     
-    def __init__(self, k, alpha=1, lmbda=0.015, numIterations=15, w=0.9): 
+    def __init__(self, k, alpha=1, lmbda=0.015, numIterations=20, w=0.9): 
         self.k = k 
-        self.alpha = alpha 
+        self.alpha = alpha
+        #lmbda doesn't seem to make much difference at all 
         self.lmbda = lmbda 
         self.numIterations = numIterations 
         
-        self.ks = numpy.array([10, 20, 50, 100])
+        self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = numpy.flipud(numpy.logspace(-3, -1, 11)*2) 
         
         self.folds = 3
-        self.testSize = 3
+        self.validationSize = 3
         self.w = w
         self.numRecordAucSamples = 500
         self.numProcesses = multiprocessing.cpu_count()
@@ -69,48 +51,49 @@ class WeightedMf(object):
         """
         m, n = X.shape
         #cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
-        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.testSize)
-        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
+        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize)
+        testPrecisions = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection")
         paramList = []        
         
         for i, k in enumerate(self.ks): 
-            self.k = k
-            
-            for icv, (trainX, testX) in enumerate(trainTestXs):                
-                learner = self.copy()
-                learner.k = k                
-            
-                paramList.append((trainX.toScipyCsr(), testX.toScipyCsr(), learner))
+            for j, lmbda in enumerate(self.lmbdas): 
+                for icv, (trainX, testX) in enumerate(trainTestXs):                
+                    learner = self.copy()
+                    learner.k = k
+                    learner.lmbda = lmbda 
+                
+                    paramList.append((trainX.toScipyCsr(), testX.toScipyCsr(), learner))
             
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-            resultsIterator = pool.imap(computeTestAucs, paramList, self.chunkSize)
+            resultsIterator = pool.imap(computeTestPrecision, paramList, self.chunkSize)
         else: 
             import itertools
-            resultsIterator = itertools.imap(computeTestAucs, paramList)
+            resultsIterator = itertools.imap(computeTestPrecision, paramList)
         
         for i, k in enumerate(self.ks):
-            for icv in range(len(trainTestXs)):             
-                testAucs[i, :, icv] = resultsIterator.next()
+            for j, lmbda in enumerate(self.lmbdas):
+                for icv in range(len(trainTestXs)):             
+                    testPrecisions[i, j, icv] = resultsIterator.next()
         
         if self.numProcesses != 1: 
             pool.terminate()
-        
-        meanTestLocalAucs = numpy.mean(testAucs, 2)
-        stdTestLocalAucs = numpy.std(testAucs, 2)
+            
+        meanTestPrecisions = numpy.mean(testPrecisions, 2)
+        stdTestPrecisions = numpy.std(testPrecisions, 2)
         
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdas=" + str(self.lmbdas)) 
-        logging.debug("Mean local AUCs=" + str(meanTestLocalAucs))
+        logging.debug("Mean precisions=" + str(meanTestPrecisions))
         
-        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[0]]
-        self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[1]]
+        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestPrecisions), meanTestPrecisions.shape)[0]]
+        self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestPrecisions), meanTestPrecisions.shape)[1]]
 
         logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda))
          
-        return meanTestLocalAucs, stdTestLocalAucs
+        return meanTestPrecisions, stdTestPrecisions
     
     def copy(self): 
         learner = WeightedMf(self.k, self.alpha, self.lmbda, self.numIterations)

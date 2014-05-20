@@ -1,6 +1,7 @@
 import os
 import sys
 from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC 
+from sandbox.recommendation.MaxLocalAUCCython import objectiveApprox 
 from sandbox.util.SparseUtils import SparseUtils
 import numpy
 import unittest
@@ -71,11 +72,11 @@ class MaxLocalAUCTest(unittest.TestCase):
             for j in range(k):
                 tempU = U.copy() 
                 tempU[i,j] += eps
-                obj1 = maxLocalAuc.objective(X, tempU, V, omegaList, r)
+                obj1 = objectiveApprox(X, tempU, V, omegaList, maxLocalAuc.numAucSamples, r, maxLocalAuc.lmbda, maxLocalAuc.rho)
                 
                 tempU = U.copy() 
                 tempU[i,j] -= eps
-                obj2 = maxLocalAuc.objective(X, tempU, V, omegaList, r)
+                obj2 = objectiveApprox(X, tempU, V, omegaList, maxLocalAuc.numAucSamples, r, maxLocalAuc.lmbda, maxLocalAuc.rho)
                 
                 deltaU2[i,j] = (obj1-obj2)/(2*eps)
             deltaU2[i,:] = deltaU2[i,:]/numpy.linalg.norm(deltaU2[i,:])
@@ -118,11 +119,11 @@ class MaxLocalAUCTest(unittest.TestCase):
             for j in range(k):
                 tempV = V.copy() 
                 tempV[i,j] += eps
-                obj1 = maxLocalAuc.objective(X, U, tempV, omegaList, r)
+                obj1 = objectiveApprox(X, U, tempV, omegaList, maxLocalAuc.numAucSamples, r, maxLocalAuc.lmbda, maxLocalAuc.rho)
                 
                 tempV = V.copy() 
                 tempV[i,j] -= eps
-                obj2 = maxLocalAuc.objective(X, U, tempV, omegaList, r)
+                obj2 = objectiveApprox(X, U, tempV, omegaList, maxLocalAuc.numAucSamples, r, maxLocalAuc.lmbda, maxLocalAuc.rho)
                 
                 deltaV2[i,j] = (obj1-obj2)/(2*eps)
             deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])
@@ -131,7 +132,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         #print(deltaV2.T*10)                   
         nptst.assert_almost_equal(deltaV, deltaV2, 2)
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testModelSelect(self): 
         m = 10 
         n = 20 
@@ -145,7 +146,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         u = 0.2
         eps = 0.001
-        maxLocalAuc = MaxLocalAUC(k, u, eps=eps)
+        maxLocalAuc = MaxLocalAUC(k, u, eps=eps, stochastic=True)
         maxLocalAuc.maxIterations = 20
         
         maxLocalAuc.modelSelect(X)
@@ -181,7 +182,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         u= 0.1
         eps = 0.001
         k = 10 
-        maxLocalAuc = MaxLocalAUC(k, u, sigma=5.0, eps=eps)
+        maxLocalAuc = MaxLocalAUC(k, u, alpha=5.0, eps=eps)
         maxLocalAuc.copy()
 
 if __name__ == "__main__":
