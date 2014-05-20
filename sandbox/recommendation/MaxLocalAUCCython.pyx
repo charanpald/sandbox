@@ -455,7 +455,7 @@ def derivativeXiiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
     cdef double deltaTheta = 0
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaiSample = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
-         
+                
     omegai = omegaList[i]
     omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
     numOmegai = omegai.shape[0]
@@ -499,6 +499,7 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
     cdef unsigned int i, j, s, ind2
     cdef unsigned int startAverage = 10
     
+
     for s in range(numIterations):
         i = rowInds[(ind + s) % m]
         dUi = derivativeUiApprox(X, U, V, omegaList, i, numRowSamples, numAucSamples, xi, lmbda, C, normalise)
@@ -508,7 +509,7 @@ def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
         dVj = derivativeViApprox(X, U, V, omegaList, j, numRowSamples, numAucSamples, xi, lmbda, C, normalise)
         #dVi = derivativeVi(X, U, V, omegaList, j, r, nu)
 
-        dXii = derivativeXiiApprox(X, U, V, omegaList, j, numRowSamples, numAucSamples, xi, lmbda, C, normalise)
+        dXii = derivativeXiiApprox(X, U, V, omegaList, i, numRowSamples, numAucSamples, xi, lmbda, C, normalise)
 
         plusEquals(U, i, -sigma*dUi, k)
         
