@@ -131,8 +131,8 @@ class MaxLocalAUC(object):
         lastObj = 0
         obj = 2
         
-        #xi = numpy.ones(m)*0.5   
-        xi = numpy.zeros(m) 
+        xi = numpy.ones(m)*0.5   
+        #xi = numpy.zeros(m) 
         
         muU = U.copy() 
         muV = V.copy()
@@ -273,8 +273,8 @@ class MaxLocalAUC(object):
         U = U/maxNorm  
         
         V = numpy.ascontiguousarray(V) 
-        maxNorm = numpy.sqrt(numpy.max(numpy.sum(V**2, 1)))
-        V = V/maxNorm
+        #maxNorm = numpy.sqrt(numpy.max(numpy.sum(V**2, 1)))
+        #V = V/maxNorm
         
         return U, V
         
