@@ -482,7 +482,7 @@ def derivativeXiiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
             
         deltaTheta /= float(omegaiSample.shape[0] * m)
     
-    deltaTheta += C 
+    deltaTheta += C/m 
 
     return deltaTheta
 
