@@ -119,11 +119,11 @@ class MaxLocalAUCTest(unittest.TestCase):
             for j in range(k):
                 tempV = V.copy() 
                 tempV[i,j] += eps
-                obj1 = objectiveApprox(X, U, tempV, omegaList, maxLocalAuc.numAucSamples, r, maxLocalAuc.lmbda, maxLocalAuc.rho)
+                obj1 = objectiveApprox(X, U, tempV, omegaList, maxLocalAuc.numAucSamples, r, maxLocalAuc.lmbda, maxLocalAuc.C)
                 
                 tempV = V.copy() 
                 tempV[i,j] -= eps
-                obj2 = objectiveApprox(X, U, tempV, omegaList, maxLocalAuc.numAucSamples, r, maxLocalAuc.lmbda, maxLocalAuc.rho)
+                obj2 = objectiveApprox(X, U, tempV, omegaList, maxLocalAuc.numAucSamples, r, maxLocalAuc.lmbda, maxLocalAuc.C)
                 
                 deltaV2[i,j] = (obj1-obj2)/(2*eps)
             deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])
@@ -132,7 +132,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         #print(deltaV2.T*10)                   
         nptst.assert_almost_equal(deltaV, deltaV2, 2)
 
-    @unittest.skip("")
+    #@unittest.skip("")
     def testModelSelect(self): 
         m = 10 
         n = 20 
@@ -148,6 +148,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         eps = 0.001
         maxLocalAuc = MaxLocalAUC(k, u, eps=eps, stochastic=True)
         maxLocalAuc.maxIterations = 20
+        #maxLocalAuc.numProcesses = 1
         
         maxLocalAuc.modelSelect(X)
             

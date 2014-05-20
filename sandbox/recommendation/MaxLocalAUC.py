@@ -29,6 +29,7 @@ def computeTestAuc(args):
     trainX, testX, U, V, maxLocalAuc  = args 
     
     logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
+
     
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
     muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
@@ -193,7 +194,6 @@ class MaxLocalAUC(object):
                 
                 lastObj = obj
                 obj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1, dtype=numpy.float)))
-                #print(abs(lastObj-obj))
             
             lastU = U.copy() 
             lastV = V.copy()
@@ -287,7 +287,6 @@ class MaxLocalAUC(object):
             updateU(X, U, V, omegaList, sigma, r, self.nu)
             updateV(X, U, V, omegaList, sigma, r, self.nu, self.lmbda)
         else: 
-            #print(xi)
             updateUVApprox(X, U, V, muU, muV, xi, muXi, omegaList, rowInds, colInds, ind, sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.C, self.normalise)
        
     #@profile
