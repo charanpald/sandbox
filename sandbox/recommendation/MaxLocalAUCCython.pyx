@@ -196,7 +196,7 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP = numpy.zeros(k, numpy.int)
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaiSample = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
          
     omegai = omegaList[i]
@@ -207,11 +207,11 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     deltaTheta = numpy.zeros(k)
     
     if numOmegai * numOmegaBari != 0: 
-        indsP = numpy.random.randint(0, numOmegai, numAucSamples)
+        omegaiSample = numpy.random.choice(omegai, numAucSamples)
         #indsQ = numpy.random.randint(0, numOmegaBari, numAucSamples)        
         
-        for j in range(numAucSamples):
-            p = omegai[indsP[j]] 
+        for p in omegaiSample:
+            #p = omegai[indsP[j]] 
             q = getNonZeroRow(X, i, n) 
         
             uivp = dot(U, i, V, p, k)
@@ -223,7 +223,7 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             if zeta > 0:             
                 deltaTheta += V[q, :]*zeta - V[p, :]*zeta 
             
-        deltaTheta /= float(numAucSamples * m)
+        deltaTheta /= float(omegaiSample.shape[0] * m)
             
     #Add regularisation 
     #deltaTheta = scale(U, i, lmbda/m, k) + deltaTheta        
@@ -342,6 +342,7 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     #cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowInds = numpy.unique(numpy.array(numpy.random.randint(0, m, numRowSamples), dtype=numpy.uint))
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] rowInds = numpy.random.permutation(m)[0:numRowSamples]
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaiSample = numpy.zeros(k, numpy.uint)
     
     for i in rowInds: 
         omegai = omegaList[i]
@@ -364,13 +365,14 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
                 if zeta > 0: 
                     betaScale += zeta
                 
-            deltaBeta = scale(U, i, -betaScale/(numOmegai*numAucSamples), k)
+            deltaBeta = scale(U, i, -betaScale/(numOmegai*omegaiSample.shape[0]), k)
         else:
             q = j 
             uivq = dot(U, i, V, q, k)
 
+            omegaiSample = numpy.random.choice(omegai, numAucSamples)
             
-            for p in omegai: 
+            for p in omegaiSample: 
                 uivp = dot(U, i, V, p, k)
                 gamma = uivp - uivq
                 zeta = 1 - gamma - xi[i]
@@ -380,7 +382,7 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
                     betaScale += zeta
 
             if numOmegai != 0:
-                deltaBeta = scale(U, i, betaScale/(numOmegai*numOmegaBari), k)  
+                deltaBeta = scale(U, i, betaScale/(omegaiSample.shape[0]*numOmegaBari), k)  
                 
         deltaTheta += deltaBeta
     
@@ -451,7 +453,7 @@ def derivativeXiiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
     cdef double deltaTheta = 0
-    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP = numpy.zeros(k, numpy.int)
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaiSample = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
          
     omegai = omegaList[i]
@@ -462,11 +464,11 @@ def derivativeXiiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
     deltaTheta = 0
     
     if numOmegai * numOmegaBari != 0: 
-        indsP = numpy.random.randint(0, numOmegai, numAucSamples)
+        omegaiSample = numpy.random.choice(omegai, numAucSamples)
         #indsQ = numpy.random.randint(0, numOmegaBari, numAucSamples)        
         
-        for j in range(numAucSamples):
-            p = omegai[indsP[j]] 
+        for p in omegaiSample:
+            #p = omegai[indsP[j]] 
             q = getNonZeroRow(X, i, n) 
         
             uivp = dot(U, i, V, p, k)
@@ -478,7 +480,7 @@ def derivativeXiiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
             if zeta > 0: 
                 deltaTheta -= zeta 
             
-        deltaTheta /= float(numAucSamples * m)
+        deltaTheta /= float(omegaiSample.shape[0] * m)
     
     deltaTheta += C 
 
@@ -548,7 +550,8 @@ def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[
     cdef unsigned int i, j, k, p, q
     cdef double kappa, uivp, uivq, gamma, partialObj
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(10, numpy.uint)  
-    cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaiSample = numpy.zeros(10, numpy.uint)
+    #cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsP
     
     k = U.shape[1]
     
@@ -556,15 +559,15 @@ def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[
         omegai = omegaList[i]
         #omegaBari = numpy.setdiff1d(numpy.arange(n), omegai, assume_unique=True)
         
-        
         if omegai.shape[0] * (n-omegai.shape[0]) != 0: 
             partialObj = 0                
             
-            indsP = numpy.random.randint(0, omegai.shape[0], numAucSamples)  
+            #indsP = numpy.random.randint(0, omegai.shape[0], numAucSamples)  
             #indsQ = numpy.random.randint(0, omegaBari.shape[0], numAucSamples)
+            omegaiSample = numpy.random.choice(omegai, numAucSamples) 
             
-            for j in range(numAucSamples):
-                p = omegai[indsP[j]] 
+            for p in omegaiSample:
+                #p = omegai[indsP[j]] 
                 #q = omegaBari[indsQ[j]]
                 q = getNonZeroRow(X, i, n)                  
             
@@ -576,7 +579,7 @@ def objectiveApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[
                 if gamma + xi[i] <= 1: 
                     partialObj += ((1-gamma-xi[i])**2) 
                 
-            obj += partialObj/float(numAucSamples)
+            obj += partialObj/float(omegaiSample.shape[0])
     
     obj /= 2*m       
     obj += (lmbda/(2*m))*numpy.linalg.norm(V)**2 + C*numpy.sum(xi)
@@ -594,6 +597,7 @@ def localAUCApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
     
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1]
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaiSample = numpy.zeros(10, numpy.uint)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(10, numpy.uint)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] localAucArr = numpy.zeros(m)
     cdef unsigned int i, j, k, ind, p, q, nOmegai
@@ -608,12 +612,14 @@ def localAUCApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
         ri = r[i]
         
         if nOmegai * (n-nOmegai) != 0: 
-            partialAuc = 0                
+            partialAuc = 0    
+
+            omegaiSample = numpy.random.choice(omegai, numAucSamples)            
             
-            for j in range(numAucSamples):
+            for p in omegaiSample:
                 #ind = numpy.random.randint(omegai.shape[0])
-                ind = randint(nOmegai)
-                p = omegai[ind] 
+                #ind = randint(nOmegai)
+                #p = omegai[ind] 
                 
                 q = getNonZeroRow(X, i, n)                
                 uivp = dot(U, i, V, p, k)
@@ -621,6 +627,6 @@ def localAUCApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[d
                 if uivp > ri and uivp > dot(U, i, V, q, k): 
                     partialAuc += 1 
                         
-            localAucArr[i] = partialAuc/float(numAucSamples)     
+            localAucArr[i] = partialAuc/float(omegaiSample.shape[0])     
     
     return localAucArr.mean()
