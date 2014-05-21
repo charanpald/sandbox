@@ -335,7 +335,7 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1], ind
     cdef unsigned int s = 0
-    cdef double uivp, uivq,  betaScale, ri, normTheta, zeta, gamma
+    cdef double uivp, uivq,  betaScale, xii, normTheta, zeta, gamma, nu
     cdef double oneMinusGamma, onePlusUivq, oneMinusKappa, oneMinusUivp
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
@@ -350,34 +350,36 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
         numOmegaBari = n-numOmegai
         
         betaScale = 0
+        xii = xi[i]
         
         if X[i, j] != 0:                 
             p = j 
             uivp = dot(U, i, V, p, k)
+            nu = 1 - uivp - xii
 
             for s in range(numAucSamples): 
                 q = getNonZeroRow(X, i, n)
                 uivq = dot(U, i, V, q, k)
-                gamma = uivp - uivq
+                #gamma = uivp - uivq
                 
-                zeta = 1 - gamma - xi[i]
+                zeta = nu + uivq 
                                 
                 if zeta > 0: 
                     betaScale += zeta
                 
-            deltaBeta = scale(U, i, -betaScale/(numOmegai*omegaiSample.shape[0]), k)
+            deltaBeta = scale(U, i, -betaScale/(numOmegai*numAucSamples), k)
         else:
             q = j 
             uivq = dot(U, i, V, q, k)
+            nu = 1 + uivq - xii
 
             omegaiSample = numpy.random.choice(omegai, numAucSamples)
+            #omegaiSample = omegai
             
             for p in omegaiSample: 
                 uivp = dot(U, i, V, p, k)
-                gamma = uivp - uivq
-                zeta = 1 - gamma - xi[i]
-
-                
+                #gamma = uivp - uivq
+                zeta = nu - uivp
                 if zeta > 0: 
                     betaScale += zeta
 
