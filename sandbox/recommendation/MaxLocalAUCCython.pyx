@@ -183,7 +183,7 @@ def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise):
+def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, list omegaProbabilitiesList, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise):
     """
     Find an approximation of delta phi/delta u_i using the simple objective without 
     sigmoid functions. 
@@ -194,12 +194,14 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     cdef double normDeltaTheta, vqScale, vpScale, zeta  
     cdef unsigned int m = X.shape[0], n = X.shape[1], numOmegai, numOmegaBari
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
+    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] omegaProbsi = numpy.zeros(k)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaiSample = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
          
     omegai = omegaList[i]
+    omegaProbsi = omegaProbabilitiesList[i]
     omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
     numOmegai = omegai.shape[0]
     numOmegaBari = n-numOmegai
@@ -207,7 +209,8 @@ def derivativeUiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
     deltaTheta = numpy.zeros(k)
     
     if numOmegai * numOmegaBari != 0: 
-        omegaiSample = numpy.random.choice(omegai, numAucSamples)
+        #omegaiSample = numpy.random.choice(omegai, numAucSamples, p=omegaProbsi)
+        omegaiSample = omegai
         #indsQ = numpy.random.randint(0, numOmegaBari, numAucSamples)        
         
         for p in omegaiSample:
@@ -325,27 +328,28 @@ def updateV(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int j, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise): 
+def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, list omegaProbabilitiesList, unsigned int j, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise): 
     """
     delta phi/delta v_i  using the hinge loss. 
     """
     cdef unsigned int i = 0
     cdef unsigned int k = U.shape[1]
-    cdef unsigned int p, q, numOmegai, numOmegaBari, t
+    cdef unsigned int p, q, numOmegai, numOmegaBari
     cdef unsigned int m = X.shape[0]
-    cdef unsigned int n = X.shape[1], ind
+    cdef unsigned int n = X.shape[1]
     cdef unsigned int s = 0
     cdef double uivp, uivq,  betaScale, xii, normTheta, zeta, gamma, nu
-    cdef double oneMinusGamma, onePlusUivq, oneMinusKappa, oneMinusUivp
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai 
+    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] omegaProbsi = numpy.zeros(k)
     #cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] rowInds = numpy.unique(numpy.array(numpy.random.randint(0, m, numRowSamples), dtype=numpy.uint))
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] rowInds = numpy.random.permutation(m)[0:numRowSamples]
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaiSample = numpy.zeros(k, numpy.uint)
+    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaiSample 
     
     for i in rowInds: 
         omegai = omegaList[i]
+        omegaProbsi = omegaProbabilitiesList[i]
         numOmegai = omegai.shape[0]       
         numOmegaBari = n-numOmegai
         
@@ -373,7 +377,7 @@ def derivativeViApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarr
             uivq = dot(U, i, V, q, k)
             nu = 1 + uivq - xii
 
-            omegaiSample = numpy.random.choice(omegai, numAucSamples)
+            omegaiSample = numpy.random.choice(omegai, numAucSamples, p=omegaProbsi)
             #omegaiSample = omegai
             
             for p in omegaiSample: 
@@ -442,7 +446,7 @@ def derivativeXi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def derivativeXiiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise):
+def derivativeXiiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, list omegaProbabilitiesList, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise):
     """
     Find an approximation of delta phi/delta u_i using the simple objective without 
     sigmoid functions. 
@@ -453,21 +457,21 @@ def derivativeXiiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
     cdef double normDeltaTheta, vqScale, vpScale, zeta 
     cdef unsigned int m = X.shape[0], n = X.shape[1], numOmegai, numOmegaBari
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
+    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] omegaProbsi = numpy.zeros(k)
     cdef double deltaTheta = 0
     cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaiSample = numpy.zeros(k, numpy.uint)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(k, numpy.int)
                 
     omegai = omegaList[i]
-    omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
+    omegaProbsi = omegaProbabilitiesList[i]
     numOmegai = omegai.shape[0]
     numOmegaBari = n-numOmegai
     
     deltaTheta = 0
     
     if numOmegai * numOmegaBari != 0: 
-        omegaiSample = numpy.random.choice(omegai, numAucSamples)
-        #indsQ = numpy.random.randint(0, numOmegaBari, numAucSamples)        
+        #omegaiSample = numpy.random.choice(omegai, numAucSamples, p=omegaProbsi)
+        omegaiSample = omegai       
         
         for p in omegaiSample:
             #p = omegai[indsP[j]] 
@@ -490,28 +494,26 @@ def derivativeXiiApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndar
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[double, ndim=1, mode="c"] xi, numpy.ndarray[double, ndim=1, mode="c"] muXi, list omegaList, numpy.ndarray[unsigned int, ndim=1, mode="c"] rowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, unsigned int ind, double sigma, unsigned int numIterations, unsigned int numRowSamples, unsigned int numAucSamples, double w, double lmbda, double C, bint normalise): 
+def updateUVApprox(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[double, ndim=1, mode="c"] xi, numpy.ndarray[double, ndim=1, mode="c"] muXi, list omegaList, list omegaProbabilitiesList, numpy.ndarray[unsigned int, ndim=1, mode="c"] rowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, unsigned int ind, double sigma, unsigned int numIterations, unsigned int numRowSamples, unsigned int numAucSamples, double w, double lmbda, double C, bint normalise): 
     cdef unsigned int m = X.shape[0]
     cdef unsigned int n = X.shape[1]    
     cdef unsigned int k = U.shape[1] 
-    cdef unsigned int numAucSamplesR = 500
     cdef double normUi
     cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(k)
     cdef numpy.ndarray[double, ndim=1, mode="c"] dVj = numpy.zeros(k)
-    cdef unsigned int i, j, s, ind2
+    cdef unsigned int i, j, s, ind2, dXii
     cdef unsigned int startAverage = 10
     
-
     for s in range(numIterations):
         i = rowInds[(ind + s) % m]
-        dUi = derivativeUiApprox(X, U, V, omegaList, i, numRowSamples, numAucSamples, xi, lmbda, C, normalise)
+        dUi = derivativeUiApprox(X, U, V, omegaList, omegaProbabilitiesList, i, numRowSamples, numAucSamples, xi, lmbda, C, normalise)
         #dUi = derivativeUi(X, U, V, omegaList, i, r, nu)
         
         j = colInds[(ind + s) % n]
-        dVj = derivativeViApprox(X, U, V, omegaList, j, numRowSamples, numAucSamples, xi, lmbda, C, normalise)
+        dVj = derivativeViApprox(X, U, V, omegaList, omegaProbabilitiesList, j, numRowSamples, numAucSamples, xi, lmbda, C, normalise)
         #dVi = derivativeVi(X, U, V, omegaList, j, r, nu)
 
-        dXii = derivativeXiiApprox(X, U, V, omegaList, i, numRowSamples, numAucSamples, xi, lmbda, C, normalise)
+        dXii = derivativeXiiApprox(X, U, V, omegaList, omegaProbabilitiesList, i, numRowSamples, numAucSamples, xi, lmbda, C, normalise)
 
         plusEquals(U, i, -sigma*dUi, k)
         

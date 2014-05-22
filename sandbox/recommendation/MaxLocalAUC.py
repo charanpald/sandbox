@@ -287,7 +287,8 @@ class MaxLocalAUC(object):
             updateU(X, U, V, omegaList, sigma, r, self.nu)
             updateV(X, U, V, omegaList, sigma, r, self.nu, self.lmbda)
         else: 
-            updateUVApprox(X, U, V, muU, muV, xi, muXi, omegaList, rowInds, colInds, ind, sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.C, self.normalise)
+            omegaProbabilitiesList = self.omegaProbabilities2(muU, muV, omegaList)
+            updateUVApprox(X, U, V, muU, muV, xi, muXi, omegaList, omegaProbabilitiesList, rowInds, colInds, ind, sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.C, self.normalise)
        
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, r): 
@@ -301,6 +302,27 @@ class MaxLocalAUC(object):
         delta phi/delta v_i
         """
         return derivativeVi(X, U, V, omegaList, i, r, self.lmbda, self.C, self.normalise)           
+
+    def omegaProbabilities(self, U, V, omegaList): 
+        omegaProbabilitiesList = []
+        
+        for i, omegai in enumerate(omegaList):
+            uiVOmegai = U[i, :].T.dot(V[omegai, :].T)
+            uiVOmegai = numpy.exp(uiVOmegai)
+            omegaProbabilitiesList.append(uiVOmegai/uiVOmegai.sum()) 
+            
+        return omegaProbabilitiesList
+            
+    def omegaProbabilities2(self, U, V, omegaList): 
+        omegaProbabilitiesList = []
+        
+        for i, omegai in enumerate(omegaList):
+            uiVOmegai = U[i, :].T.dot(V[omegai, :].T)
+            inds = numpy.argsort(numpy.argsort((uiVOmegai)))+1
+            omegaProbabilitiesList.append(inds/float(inds.sum())) 
+            
+        return omegaProbabilitiesList
+
 
     def learningRateSelect(self, X): 
         """
