@@ -98,6 +98,10 @@ class MaxLocalAUC(object):
         #1 iterations is a complete run over the dataset (i.e. m gradients)
         self.maxIterations = 50
         self.initialAlg = "rand"
+        #Possible choices are uniform, top, rank 
+        self.sampling = "uniform"
+        #The number of items to use to compute precision, sample for probabilities etc.         
+        self.z = 5
         
         #Model selection parameters 
         self.folds = 2 
@@ -174,8 +178,7 @@ class MaxLocalAUC(object):
                 if testX != None:
                     testObjs.append(objectiveApprox(testIndPtr, testColInds, muU, muV, self.numRecordAucSamples, muXi, self.lmbda, self.C))
                     testAucs.append(localAUCApprox(testIndPtr, testColInds, muU, muV, self.numRecordAucSamples, r))
-                    p = 5
-                    testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, p, X)
+                    testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, X)
                     #precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)                    
                     
                 printStr = "Iteration: " + str(ind)
@@ -283,13 +286,21 @@ class MaxLocalAUC(object):
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic:                 
-            r = SparseUtilsCython.computeR(U, V, self.w, self.numAucSamples)
+            r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)
             updateU(indPtr, colInds, U, V, sigma, r, self.nu)
             updateV(indPtr, colInds, U, V, sigma, r, self.nu, self.lmbda)
         else: 
-            colIndsCumProbs = self.omegaProbs2(indPtr, colInds, muU, muV)
+            if self.sampling == "uniform": 
+                colIndsCumProbs = self.omegaProbsUniform(indPtr, colInds, muU, muV)
+            elif self.sampling == "top": 
+                colIndsCumProbs = self.omegaProbsTopZ(indPtr, colInds, muU, muV)
+            elif self.sampling == "rank": 
+                colIndsCumProbs = self.omegaProbsRank(indPtr, colInds, muU, muV)
+            else: 
+                raise ValueError("Unknown sampling scheme: " + self.sampling)
+                
             updateUVApprox(indPtr, colInds, U, V, muU, muV, xi, muXi, colIndsCumProbs, permutedRowInds, permutedColInds, ind, sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.C, self.normalise)
-    #@profile
+
     def derivativeUi(self, X, U, V, omegaList, i, r): 
         """
         delta phi/delta u_i
@@ -302,20 +313,43 @@ class MaxLocalAUC(object):
         """
         return derivativeVi(X, U, V, omegaList, i, r, self.lmbda, self.C, self.normalise)           
 
-    def omegaProbs(self, indPtr, colInds, U, V): 
+    def omegaProbsUniform(self, indPtr, colInds, U, V): 
+        """
+        All positive items have the same probability. 
+        """
+        colIndsCumProbs = numpy.ones(colInds.shape[0])
+        m = U.shape[0]
+        
+        for i in range(m):
+            colIndsCumProbs[indPtr[i]:indPtr[i+1]] /= colIndsCumProbs[indPtr[i]:indPtr[i+1]].sum()
+            colIndsCumProbs[indPtr[i]:indPtr[i+1]]  = numpy.cumsum(colIndsCumProbs[indPtr[i]:indPtr[i+1]])
+            
+        return colIndsCumProbs
+
+    def omegaProbsTopZ(self, indPtr, colInds, U, V): 
+        """
+        For the set of positive items in each row, select the largest z and give 
+        them equal probability, and the remaining items zero probability. 
+        """
         colIndsCumProbs = numpy.zeros(colInds.shape[0])
         m = U.shape[0]
         
         for i in range(m):
             omegai = colInds[indPtr[i]:indPtr[i+1]]
             uiVOmegai = U[i, :].T.dot(V[omegai, :].T)
-            uiVOmegai = numpy.exp(uiVOmegai)
-            colIndsCumProbs[indPtr[i]:indPtr[i+1]] = uiVOmegai/uiVOmegai.sum() 
+            ri = numpy.sort(uiVOmegai)[-min(self.z, uiVOmegai.shape[0])]
+            colIndsCumProbs[indPtr[i]:indPtr[i+1]] = (uiVOmegai >= ri)
+            colIndsCumProbs[indPtr[i]:indPtr[i+1]] /= colIndsCumProbs[indPtr[i]:indPtr[i+1]].sum()
             colIndsCumProbs[indPtr[i]:indPtr[i+1]]  = numpy.cumsum(colIndsCumProbs[indPtr[i]:indPtr[i+1]])
             
         return colIndsCumProbs
             
-    def omegaProbs2(self, indPtr, colInds, U, V): 
+    def omegaProbsRank(self, indPtr, colInds, U, V): 
+        """
+        Take the positive values in each row and sort them according to their 
+        values in U.V^T then give p(j) = ind(j)+1 where ind(j) is the index of the 
+        jth item. 
+        """
         colIndsCumProbs = numpy.zeros(colInds.shape[0])
         m = U.shape[0]
         
@@ -451,6 +485,7 @@ class MaxLocalAUC(object):
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
         outputStr += " lmbda=" + str(self.lmbda) + " C=" + str(self.C) + " numProcesses=" + str(self.numProcesses) + " validationSize=" + str(self.validationSize)
+        outputStr += " sampling=" + str(self.sampling) + " z=" + str(self.z)
         
         return outputStr 
 
@@ -472,6 +507,8 @@ class MaxLocalAUC(object):
         maxLocalAuc.numRecordAucSamples = self.numRecordAucSamples
         maxLocalAuc.maxIterations = self.maxIterations
         maxLocalAuc.initialAlg = self.initialAlg
+        maxLocalAuc.sampling = self.sampling
+        maxLocalAuc.z = self.z
         
         maxLocalAuc.ks = self.ks
         maxLocalAuc.lmbdas = self.lmbdas
