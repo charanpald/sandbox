@@ -15,8 +15,8 @@ class MaxLocalAUCProfile(object):
         numpy.random.seed(21)        
         
         #Create a low rank matrix  
-        m = 500 
-        n = 1000 
+        m = 1000 
+        n = 500 
         self.k = 10 
         self.X = SparseUtils.generateSparseBinaryMatrix((m, n), self.k, csarray=True)
         
@@ -93,7 +93,19 @@ class MaxLocalAUCProfile(object):
         
         ProfileUtils.profile('run()', globals(), locals())
 
+    def profileRandomChoice(self): 
+        a = numpy.random.randint(0, 10, 100)
+        b = numpy.random.rand(100)
+        b /= b.sum()
+        
+        def run(): 
+            for i in range(10000): 
+                numpy.random.choice(a, 1000, p=b)
+                
+        ProfileUtils.profile('run()', globals(), locals())
+
 profiler = MaxLocalAUCProfile()
 #profiler.profileLearnModel()  
 profiler.profileLearnModel2()
 #profiler.profileLocalAucApprox()
+#profiler.profileRandomChoice()
