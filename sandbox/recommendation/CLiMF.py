@@ -3,6 +3,7 @@ Wrapper to use gamboviol implementation of CLiMF.
 """
 
 import numpy 
+import scipy.sparse 
 import random
 import sppy
 import logging
@@ -18,13 +19,13 @@ import itertools
 
 try:
     from climf import _make_dataset
-    from climf_fast import climf_fast
+    from climf_fast import safe_climf_fast
 except:
     logging.warning("climf not installed, cannot be used later on")
     def _make_dataset(X):
         raise NameError("climf is not installed, so '_make_dataset' is not defined")
-    def climf_fast(X,U,V,lbda,gamma,dim,max_iters,shuffle,seed,train_sample_users,sample_user_data):
-        raise NameError("climf is not installed, so 'climf_fast' is not defined")
+    def safe_climf_fast(X,U,V,lbda,gamma,dim,max_iters,shuffle,seed,train_sample_users,sample_user_data):
+        raise NameError("climf is not installed, so 'safe_climf_fast' is not defined")
         
         
 class CLiMF(object): 
@@ -49,6 +50,7 @@ class CLiMF(object):
         self.w = 0.1
         self.numProcesses = multiprocessing.cpu_count()
         self.chunkSize = 1
+        self.verbose=1
         
     def initUV(self, X, k=None):
         if k == None:
@@ -69,8 +71,8 @@ class CLiMF(object):
         train_sample_users = numpy.array(random.sample(xrange(X.shape[0]),num_train_sample_users), dtype=numpy.int32)
         sample_user_data = numpy.array([numpy.array(X.getrow(i).indices, dtype=numpy.int32) for i in train_sample_users])
         
-        climf_fast(data, self.U, self.V, self.lmbda, self.gamma, self.U.shape[1], 
-                   self.max_iters, False, 0, train_sample_users, sample_user_data)
+        safe_climf_fast(data, self.U, self.V, self.lmbda, self.gamma, self.U.shape[1], 
+                   self.max_iters, False, 0, train_sample_users, sample_user_data, self.verbose)
     
     def predict(self, maxItems): 
         return MCEvaluator.recommendAtk(self.U, self.V, maxItems)
@@ -87,7 +89,7 @@ class CLiMF(object):
             testOmegaList = SparseUtils.getOmegaList(testX)
             testX = trainX+testX
             datas.append((trainX, testX, testOmegaList))
-        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], self.gammas.shape[0], len(trainTestXs)))
+        testAucs = numpy.zeros((len(self.ks), len(self.lmbdas), len(self.gammas), len(trainTestXs)))
         
         logging.debug("Performing model selection")
         paramList = []        
@@ -104,7 +106,7 @@ class CLiMF(object):
                         learner.lmbda = lmbda
                         learner.gamma = gamma
                     
-                        paramList.append((trainX, testX, learner))
+                        paramList.append((scipy.sparse.csr_matrix(trainX, dtype=numpy.float64), scipy.sparse.csr_matrix(testX, dtype=numpy.float64), learner))
             
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
@@ -142,6 +144,7 @@ class CLiMF(object):
     def copy(self): 
         learner = CLiMF(self.k, self.lmbda, self.gamma)
         learner.max_iters = self.max_iters
+        learner.verbose = self.verbose
         
         return learner 
 
