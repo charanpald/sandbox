@@ -186,13 +186,13 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc = MaxLocalAUC(k, u, alpha=5.0, eps=eps)
         maxLocalAuc.copy()
 
-    def testOmegaProbabilities(self):
+    def testOmegaProbsUniform(self):
         m = 10 
         n = 20
         p  = 5
-        X = SparseUtils.generateSparseBinaryMatrix((m, n), p)
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), p, csarray=True)
         
-        omegaList = SparseUtils.getOmegaList(X)
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
 
         u= 0.1
         eps = 0.001
@@ -201,18 +201,84 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         U, V = maxLocalAuc.initUV(X)
         
-        omegaProbabilitiesList = maxLocalAuc.omegaProbabilities(U, V, omegaList)
+        colIndsCumProbs = maxLocalAuc.omegaProbsUniform(indPtr, colInds, U, V)
+        
+        for i in range(m): 
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            omegaiProbs = colIndsCumProbs[indPtr[i]:indPtr[i+1]]
+            self.assertAlmostEquals(omegaiProbs[-1], 1)
+            
+            probs = numpy.ones(omegai.shape[0])
+            probs /= probs.sum()
+            probs = numpy.cumsum(probs)
+            nptst.assert_array_almost_equal(probs, omegaiProbs)
+        
+
+    def testOmegaProbsTopZ(self):
+        m = 10 
+        n = 20
+        p  = 5
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), p, csarray=True)
+        
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
+
+        u= 0.1
+        eps = 0.001
+        k = 10 
+        maxLocalAuc = MaxLocalAUC(k, u, alpha=5.0, eps=eps)
+        
+        U, V = maxLocalAuc.initUV(X)
+        
+        colIndsCumProbs = maxLocalAuc.omegaProbsTopZ(indPtr, colInds, U, V)
         
         Z = U.dot(V.T)
         
-        for i, omegaProbabilities in enumerate(omegaProbabilitiesList): 
-            self.assertEquals(len(omegaList[i]), len(omegaProbabilities))
-            self.assertAlmostEquals(omegaProbabilities.sum(), 1)
+        for i in range(m): 
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            omegaiProbs = colIndsCumProbs[indPtr[i]:indPtr[i+1]]
+            self.assertAlmostEquals(omegaiProbs[-1], 1)
             
-            probs = numpy.exp(Z[i, omegaList[i]])
+            vals = Z[i, omegai]
+            sortedVals = numpy.flipud(numpy.sort(vals))
+            ri = sortedVals[min(maxLocalAuc.z, sortedVals.shape[0])-1]
+
+            probs = numpy.zeros(omegai.shape[0])
+            probs[vals >= ri] = 1
             probs /= probs.sum()
-            nptst.assert_array_almost_equal(probs, omegaProbabilities)
+            probs = numpy.cumsum(probs)
+            nptst.assert_array_almost_equal(probs, omegaiProbs)
+
+
+    def testOmegaProbsRank(self):
+        m = 10 
+        n = 20
+        p  = 5
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), p, csarray=True)
         
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
+
+        u= 0.1
+        eps = 0.001
+        k = 10 
+        maxLocalAuc = MaxLocalAUC(k, u, alpha=5.0, eps=eps)
+        
+        U, V = maxLocalAuc.initUV(X)
+        
+        colIndsCumProbs = maxLocalAuc.omegaProbsRank(indPtr, colInds, U, V)
+        
+        Z = U.dot(V.T)
+        
+        for i in range(m): 
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            omegaiProbs = colIndsCumProbs[indPtr[i]:indPtr[i+1]]
+            self.assertAlmostEquals(omegaiProbs[-1], 1)
+            
+            vals = Z[i, omegai]
+            inds = numpy.argsort(numpy.argsort((vals)))+1
+
+            probs = inds/float(inds.sum())
+            probs = numpy.cumsum(probs)
+            nptst.assert_array_almost_equal(probs, omegaiProbs)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
