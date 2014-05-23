@@ -156,17 +156,17 @@ class MCEvaluator(object):
         return localAuc
 
     @staticmethod
-    def localAUCApprox(X, U, V, w, numAucSamples=50, omegaList=None): 
+    def localAUCApprox(X, U, V, w, numAucSamples=50, indPtr=None, colInds=None): 
         from sandbox.recommendation.MaxLocalAUCCython import localAUCApprox
         
-        if omegaList==None: 
-            omegaList = SparseUtils.getOmegaList(X)        
+        if indPtr==None or colInds==None: 
+            indPtr, colInds = SparseUtils.getOmegaListPtr(X)        
         
         U = numpy.ascontiguousarray(U)
         V = numpy.ascontiguousarray(V)        
         
         r = SparseUtilsCython.computeR(U, V, w, numAucSamples)
-        return localAUCApprox(X, U, V, omegaList, numAucSamples, r)
+        return localAUCApprox(indPtr, colInds, U, V, numAucSamples, r)
 
     @staticmethod
     def localAUCApprox2(X, U, V, w, numAucSamples=50, omegaList=None): 
