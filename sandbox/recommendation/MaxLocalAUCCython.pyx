@@ -617,18 +617,14 @@ def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[i
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
 
-    
     k = U.shape[1]
     
     for i in range(m): 
         omegai = colInds[indPtr[i]:indPtr[i+1]]
 
-        
         if omegai.shape[0] * (n-omegai.shape[0]) != 0: 
             partialObj = 0                
             
-            #indsP = numpy.random.randint(0, omegai.shape[0], numAucSamples)  
-            #indsQ = numpy.random.randint(0, omegaBari.shape[0], numAucSamples)
             omegaiSample = uniformChoice(omegai, numAucSamples) 
             
             for p in omegaiSample:
@@ -657,7 +653,6 @@ def localAUCApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
     quantile vector r. If evaluating on a set of test observations then X is 
     trainX+testX and omegaList is from testX. 
     """
-    
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
@@ -675,14 +670,9 @@ def localAUCApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
         
         if nOmegai * (n-nOmegai) != 0: 
             partialAuc = 0    
-
             omegaiSample = uniformChoice(omegai, numAucSamples)            
             
-            for p in omegaiSample:
-                #ind = numpy.random.randint(omegai.shape[0])
-                #ind = randint(nOmegai)
-                #p = omegai[ind] 
-                
+            for p in omegaiSample:                
                 q = inverseChoice(omegai, n)                
                 uivp = dot(U, i, V, p, k)
 
