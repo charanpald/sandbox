@@ -18,7 +18,7 @@ def computeObjective(args):
     """
     Compute the objective for a particular parameter set. Used to set a learning rate. 
     """
-    X, omegaList, U, V, maxLocalAuc  = args 
+    X, U, V, maxLocalAuc  = args 
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
     obj = trainObjs[-1]
         
@@ -28,9 +28,6 @@ def computeObjective(args):
 def computeTestAuc(args): 
     trainX, testX, U, V, maxLocalAuc  = args 
     
-    logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
-
-    
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
     muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
     logging.debug("Weighted local AUC: " + str(muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " C=" + str(maxLocalAuc.C))
@@ -39,15 +36,11 @@ def computeTestAuc(args):
     
 def computeTestPrecision(args): 
     trainX, testX, U, V, maxLocalAuc = args 
-    p = maxLocalAuc.validationSize 
-    testIndPtr, testColInds = SparseUtils.getOmegaListPtr(testX)
-    
-    #logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
-    
+
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
     
-    testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, p, trainX)
-    precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)
+    testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, maxLocalAuc.validationSize, trainX)
+    precision = MCEvaluator.precisionAtK(testX, testOrderedItems, maxLocalAuc.validationSize)
     logging.debug("Precision@" + str(maxLocalAuc.validationSize) + ": " + str(precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " C=" + str(maxLocalAuc.C))
         
     return precision
@@ -80,7 +73,6 @@ class MaxLocalAUC(object):
 
         self.chunkSize = 1        
         
-        #Optimal rate doesn't seem to work 
         self.rate = "constant"
         self.alpha = alpha #Initial learning rate 
         self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
@@ -88,7 +80,7 @@ class MaxLocalAUC(object):
         
         self.normalise = True
         self.lmbda = lmbda 
-        self.C = 0.00 #Penalty on orthogonality constraint ||U^TU - I|| + ||V^TV - I|| 
+        self.C = 0.00 #Penalty on soft margin slack variables xi 
         
         self.recordStep = 20
         self.numRowSamples = 20
@@ -126,7 +118,6 @@ class MaxLocalAUC(object):
         #Not that to compute the test AUC we pick i \in X and j \notin X \cup testX        
         if testX != None: 
             testIndPtr, testColInds = SparseUtils.getOmegaListPtr(testX)
-            allX = X+testX
 
         if U==None or V==None:
             U, V = self.initUV(X)
@@ -178,7 +169,7 @@ class MaxLocalAUC(object):
                 if testX != None:
                     testObjs.append(objectiveApprox(testIndPtr, testColInds, muU, muV, self.numRecordAucSamples, muXi, self.lmbda, self.C))
                     testAucs.append(localAUCApprox(testIndPtr, testColInds, muU, muV, self.numRecordAucSamples, r))
-                    testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, X)
+                    #testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, X)
                     #precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)                    
                     
                 printStr = "Iteration: " + str(ind)
@@ -388,7 +379,7 @@ class MaxLocalAUC(object):
                     maxLocalAuc = self.copy()
                     maxLocalAuc.t0 = t0
                     maxLocalAuc.alpha = alpha 
-                    paramList.append((X, omegaList, U, V, maxLocalAuc))
+                    paramList.append((X, U, V, maxLocalAuc))
                     
         pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
         resultsIterator = pool.imap(computeObjective, paramList, self.chunkSize)
