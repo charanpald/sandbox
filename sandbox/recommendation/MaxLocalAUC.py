@@ -40,7 +40,7 @@ def computeTestAuc(args):
 def computeTestPrecision(args): 
     trainX, testX, U, V, maxLocalAuc = args 
     p = maxLocalAuc.validationSize 
-    testOmegaList = SparseUtils.getOmegaList(testX)
+    testIndPtr, testColInds = SparseUtils.getOmegaListPtr(testX)
     
     #logging.debug("Number of non-zero elements: " + str((trainX.nnz, testX.nnz)))
     
@@ -118,10 +118,10 @@ class MaxLocalAUC(object):
         """
         m = X.shape[0]
         n = X.shape[1]
-        omegaList = SparseUtils.getOmegaList(X)
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
         #Not that to compute the test AUC we pick i \in X and j \notin X \cup testX        
         if testX != None: 
-            testOmegaList = SparseUtils.getOmegaList(testX)
+            testIndPtr, testColInds = SparseUtils.getOmegaListPtr(testX)
             allX = X+testX
 
         if U==None or V==None:
@@ -153,8 +153,8 @@ class MaxLocalAUC(object):
             X = X2
         
         #Set up order of indices for stochastic methods 
-        rowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
-        colInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
+        permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
+        permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
         
         startTime = time.time()
     
@@ -168,15 +168,15 @@ class MaxLocalAUC(object):
             
             if ind % self.recordStep == 0: 
                 r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
-                trainObjs.append(objectiveApprox(X, muU, muV, omegaList, self.numRecordAucSamples, muXi, self.lmbda, self.C))
-                trainAucs.append(localAUCApprox(X, muU, muV, omegaList, self.numRecordAucSamples, r))
+                trainObjs.append(objectiveApprox(indPtr, colInds, muU, muV, self.numRecordAucSamples, muXi, self.lmbda, self.C))
+                trainAucs.append(localAUCApprox(indPtr, colInds, muU, muV, self.numRecordAucSamples, r))
                 
                 if testX != None:
-                    testObjs.append(objectiveApprox(allX, muU, muV, testOmegaList, self.numRecordAucSamples, muXi, self.lmbda, self.C))
-                    testAucs.append(localAUCApprox(allX, muU, muV, testOmegaList, self.numRecordAucSamples, r))
+                    testObjs.append(objectiveApprox(testIndPtr, testColInds, muU, muV, self.numRecordAucSamples, muXi, self.lmbda, self.C))
+                    testAucs.append(localAUCApprox(testIndPtr, testColInds, muU, muV, self.numRecordAucSamples, r))
                     p = 5
                     testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, p, X)
-                    precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)                    
+                    #precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)                    
                     
                 printStr = "Iteration: " + str(ind)
                 printStr += " LAUC~" + str('%.4f' % trainAucs[-1]) 
@@ -184,7 +184,7 @@ class MaxLocalAUC(object):
                 if testX != None:
                     printStr += " test LAUC~" + str('%.4f' % testAucs[-1])
                     printStr += " test obj~" + str('%.4f' % testObjs[-1])
-                    printStr += " test precision=" + str('%.3f' % precision) 
+                    #printStr += " test precision=" + str('%.3f' % precision) 
                 printStr += " sigma=" + str('%.4f' % sigma)
                 printStr += " normU=" + str('%.3f' % numpy.linalg.norm(U))
                 printStr += " normV=" + str('%.3f' %  numpy.linalg.norm(V))
@@ -200,7 +200,7 @@ class MaxLocalAUC(object):
             
             U  = numpy.ascontiguousarray(U)
             
-            self.updateUV(X, U, V, lastU, lastV, muU, muV, xi, muXi, rowInds, colInds, ind, omegaList, sigma)                       
+            self.updateUV(indPtr, colInds, U, V, lastU, lastV, muU, muV, xi, muXi, permutedRowInds, permutedColInds, ind, sigma)                       
                             
             if self.stochastic: 
                 ind += self.numStepIterations
@@ -209,12 +209,12 @@ class MaxLocalAUC(object):
             
         #Compute quantities for last U and V 
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
-        trainObjs.append(objectiveApprox(X, muU, muV, omegaList, self.numRecordAucSamples, muXi, self.lmbda, self.C))
-        trainAucs.append(localAUCApprox(X, muU, muV, omegaList, self.numRecordAucSamples, r))
+        trainObjs.append(objectiveApprox(indPtr, colInds, muU, muV, self.numRecordAucSamples, muXi, self.lmbda, self.C))
+        trainAucs.append(localAUCApprox(indPtr, colInds, muU, muV, self.numRecordAucSamples, r))
         
         if testX != None:
-            testObjs.append(objectiveApprox(allX, muU, muV, testOmegaList, self.numRecordAucSamples, muXi, self.lmbda, self.C))
-            testAucs.append(localAUCApprox(allX, muU, muV, testOmegaList, self.numRecordAucSamples, r))            
+            testObjs.append(objectiveApprox(testIndPtr, testColInds, muU, muV, self.numRecordAucSamples, muXi, self.lmbda, self.C))
+            testAucs.append(localAUCApprox(testIndPtr, testColInds, muU, muV, self.numRecordAucSamples, r))            
             
         totalTime = time.time() - startTime
         printStr = "Total iterations: " + str(ind)
@@ -278,18 +278,17 @@ class MaxLocalAUC(object):
         
         return U, V
         
-    def updateUV(self, X, U, V, lastU, lastV, muU, muV, xi, muXi, rowInds, colInds, ind, omegaList, sigma): 
+    def updateUV(self, indPtr, colInds, U, V, lastU, lastV, muU, muV, xi, muXi, permutedRowInds, permutedColInds, ind, sigma): 
         """
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic:                 
             r = SparseUtilsCython.computeR(U, V, self.w, self.numAucSamples)
-            updateU(X, U, V, omegaList, sigma, r, self.nu)
-            updateV(X, U, V, omegaList, sigma, r, self.nu, self.lmbda)
+            updateU(indPtr, colInds, U, V, sigma, r, self.nu)
+            updateV(indPtr, colInds, U, V, sigma, r, self.nu, self.lmbda)
         else: 
-            omegaProbabilitiesList = self.omegaProbabilities2(muU, muV, omegaList)
-            updateUVApprox(X, U, V, muU, muV, xi, muXi, omegaList, omegaProbabilitiesList, rowInds, colInds, ind, sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.C, self.normalise)
-       
+            colIndsCumProbs = self.omegaProbs2(indPtr, colInds, muU, muV)
+            updateUVApprox(indPtr, colInds, U, V, muU, muV, xi, muXi, colIndsCumProbs, permutedRowInds, permutedColInds, ind, sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.C, self.normalise)
     #@profile
     def derivativeUi(self, X, U, V, omegaList, i, r): 
         """
@@ -303,25 +302,31 @@ class MaxLocalAUC(object):
         """
         return derivativeVi(X, U, V, omegaList, i, r, self.lmbda, self.C, self.normalise)           
 
-    def omegaProbabilities(self, U, V, omegaList): 
-        omegaProbabilitiesList = []
+    def omegaProbs(self, indPtr, colInds, U, V): 
+        colIndsCumProbs = numpy.zeros(colInds.shape[0])
+        m = U.shape[0]
         
-        for i, omegai in enumerate(omegaList):
+        for i in range(m):
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
             uiVOmegai = U[i, :].T.dot(V[omegai, :].T)
             uiVOmegai = numpy.exp(uiVOmegai)
-            omegaProbabilitiesList.append(uiVOmegai/uiVOmegai.sum()) 
+            colIndsCumProbs[indPtr[i]:indPtr[i+1]] = uiVOmegai/uiVOmegai.sum() 
+            colIndsCumProbs[indPtr[i]:indPtr[i+1]]  = numpy.cumsum(colIndsCumProbs[indPtr[i]:indPtr[i+1]])
             
-        return omegaProbabilitiesList
+        return colIndsCumProbs
             
-    def omegaProbabilities2(self, U, V, omegaList): 
-        omegaProbabilitiesList = []
+    def omegaProbs2(self, indPtr, colInds, U, V): 
+        colIndsCumProbs = numpy.zeros(colInds.shape[0])
+        m = U.shape[0]
         
-        for i, omegai in enumerate(omegaList):
+        for i in range(m):
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
             uiVOmegai = U[i, :].T.dot(V[omegai, :].T)
             inds = numpy.argsort(numpy.argsort((uiVOmegai)))+1
-            omegaProbabilitiesList.append(inds/float(inds.sum())) 
+            colIndsCumProbs[indPtr[i]:indPtr[i+1]] = inds/float(inds.sum())
+            colIndsCumProbs[indPtr[i]:indPtr[i+1]]  = numpy.cumsum(colIndsCumProbs[indPtr[i]:indPtr[i+1]])
             
-        return omegaProbabilitiesList
+        return colIndsCumProbs
 
 
     def learningRateSelect(self, X): 
@@ -329,7 +334,7 @@ class MaxLocalAUC(object):
         Let's set the initial learning rate. 
         """        
         m, n = X.shape
-        omegaList = SparseUtils.getOmegaList(X)
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
         objectives = numpy.zeros((self.t0s.shape[0], self.alphas.shape[0]))
         
         paramList = []   
