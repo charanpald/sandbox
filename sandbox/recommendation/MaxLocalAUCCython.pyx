@@ -608,19 +608,21 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
         
 @cython.boundscheck(False)
 @cython.wraparound(False)   
-def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C):         
+def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] xi, unsigned int numAucSamples, double lmbda, double C):         
     cdef double obj = 0 
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]
     cdef unsigned int i, j, k, p, q
     cdef double kappa, uivp, uivq, gamma, partialObj
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
+    cdef numpy.ndarray[int, ndim=1, mode="c"] allOmegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
 
     k = U.shape[1]
     
     for i in range(m): 
         omegai = colInds[indPtr[i]:indPtr[i+1]]
+        allOmegai = allColInds[allIndPtr[i]:allIndPtr[i+1]]
 
         if omegai.shape[0] * (n-omegai.shape[0]) != 0: 
             partialObj = 0                
@@ -628,7 +630,7 @@ def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[i
             omegaiSample = uniformChoice(omegai, numAucSamples) 
             
             for p in omegaiSample:
-                q = inverseChoice(omegai, n)                  
+                q = inverseChoice(allOmegai, n)                  
             
                 uivp = dot(U, i, V, p, k)
                 gamma = uivp - uivq
@@ -647,15 +649,18 @@ def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[i
   
 @cython.boundscheck(False)
 @cython.wraparound(False)  
-def localAUCApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r): 
+def localAUCApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r): 
     """
     Compute the estimated local AUC for the score functions UV^T relative to X with 
     quantile vector r. If evaluating on a set of test observations then X is 
-    trainX+testX and omegaList is from testX. 
+    trainX+testX and omegaList is from testX. The variables allIndPtr and allColInds 
+    represent the case in which (indPtr, colInds) are the test elements and 
+    (allIndPtr, allColInds) are all the positive elements. 
     """
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
+    cdef numpy.ndarray[int, ndim=1, mode="c"] allOmegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] localAucArr = numpy.zeros(m)
     cdef unsigned int i, j, k, ind, p, q, nOmegai
@@ -665,6 +670,7 @@ def localAUCApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
 
     for i in range(m): 
         omegai = colInds[indPtr[i]:indPtr[i+1]]
+        allOmegai = allColInds[allIndPtr[i]:allIndPtr[i+1]]
         nOmegai = omegai.shape[0]
         ri = r[i]
         
@@ -673,7 +679,7 @@ def localAUCApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
             omegaiSample = uniformChoice(omegai, numAucSamples)            
             
             for p in omegaiSample:                
-                q = inverseChoice(omegai, n)                
+                q = inverseChoice(allOmegai, n)                
                 uivp = dot(U, i, V, p, k)
 
                 if uivp > ri and uivp > dot(U, i, V, q, k): 

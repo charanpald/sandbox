@@ -36,11 +36,12 @@ def computeTestAuc(args):
     
 def computeTestPrecision(args): 
     trainX, testX, U, V, maxLocalAuc = args 
-
-    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
     
+    #logging.debug("About to learn")
+    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, verbose=True)
     testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, maxLocalAuc.validationSize, trainX)
-    precision = MCEvaluator.precisionAtK(testX, testOrderedItems, maxLocalAuc.validationSize)
+    precision = MCEvaluator.precisionAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, maxLocalAuc.validationSize)
+
     logging.debug("Precision@" + str(maxLocalAuc.validationSize) + ": " + str(precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " C=" + str(maxLocalAuc.C))
         
     return precision
@@ -118,6 +119,7 @@ class MaxLocalAUC(object):
         #Not that to compute the test AUC we pick i \in X and j \notin X \cup testX        
         if testX != None: 
             testIndPtr, testColInds = SparseUtils.getOmegaListPtr(testX)
+            allIndPtr, allColInds = SparseUtils.getOmegaListPtr(X+testX)
 
         if U==None or V==None:
             U, V = self.initUV(X)
@@ -146,6 +148,7 @@ class MaxLocalAUC(object):
             logging.debug("Converting to csarray")
             X2 = sppy.csarray(X, storagetype="row")
             X = X2
+            
         
         #Set up order of indices for stochastic methods 
         permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
@@ -163,25 +166,24 @@ class MaxLocalAUC(object):
             
             if ind % self.recordStep == 0: 
                 r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
-                trainObjs.append(objectiveApprox(indPtr, colInds, muU, muV, self.numRecordAucSamples, muXi, self.lmbda, self.C))
-                trainAucs.append(localAUCApprox(indPtr, colInds, muU, muV, self.numRecordAucSamples, r))
+                trainObjs.append(self.objectiveApprox((indPtr, colInds), muU, muV, muXi, r=r))
+                trainAucs.append(MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r))
                 
                 if testX != None:
-                    testObjs.append(objectiveApprox(testIndPtr, testColInds, muU, muV, self.numRecordAucSamples, muXi, self.lmbda, self.C))
-                    testAucs.append(localAUCApprox(testIndPtr, testColInds, muU, muV, self.numRecordAucSamples, r))
-                    #testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, X)
-                    #precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)                    
-                    
+                    testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, muXi, r=r, allArray=(allIndPtr, allColInds)))
+                    testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
+                    testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, X)
+                    precision = MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.z)                      
                 printStr = "Iteration: " + str(ind)
                 printStr += " LAUC~" + str('%.4f' % trainAucs[-1]) 
                 printStr += " obj~" + str('%.4f' % trainObjs[-1]) 
                 if testX != None:
                     printStr += " test LAUC~" + str('%.4f' % testAucs[-1])
                     printStr += " test obj~" + str('%.4f' % testObjs[-1])
-                    #printStr += " test precision=" + str('%.3f' % precision) 
+                    printStr += " test p@"+ str(self.z) + "=" + str('%.3f' % precision) 
                 printStr += " sigma=" + str('%.4f' % sigma)
-                printStr += " normU=" + str('%.3f' % numpy.linalg.norm(U))
-                printStr += " normV=" + str('%.3f' %  numpy.linalg.norm(V))
+                printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(U))
+                printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(V))
                 
                 logging.debug(printStr)
                 
@@ -203,12 +205,12 @@ class MaxLocalAUC(object):
             
         #Compute quantities for last U and V 
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
-        trainObjs.append(objectiveApprox(indPtr, colInds, muU, muV, self.numRecordAucSamples, muXi, self.lmbda, self.C))
-        trainAucs.append(localAUCApprox(indPtr, colInds, muU, muV, self.numRecordAucSamples, r))
+        trainObjs.append(self.objectiveApprox((indPtr, colInds), muU, muV, muXi, r=r))
+        trainAucs.append(MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r))
         
         if testX != None:
-            testObjs.append(objectiveApprox(testIndPtr, testColInds, muU, muV, self.numRecordAucSamples, muXi, self.lmbda, self.C))
-            testAucs.append(localAUCApprox(testIndPtr, testColInds, muU, muV, self.numRecordAucSamples, r))            
+            testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, muXi, r=r, allArray=(allIndPtr, allColInds)))
+            testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))          
             
         totalTime = time.time() - startTime
         printStr = "Total iterations: " + str(ind)
@@ -430,8 +432,9 @@ class MaxLocalAUC(object):
                         maxLocalAuc.lmbda = lmbda
                         maxLocalAuc.C = C 
                     
-                        paramList.append((trainX, testX, U, V, maxLocalAuc))
+                        paramList.append((trainX, testX, U.copy(), V.copy(), maxLocalAuc))
             
+        logging.debug("Set parameters")
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
             if self.metric == "auc": 
@@ -469,7 +472,29 @@ class MaxLocalAUC(object):
         logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda) + " C=" + str(self.C))
          
         return meanTestMetrics, stdTestMetrics
-    
+  
+    def objectiveApprox(self, positiveArray, U, V, xi, r=None, allArray=None): 
+        """
+        Compute the estimated local AUC for the score functions UV^T relative to X with 
+        quantile w. The AUC is computed using positiveArray which is a tuple (indPtr, colInds)
+        assuming allArray is None. If allArray is not None then positive items are chosen 
+        from positiveArray and negative ones are chosen to complement allArray.
+        """
+        from sandbox.recommendation.MaxLocalAUCCython import objectiveApprox
+        
+        indPtr, colInds = positiveArray
+        U = numpy.ascontiguousarray(U)
+        V = numpy.ascontiguousarray(V)        
+        
+        if r == None: 
+            r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)
+        
+        if allArray == None: 
+            return objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, xi, self.numRecordAucSamples, self.lmbda, self.C)         
+        else:
+            allIndPtr, allColInds = allArray
+            return objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, xi, self.numRecordAucSamples, self.lmbda, self.C)
+  
     def __str__(self): 
         outputStr = "MaxLocalAUC: k=" + str(self.k) + " eps=" + str(self.eps) 
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numStepIterations=" + str(self.numStepIterations)
