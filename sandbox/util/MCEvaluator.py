@@ -52,20 +52,21 @@ class MCEvaluator(object):
         return error
         
     @staticmethod 
-    def precisionAtK(X, orderedItems, k, omegaList=None, verbose=False): 
+    def precisionAtK(positiveArray, orderedItems, k, verbose=False): 
         """
         Compute the average precision@k score for each row of the predicted matrix UV.T 
-        using real values in X. X is a 0/1 sppy sparse matrix.
+        using real values in positiveArray. positiveArray is a tuple (indPtr, colInds)
         
         :param orderedItems: The ordered items for each user (users are rows, items are cols)       
         
         :param verbose: If true return precision and first k recommendation for each row, otherwise just precisions
         """
-        if omegaList == None: 
-            omegaList = SparseUtils.getOmegaList(X)
+        if type(positiveArray) != tuple: 
+            positiveArray = SparseUtils.getOmegaListPtr(positiveArray)
         
         orderedItems = orderedItems[:, 0:k]
-        precisions = MCEvaluatorCython.precisionAtk(omegaList, orderedItems)
+        indPtr, colInds = positiveArray
+        precisions = MCEvaluatorCython.precisionAtk(indPtr, colInds, orderedItems)
         
         if verbose: 
             return precisions.mean(), orderedItems
@@ -73,18 +74,21 @@ class MCEvaluator(object):
             return precisions.mean()
 
     @staticmethod 
-    def recallAtK(X, orderedItems, k, omegaList=None, verbose=False): 
+    def recallAtK(positiveArray, orderedItems, k, verbose=False): 
         """
-        Compute the average precision@k score for each row of the predicted matrix UV.T 
-        using real values in X. X is a 0/1 sppy sparse matrix.
+        Compute the average recall@k score for each row of the predicted matrix UV.T 
+        using real values in positiveArray. positiveArray is a tuple (indPtr, colInds)
         
-        :param verbose: If true return precision and first k recommendation for each row, otherwise just precisions
+        :param orderedItems: The ordered items for each user (users are rows, items are cols)  
+        
+        :param verbose: If true return recall and first k recommendation for each row, otherwise just precisions
         """
-        if omegaList == None: 
-            omegaList = SparseUtils.getOmegaList(X)
+        if type(positiveArray) != tuple: 
+            positiveArray = SparseUtils.getOmegaListPtr(positiveArray)        
         
         orderedItems = orderedItems[:, 0:k]
-        recalls = MCEvaluatorCython.recallAtk(omegaList, orderedItems)
+        indPtr, colInds = positiveArray
+        recalls = MCEvaluatorCython.recallAtk(indPtr, colInds, orderedItems)
         
         if verbose: 
             return recalls.mean(), orderedItems
@@ -118,27 +122,28 @@ class MCEvaluator(object):
         return orderedItems 
         
     @staticmethod 
-    def localAUC(X, U, V, w, omegaList=None, numRowInds=None): 
+    def localAUC(positiveArray, U, V, w, numRowInds=None): 
         """
         Compute the local AUC for the score functions UV^T relative to X with 
         quantile w. 
         """
         if numRowInds == None: 
             numRowInds = V.shape[0]
+            
+        if type(positiveArray) != tuple: 
+            positiveArray = SparseUtils.getOmegaListPtr(positiveArray)  
         
         #For now let's compute the full matrix 
         Z = U.dot(V.T)
         
         r = SparseUtilsCython.computeR(U, V, w, numRowInds)
         
-        if omegaList==None: 
-            omegaList = SparseUtils.getOmegaList(X)
+        localAuc = numpy.zeros(U.shape[0]) 
+        allInds = numpy.arange(V.shape[0])
+        indPtr, colInds = positiveArray
         
-        localAuc = numpy.zeros(X.shape[0]) 
-        allInds = numpy.arange(X.shape[1])
-        
-        for i in range(X.shape[0]): 
-            omegai = omegaList[i]
+        for i in range(U.shape[0]): 
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
             omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
             
             if omegai.shape[0] * omegaBari.shape[0] != 0: 
@@ -156,17 +161,28 @@ class MCEvaluator(object):
         return localAuc
 
     @staticmethod
-    def localAUCApprox(X, U, V, w, numAucSamples=50, omegaList=None): 
-        from sandbox.recommendation.MaxLocalAUCCython import localAUCApprox
+    def localAUCApprox(positiveArray, U, V, w, numAucSamples=50, r=None, allArray=None): 
+        """
+        Compute the estimated local AUC for the score functions UV^T relative to X with 
+        quantile w. The AUC is computed using positiveArray which is a tuple (indPtr, colInds)
+        assuming allArray is None. If allArray is not None then positive items are chosen 
+        from positiveArray and negative ones are chosen to complement allArray.
+        """
         
-        if omegaList==None: 
-            omegaList = SparseUtils.getOmegaList(X)        
-        
+        indPtr, colInds = positiveArray
         U = numpy.ascontiguousarray(U)
         V = numpy.ascontiguousarray(V)        
         
-        r = SparseUtilsCython.computeR(U, V, w, numAucSamples)
-        return localAUCApprox(X, U, V, omegaList, numAucSamples, r)
+        if r == None: 
+            r = SparseUtilsCython.computeR(U, V, w, numAucSamples)
+        
+        if allArray == None: 
+            return MCEvaluatorCython.localAUCApprox(indPtr, colInds, indPtr, colInds, U, V, numAucSamples, r)
+        else:
+            allIndPtr, allColInd = allArray
+            return MCEvaluatorCython.localAUCApprox(indPtr, colInds, allIndPtr, allColInd, U, V, numAucSamples, r)
+            
+
 
     @staticmethod
     def localAUCApprox2(X, U, V, w, numAucSamples=50, omegaList=None): 

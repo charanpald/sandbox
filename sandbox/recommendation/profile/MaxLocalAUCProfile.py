@@ -5,6 +5,7 @@ from sandbox.util.ProfileUtils import ProfileUtils
 from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC, localAUCApprox
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.MCEvaluator import MCEvaluator
+from sandbox.util.Sampling import Sampling
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -14,8 +15,8 @@ class MaxLocalAUCProfile(object):
         numpy.random.seed(21)        
         
         #Create a low rank matrix  
-        m = 500 
-        n = 1000 
+        m = 1000 
+        n = 500 
         self.k = 10 
         self.X = SparseUtils.generateSparseBinaryMatrix((m, n), self.k, csarray=True)
         
@@ -42,19 +43,20 @@ class MaxLocalAUCProfile(object):
         u = 0.2
         w = 1-u
         eps = 10**-6
-        alpha = 0.1
+        alpha = 0.5
         k = self.k
         maxLocalAuc = MaxLocalAUC(k, w, alpha=alpha, eps=eps, stochastic=True)
         maxLocalAuc.numRowSamples = 100
         maxLocalAuc.numAucSamples = 10
-        maxLocalAuc.maxIterations = 5000
+        maxLocalAuc.maxIterations = 10
         maxLocalAuc.numStepIterations = 1000
         maxLocalAuc.recordStep = maxLocalAuc.numStepIterations
         maxLocalAuc.numRecordAucSamples = 100
         maxLocalAuc.initialAlg = "rand"
         maxLocalAuc.rate = "optimal"
                 
-        trainX, testX = SparseUtils.splitNnz(self.X, 0.5)     
+        trainTestX = Sampling.shuffleSplitRows(self.X, maxLocalAuc.folds, 5)
+        trainX, testX = trainTestX[0]
 
         def run(): 
             U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, time = maxLocalAuc.learnModel(trainX, True)  
@@ -91,7 +93,19 @@ class MaxLocalAUCProfile(object):
         
         ProfileUtils.profile('run()', globals(), locals())
 
+    def profileRandomChoice(self): 
+        a = numpy.random.randint(0, 10, 100)
+        b = numpy.random.rand(100)
+        b /= b.sum()
+        
+        def run(): 
+            for i in range(10000): 
+                numpy.random.choice(a, 1000, p=b)
+                
+        ProfileUtils.profile('run()', globals(), locals())
+
 profiler = MaxLocalAUCProfile()
 #profiler.profileLearnModel()  
 profiler.profileLearnModel2()
 #profiler.profileLocalAucApprox()
+#profiler.profileRandomChoice()

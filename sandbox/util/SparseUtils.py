@@ -621,7 +621,17 @@ class SparseUtils(object):
             for i in range(X.shape[0]): 
                 omegaList.append(numpy.array(X[i, :].nonzero()[1], numpy.uint))
         else: 
-            omegaList = X.nonzeroRows()
+            omegaList = X.nonzeroRowsList()
         return omegaList 
-
+        
+    @staticmethod 
+    def getOmegaListPtr(X): 
+        """
+        Returns two arrays omega, indPtr, such that omega[indPtr[i]:indPtr[i+1]] 
+        is the set of nonzero elements in the ith row of X. Only works on sppy 
+        matrices. 
+        """        
+        indPtr, colInds = X.nonzeroRowsPtr()
+        return indPtr, colInds
+        
     kmaxMultiplier = 15

@@ -160,17 +160,15 @@ class  MCEvaluatorTest(unittest.TestCase):
         m = 10 
         n = 20 
         k = 2 
-        numInds = 100
-        X, U, s, V = SparseUtils.generateSparseLowRank((m, n), k, numInds, verbose=True)
+        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), k, 0.5, verbose=True, csarray=True)
         
-        X = X/X
         Z = U.dot(V.T)
 
         
         localAuc = numpy.zeros(m)
         
         for i in range(m): 
-            localAuc[i] = sklearn.metrics.roc_auc_score(numpy.ravel(X[i, :].todense()), Z[i, :])
+            localAuc[i] = sklearn.metrics.roc_auc_score(numpy.ravel(X[i, :].toarray()), Z[i, :])
                     
         localAuc = localAuc.mean()
         
@@ -189,21 +187,16 @@ class  MCEvaluatorTest(unittest.TestCase):
         m = 100 
         n = 200 
         k = 2 
-        numInds = 100
-        X, U, s, V = SparseUtils.generateSparseLowRank((m, n), k, numInds, verbose=True)
+        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True, verbose=True)
         
-        X = X/X
-        Z = U.dot(V.T)
-
         w = 1.0
         localAuc = MCEvaluator.localAUC(X, U, V, w)
         
-        samples = numpy.arange(50, 200, 10)
+        samples = numpy.arange(150, 200, 10)
         
         for i, sampleSize in enumerate(samples): 
             numAucSamples = sampleSize
-            localAuc2 = MCEvaluator.localAUCApprox(X, U, V, w, numAucSamples)
-
+            localAuc2 = MCEvaluator.localAUCApprox(SparseUtils.getOmegaListPtr(X), U, V, w, numAucSamples)
             self.assertAlmostEqual(localAuc2, localAuc, 1) 
             
         #Try smaller w 
@@ -214,10 +207,51 @@ class  MCEvaluatorTest(unittest.TestCase):
         
         for i, sampleSize in enumerate(samples): 
             numAucSamples = sampleSize
-            localAuc2 = MCEvaluator.localAUCApprox(X, U, V, w, numAucSamples)
+            localAuc2 = MCEvaluator.localAUCApprox(SparseUtils.getOmegaListPtr(X), U, V, w, numAucSamples)
 
             self.assertAlmostEqual(localAuc2, localAuc, 1)   
+       
+    #@unittest.skip("")    
+    def testLocalAucApprox2(self): 
+        m = 100 
+        n = 200 
+        k = 5 
+        numInds = 100
+        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True, verbose=True)
         
+
+        r = numpy.ones(m)*-10
+
+
+        w = 0.5
+        localAuc = MCEvaluator.localAUC(X, U, V, w)
+        
+        samples = numpy.arange(50, 200, 10)
+        
+        for i, sampleSize in enumerate(samples): 
+            localAuc2 = MCEvaluator.localAUCApprox(SparseUtils.getOmegaListPtr(X), U, V, w, sampleSize)
+
+            self.assertAlmostEqual(localAuc2, localAuc, 1)
+        
+        #Test more accurately 
+        sampleSize = 1000
+        localAuc2 = MCEvaluator.localAUCApprox(SparseUtils.getOmegaListPtr(X), U, V, w, sampleSize)
+        self.assertAlmostEqual(localAuc2, localAuc, 2)
+        
+        #Now set a high r 
+        Z = U.dot(V.T)
+        localAuc = MCEvaluator.localAUCApprox(SparseUtils.getOmegaListPtr(X), U, V, w, sampleSize)  
+
+        for i, sampleSize in enumerate(samples): 
+            localAuc2 = MCEvaluator.localAUCApprox(SparseUtils.getOmegaListPtr(X), U, V, w, sampleSize)
+
+            self.assertAlmostEqual(localAuc2, localAuc, 1)
+            
+        #Test more accurately 
+        sampleSize = 1000
+        localAuc2 = MCEvaluator.localAUCApprox(SparseUtils.getOmegaListPtr(X), U, V, w, sampleSize)
+        self.assertAlmostEqual(localAuc2, localAuc, 2)       
+       
     def testAverageRocCurve(self): 
         m = 50
         n = 20
