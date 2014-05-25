@@ -60,7 +60,10 @@ class MCEvaluator(object):
         :param orderedItems: The ordered items for each user (users are rows, items are cols)       
         
         :param verbose: If true return precision and first k recommendation for each row, otherwise just precisions
-        """        
+        """
+        if type(positiveArray) != tuple: 
+            positiveArray = SparseUtils.getOmegaListPtr(positiveArray)
+        
         orderedItems = orderedItems[:, 0:k]
         indPtr, colInds = positiveArray
         precisions = MCEvaluatorCython.precisionAtk(indPtr, colInds, orderedItems)
@@ -80,6 +83,9 @@ class MCEvaluator(object):
         
         :param verbose: If true return recall and first k recommendation for each row, otherwise just precisions
         """
+        if type(positiveArray) != tuple: 
+            positiveArray = SparseUtils.getOmegaListPtr(positiveArray)        
+        
         orderedItems = orderedItems[:, 0:k]
         indPtr, colInds = positiveArray
         recalls = MCEvaluatorCython.recallAtk(indPtr, colInds, orderedItems)
@@ -116,27 +122,28 @@ class MCEvaluator(object):
         return orderedItems 
         
     @staticmethod 
-    def localAUC(X, U, V, w, omegaList=None, numRowInds=None): 
+    def localAUC(positiveArray, U, V, w, numRowInds=None): 
         """
         Compute the local AUC for the score functions UV^T relative to X with 
         quantile w. 
         """
         if numRowInds == None: 
             numRowInds = V.shape[0]
+            
+        if type(positiveArray) != tuple: 
+            positiveArray = SparseUtils.getOmegaListPtr(positiveArray)  
         
         #For now let's compute the full matrix 
         Z = U.dot(V.T)
         
         r = SparseUtilsCython.computeR(U, V, w, numRowInds)
         
-        if omegaList==None: 
-            omegaList = SparseUtils.getOmegaList(X)
+        localAuc = numpy.zeros(U.shape[0]) 
+        allInds = numpy.arange(V.shape[0])
+        indPtr, colInds = positiveArray
         
-        localAuc = numpy.zeros(X.shape[0]) 
-        allInds = numpy.arange(X.shape[1])
-        
-        for i in range(X.shape[0]): 
-            omegai = omegaList[i]
+        for i in range(U.shape[0]): 
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
             omegaBari = numpy.setdiff1d(allInds, omegai, assume_unique=True)
             
             if omegai.shape[0] * omegaBari.shape[0] != 0: 
@@ -161,7 +168,6 @@ class MCEvaluator(object):
         assuming allArray is None. If allArray is not None then positive items are chosen 
         from positiveArray and negative ones are chosen to complement allArray.
         """
-        from sandbox.recommendation.MaxLocalAUCCython import localAUCApprox
         
         indPtr, colInds = positiveArray
         U = numpy.ascontiguousarray(U)
@@ -171,10 +177,10 @@ class MCEvaluator(object):
             r = SparseUtilsCython.computeR(U, V, w, numAucSamples)
         
         if allArray == None: 
-            return localAUCApprox(indPtr, colInds, indPtr, colInds, U, V, numAucSamples, r)
+            return MCEvaluatorCython.localAUCApprox(indPtr, colInds, indPtr, colInds, U, V, numAucSamples, r)
         else:
             allIndPtr, allColInd = allArray
-            return localAUCApprox(indPtr, colInds, allIndPtr, allColInd, U, V, numAucSamples, r)
+            return MCEvaluatorCython.localAUCApprox(indPtr, colInds, allIndPtr, allColInd, U, V, numAucSamples, r)
             
 
 
