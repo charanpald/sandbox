@@ -19,23 +19,22 @@ cdef extern from "math.h":
     double sqrt(double x)
     
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-def derivativeUi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise):
+
+def derivativeUi(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, unsigned int i, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise):
     """
     Find  delta phi/delta u_i using the hinge loss.  
     """
-    cdef unsigned int p, q, ind, j, s
+    cdef unsigned int p, q, ind, j
     cdef unsigned int k = U.shape[1]
-    cdef double uivp, ri, uivq, gamma, kappa
-    cdef double denom, denom2, normDeltaTheta, alpha, zeta 
-    cdef unsigned int m = X.shape[0], n = X.shape[1], numOmegai, numOmegaBari
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
+    cdef double uivp, uivq, gamma
+    cdef double  normDeltaTheta, zeta 
+    cdef unsigned int m = U.shape[0], n = V.shape[0], numOmegai, numOmegaBari
+    cdef numpy.ndarray[int, ndim=1, mode="c"] omegai
+    cdef numpy.ndarray[int, ndim=1, mode="c"] omegaBari 
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
       
-    omegai = omegaList[i]
-    omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
+    omegai = colInds[indPtr[i]:indPtr[i+1]]
+    omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.int32), omegai, assume_unique=True)
     numOmegai = omegai.shape[0]
     numOmegaBari = n-numOmegai
     
@@ -90,9 +89,6 @@ def updateU(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, 
         U[i,:] = scale(U, i, 1/numpy.linalg.norm(U[i,:]), k)   
 
 
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
 def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise):
     """
     Find an approximation of delta phi/delta u_i using the simple objective without 
@@ -145,33 +141,31 @@ def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
     
     return deltaTheta
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-def derivativeVi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int j, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise): 
+def derivativeVi(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, unsigned int j, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise): 
     """
     delta phi/delta v_i using hinge loss. 
     """
     cdef unsigned int i = 0
     cdef unsigned int k = U.shape[1]
     cdef unsigned int p, q, numOmegai, numOmegaBari, t
-    cdef unsigned int m = X.shape[0]
-    cdef unsigned int n = X.shape[1], ind
+    cdef unsigned int m = U.shape[0]
+    cdef unsigned int n = V.shape[0], ind
     cdef unsigned int s = 0
     cdef double uivp, uivq,  betaScale, ri, normTheta
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegai = numpy.zeros(k, numpy.uint)
-    cdef numpy.ndarray[numpy.uint_t, ndim=1, mode="c"] omegaBari = numpy.zeros(k, numpy.uint)
+    cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
+    cdef numpy.ndarray[int, ndim=1, mode="c"] omegaBari
     
     for i in range(m): 
-        omegai = omegaList[i]
-        omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint), omegai, assume_unique=True)
+        omegai = colInds[indPtr[i]:indPtr[i+1]]
+        omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.int32), omegai, assume_unique=True)
         numOmegai = omegai.shape[0]       
         numOmegaBari = n-numOmegai
         
         betaScale = 0
         
-        if X[i, j] != 0:                 
+        if j in omegai:                 
             p = j 
             uivp = dot(U, i, V, p, k)
             
@@ -232,9 +226,6 @@ def updateV(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, 
     #    V[i,:] = scale(V, i, 1/numpy.linalg.norm(V[i,:]), k)   
        
 
-@cython.profile(True)
-@cython.boundscheck(False)
-@cython.wraparound(False)
 def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, unsigned int j, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise): 
     """
     delta phi/delta v_i  using the hinge loss. 
@@ -310,9 +301,6 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
     
     return deltaTheta
 
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
 def derivativeXi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, list omegaList, unsigned int i, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise):
     """
     Find  delta phi/delta u_i using the hinge loss.  
@@ -348,9 +336,6 @@ def derivativeXi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
     
     return deltaTheta
 
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
 def derivativeXiiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] xi, double lmbda, double C, bint normalise):
     """
     Find an approximation of delta phi/delta u_i using the simple objective without 
@@ -396,8 +381,6 @@ def derivativeXiiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
 
     return deltaTheta
 
-#@cython.boundscheck(False)
-#@cython.wraparound(False)
 def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[double, ndim=1, mode="c"] xi, numpy.ndarray[double, ndim=1, mode="c"] muXi, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, unsigned int ind, double sigma, unsigned int numRowSamples, unsigned int numAucSamples, double w, double lmbda, double C, bint normalise): 
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]    
@@ -449,9 +432,7 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
             muV[j, :] = V[j, :]
             muXi[i] = xi[i]
             
-        
-@cython.boundscheck(False)
-@cython.wraparound(False)   
+         
 def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] xi, unsigned int numAucSamples, double lmbda, double C, bint full=False):         
     cdef double obj = 0 
     cdef unsigned int m = U.shape[0]
