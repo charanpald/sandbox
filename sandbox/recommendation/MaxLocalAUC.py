@@ -7,7 +7,7 @@ import time
 import scipy.sparse
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
-from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, updateUVApprox, objectiveApprox, localAUCApprox, updateV, updateU
+from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, updateUVApprox, objectiveApprox, updateV, updateU
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.MCEvaluator import MCEvaluator 
 from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
@@ -85,7 +85,6 @@ class MaxLocalAUC(object):
         
         self.recordStep = 20
         self.numRowSamples = 20
-        self.numStepIterations = 100
         self.numAucSamples = 50
         self.numRecordAucSamples = 500
         #1 iterations is a complete run over the dataset (i.e. m gradients)
@@ -166,11 +165,11 @@ class MaxLocalAUC(object):
             
             if ind % self.recordStep == 0: 
                 r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
-                trainObjs.append(self.objectiveApprox((indPtr, colInds), muU, muV, muXi, r=r))
+                trainObjs.append(self.objectiveApprox((indPtr, colInds), muU, muV, muXi))
                 trainAucs.append(MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r))
                 
                 if testX != None:
-                    testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, muXi, r=r, allArray=(allIndPtr, allColInds)))
+                    testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, muXi, allArray=(allIndPtr, allColInds)))
                     testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
                     testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, X)
                     precision = MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.z)                      
@@ -199,17 +198,17 @@ class MaxLocalAUC(object):
             self.updateUV(indPtr, colInds, U, V, lastU, lastV, muU, muV, xi, muXi, permutedRowInds, permutedColInds, ind, sigma)                       
                             
             if self.stochastic: 
-                ind += self.numStepIterations
+                ind += m
             else: 
                 ind += 1
             
         #Compute quantities for last U and V 
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
-        trainObjs.append(self.objectiveApprox((indPtr, colInds), muU, muV, muXi, r=r))
+        trainObjs.append(self.objectiveApprox((indPtr, colInds), muU, muV, muXi))
         trainAucs.append(MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r))
         
         if testX != None:
-            testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, muXi, r=r, allArray=(allIndPtr, allColInds)))
+            testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, muXi, allArray=(allIndPtr, allColInds)))
             testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))          
             
         totalTime = time.time() - startTime
@@ -291,8 +290,8 @@ class MaxLocalAUC(object):
                 colIndsCumProbs = self.omegaProbsRank(indPtr, colInds, muU, muV)
             else: 
                 raise ValueError("Unknown sampling scheme: " + self.sampling)
-                
-            updateUVApprox(indPtr, colInds, U, V, muU, muV, xi, muXi, colIndsCumProbs, permutedRowInds, permutedColInds, ind, sigma, self.numStepIterations, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.C, self.normalise)
+            
+            updateUVApprox(indPtr, colInds, U, V, muU, muV, xi, muXi, colIndsCumProbs, permutedRowInds, permutedColInds, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.C, self.normalise)
 
     def derivativeUi(self, X, U, V, omegaList, i, r): 
         """
@@ -331,7 +330,7 @@ class MaxLocalAUC(object):
             omegai = colInds[indPtr[i]:indPtr[i+1]]
             uiVOmegai = U[i, :].T.dot(V[omegai, :].T)
             ri = numpy.sort(uiVOmegai)[-min(self.z, uiVOmegai.shape[0])]
-            colIndsCumProbs[indPtr[i]:indPtr[i+1]] = (uiVOmegai >= ri)
+            colIndsCumProbs[indPtr[i]:indPtr[i+1]] = numpy.array(uiVOmegai >= ri, numpy.float)
             colIndsCumProbs[indPtr[i]:indPtr[i+1]] /= colIndsCumProbs[indPtr[i]:indPtr[i+1]].sum()
             colIndsCumProbs[indPtr[i]:indPtr[i+1]]  = numpy.cumsum(colIndsCumProbs[indPtr[i]:indPtr[i+1]])
             
@@ -473,7 +472,7 @@ class MaxLocalAUC(object):
          
         return meanTestMetrics, stdTestMetrics
   
-    def objectiveApprox(self, positiveArray, U, V, xi, r=None, allArray=None): 
+    def objectiveApprox(self, positiveArray, U, V, xi, allArray=None): 
         """
         Compute the estimated local AUC for the score functions UV^T relative to X with 
         quantile w. The AUC is computed using positiveArray which is a tuple (indPtr, colInds)
@@ -486,9 +485,6 @@ class MaxLocalAUC(object):
         U = numpy.ascontiguousarray(U)
         V = numpy.ascontiguousarray(V)        
         
-        if r == None: 
-            r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)
-        
         if allArray == None: 
             return objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, xi, self.numRecordAucSamples, self.lmbda, self.C)         
         else:
@@ -497,7 +493,7 @@ class MaxLocalAUC(object):
   
     def __str__(self): 
         outputStr = "MaxLocalAUC: k=" + str(self.k) + " eps=" + str(self.eps) 
-        outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) + " numStepIterations=" + str(self.numStepIterations)
+        outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) 
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
         outputStr += " lmbda=" + str(self.lmbda) + " C=" + str(self.C) + " numProcesses=" + str(self.numProcesses) + " validationSize=" + str(self.validationSize)
@@ -518,7 +514,6 @@ class MaxLocalAUC(object):
         
         maxLocalAuc.recordStep = self.recordStep
         maxLocalAuc.numRowSamples = self.numRowSamples
-        maxLocalAuc.numStepIterations = self.numStepIterations
         maxLocalAuc.numAucSamples = self.numAucSamples
         maxLocalAuc.numRecordAucSamples = self.numRecordAucSamples
         maxLocalAuc.maxIterations = self.maxIterations
