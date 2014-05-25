@@ -1,9 +1,13 @@
-# cython: profile=True 
+#cython: profile=True 
+#cython: boundscheck=False
+#cython: wraparound=False
+#cython: nonecheck=False
 import cython
 from cython.parallel import parallel, prange
 cimport numpy
 import numpy
-from sandbox.util.SparseUtilsCython import SparseUtilsCython
+from sandbox.util.CythonUtils cimport dot, scale, choice, inverseChoice, uniformChoice, plusEquals
+
 
 from libc.stdlib cimport rand
 cdef extern from "limits.h":
@@ -14,169 +18,6 @@ cdef extern from "math.h":
     bint isnan(double x)  
     double sqrt(double x)
     
-
-@cython.nonecheck(False)
-@cython.boundscheck(False) 
-@cython.wraparound(False)
-cdef inline int randint(int i):
-    """
-    Note that i must be less than RAND_MAX. 
-    """
-    return rand() % i   
-
-@cython.nonecheck(False)
-@cython.boundscheck(False) 
-@cython.wraparound(False)
-cdef inline double square(double d):
-    return d*d    
-
-@cython.nonecheck(False)
-@cython.boundscheck(False) 
-@cython.wraparound(False) 
-cdef inline double dot(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, numpy.ndarray[double, ndim = 2, mode="c"] V, unsigned int j, unsigned int k):
-    """
-    Compute the dot product between U[i, :] and V[j, :]
-    """
-    cdef double result = 0
-    cdef unsigned int s = 0
-    cdef double e1, e2
-    for s in range(k):
-        e1 = U[i, s]
-        e2 = V[j, s]
-        result += e1*e2
-    return result
-
-
-@cython.nonecheck(False)
-@cython.boundscheck(False) 
-@cython.wraparound(False) 
-cdef inline double normRow(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, unsigned int k):
-    """
-    Compute the dot product between U[i, :] and V[j, :]
-    """
-    cdef double result = 0
-    cdef unsigned int s = 0
-    for s in range(k):
-        result += square(U[i, s])
-
-    return sqrt(result)
-
-@cython.nonecheck(False)
-@cython.boundscheck(False) 
-@cython.wraparound(False)
-cdef inline numpy.ndarray[double, ndim = 1, mode="c"] scale(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, double d, unsigned int k):
-    """
-    Computes U[i, :] * d where k is U.shape[1]
-    """
-    cdef numpy.ndarray[double, ndim = 1, mode="c"] ui = numpy.empty(k)
-    cdef unsigned int s = 0
-    for s in range(k):
-        ui[s] = U[i, s]*d
-    return ui
-
-@cython.nonecheck(False)
-@cython.boundscheck(False) 
-@cython.wraparound(False)
-cdef inline numpy.ndarray[double, ndim = 1, mode="c"] plusEquals(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, numpy.ndarray[double, ndim = 1, mode="c"] d, unsigned int k):
-    """
-    Computes U[i, :] += d[i] where k is U.shape[1]
-    """
-    cdef unsigned int s = 0
-    for s in range(k):
-        U[i, s] = U[i, s] + d[s]
-
-@cython.nonecheck(False)
-@cython.boundscheck(False) 
-@cython.wraparound(False)
-cdef inline numpy.ndarray[double, ndim = 1, mode="c"] plusEquals1d(numpy.ndarray[double, ndim = 1, mode="c"] u, numpy.ndarray[double, ndim = 1, mode="c"] d, unsigned int k):
-    """
-    Computes U[i] += d[i] 
-    """
-    cdef unsigned int s = 0
-    for s in range(k):
-        u[s] = u[s] + d[s]
-
-@cython.nonecheck(False)
-@cython.boundscheck(False) 
-@cython.wraparound(False)
-cdef unsigned int getNonZeroRow(X, unsigned int i, unsigned int n):
-    """
-    Find a random nonzero element in the ith row of X
-    """
-    cdef unsigned int q = numpy.random.randint(0, n)
-    
-    while X[i, q] != 0:
-        q = numpy.random.randint(0, n)
-    return q
-
-@cython.nonecheck(False)
-@cython.boundscheck(False) 
-@cython.wraparound(False)
-cdef unsigned int inverseChoice(numpy.ndarray[int, ndim=1, mode="c"] v, unsigned int n):
-    """
-    Find a random nonzero element in the range 0:n not in v
-    """
-    cdef unsigned int q = numpy.random.randint(0, n)
-    cdef int inV = 1
-    cdef unsigned int j 
-    cdef unsigned int m = v.shape[0]
-    
-    while inV == 1:
-        q = numpy.random.randint(0, n)
-        inV = 0 
-        for j in range(m): 
-            if q == v[j]: 
-                inV = 1 
-                break 
-    return q
-    
-def inverseChoicePy(v, n): 
-    return inverseChoice(v, n)
-
-@cython.nonecheck(False)
-@cython.boundscheck(False) 
-@cython.wraparound(False)
-cdef numpy.ndarray[int, ndim=1, mode="c"] choice(numpy.ndarray[int, ndim=1, mode="c"] inds, unsigned int numSamples, numpy.ndarray[double, ndim=1, mode="c"] cumProbs):
-    """
-    Given a list of numbers in inds, and associated cumulative probabilties, pick numSample 
-    elements according to the probabilities. Note that probabilties must sum to 
-    1.
-    """
-    #cdef numpy.ndarray[double, ndim=1, mode="c"] cumProbs = numpy.cumsum(probs)
-    cdef numpy.ndarray[int, ndim=1, mode="c"] sampleArray = numpy.zeros(numSamples, numpy.int32)
-    cdef double p 
-    cdef unsigned int i, j
-    
-    for j in range(numSamples):
-        p = numpy.random.rand()
-        for i in range(cumProbs.shape[0]): 
-            if cumProbs[i] > p: 
-                break 
-        sampleArray[j] = inds[i]
-    
-    return sampleArray
-
-@cython.nonecheck(False)
-@cython.boundscheck(False) 
-@cython.wraparound(False)
-cdef numpy.ndarray[int, ndim=1, mode="c"] uniformChoice(numpy.ndarray[int, ndim=1, mode="c"] inds, unsigned int numSamples):
-    """
-    Given a list of numbers in inds, pick numSample elements uniformly randomly.
-    """
-
-    cdef numpy.ndarray[int, ndim=1, mode="c"] sampleArray = numpy.zeros(numSamples, numpy.int32)
-    cdef double p 
-    cdef unsigned int i, j
-    
-    for j in range(numSamples):
-        i = numpy.random.randint(0, inds.shape[0])
-        sampleArray[j] = inds[i]
-    
-    return sampleArray
-
-def choicePy(inds, numSamples, probs): 
-    return choice(inds, numSamples, probs)
-
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -259,7 +100,7 @@ def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
     """
     cdef unsigned int p, q, ind, j, s
     cdef unsigned int k = U.shape[1]
-    cdef double uivp, ri, uivq, gamma, kappa
+    cdef double uivp, ri, uivq, gamma
     cdef double normDeltaTheta, vqScale, vpScale, zeta  
     cdef unsigned int m = U.shape[0], n = V.shape[0], numOmegai, numOmegaBari
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
@@ -276,7 +117,8 @@ def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
     deltaTheta = numpy.zeros(k)
     
     if numOmegai * numOmegaBari != 0: 
-        omegaiSample = choice(omegai, numAucSamples, omegaProbsi)       
+        omegaiSample = choice(omegai, numAucSamples, omegaProbsi)   
+        #omegaiSample = numpy.random.choice(omegai, numAucSamples, p=numpy.r_[omegaProbsi[0], numpy.diff(omegaProbsi)])
         
         for p in omegaiSample:
             q = inverseChoice(omegai, n) 
@@ -441,6 +283,7 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
             uivq = dot(U, i, V, q, k)
             nu = 1 + uivq - xii
             omegaiSample = choice(omegai, numAucSamples, omegaProbsi)
+            #omegaiSample = numpy.random.choice(omegai, numAucSamples, p=numpy.r_[omegaProbsi[0], numpy.diff(omegaProbsi)])
 
             for p in omegaiSample: 
                 uivp = dot(U, i, V, p, k)
@@ -501,7 +344,7 @@ def derivativeXi(X, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[dou
                 if zeta > 0: 
                     deltaTheta += zeta
                 
-        deltaTheta /= float(numOmegai * numOmegaBari * m)
+        deltaTheta *= C/float(numOmegai * numOmegaBari * m)
     
     return deltaTheta
 
@@ -532,7 +375,8 @@ def derivativeXiiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
     deltaTheta = 0
     
     if numOmegai * numOmegaBari != 0: 
-        omegaiSample = choice(omegai, numAucSamples, omegaProbsi)     
+        omegaiSample = choice(omegai, numAucSamples, omegaProbsi) 
+        #omegaiSample = numpy.random.choice(omegai, numAucSamples, p=numpy.r_[omegaProbsi[0], numpy.diff(omegaProbsi)])
         
         for p in omegaiSample:
             q = inverseChoice(omegai, n) 
@@ -554,7 +398,7 @@ def derivativeXiiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
 
 #@cython.boundscheck(False)
 #@cython.wraparound(False)
-def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[double, ndim=1, mode="c"] xi, numpy.ndarray[double, ndim=1, mode="c"] muXi, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, unsigned int ind, double sigma, unsigned int numIterations, unsigned int numRowSamples, unsigned int numAucSamples, double w, double lmbda, double C, bint normalise): 
+def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[double, ndim=1, mode="c"] xi, numpy.ndarray[double, ndim=1, mode="c"] muXi, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, unsigned int ind, double sigma, unsigned int numRowSamples, unsigned int numAucSamples, double w, double lmbda, double C, bint normalise): 
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]    
     cdef unsigned int k = U.shape[1] 
@@ -564,7 +408,7 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
     cdef unsigned int i, j, s, ind2, dXii
     cdef unsigned int startAverage = 10
     
-    for s in range(numIterations):
+    for s in range(m):
         i = permutedRowInds[(ind + s) % m]
         dUi = derivativeUiApprox(indPtr, colInds, U, V, colIndsCumProbs, i, numRowSamples, numAucSamples, xi, lmbda, C, normalise)
         #dUi = derivativeUi(X, U, V, omegaList, i, r, nu)
@@ -608,15 +452,16 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
         
 @cython.boundscheck(False)
 @cython.wraparound(False)   
-def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] xi, unsigned int numAucSamples, double lmbda, double C):         
+def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] xi, unsigned int numAucSamples, double lmbda, double C, bint full=False):         
     cdef double obj = 0 
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]
     cdef unsigned int i, j, k, p, q
-    cdef double kappa, uivp, uivq, gamma, partialObj
+    cdef double uivp, uivq, gamma
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] allOmegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
+    cdef numpy.ndarray[double, ndim=1, mode="c"] objVector = numpy.zeros(m, dtype=numpy.float)
 
     k = U.shape[1]
     
@@ -640,51 +485,14 @@ def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[i
                 if gamma + xi[i] <= 1: 
                     partialObj += ((1-gamma-xi[i])**2) 
                 
-            obj += partialObj/float(omegaiSample.shape[0])
+            objVector[i] = partialObj/float(omegaiSample.shape[0])
     
-    obj /= 2*m       
-    obj += (lmbda/(2*m))*numpy.linalg.norm(V)**2 + C*numpy.sum(xi)
+    objVector /= 2       
+    objVector += (C/m)*xi + (lmbda/(2*m**2))*numpy.linalg.norm(V)**2
     
-    return obj 
+    if full: 
+        return objVector
+    else: 
+        return objVector.mean() 
   
-@cython.boundscheck(False)
-@cython.wraparound(False)  
-def localAUCApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r): 
-    """
-    Compute the estimated local AUC for the score functions UV^T relative to X with 
-    quantile vector r. If evaluating on a set of test observations then X is 
-    trainX+testX and omegaList is from testX. The variables allIndPtr and allColInds 
-    represent the case in which (indPtr, colInds) are the test elements and 
-    (allIndPtr, allColInds) are all the positive elements. 
-    """
-    cdef unsigned int m = U.shape[0]
-    cdef unsigned int n = V.shape[0]
-    cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
-    cdef numpy.ndarray[int, ndim=1, mode="c"] allOmegai 
-    cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] localAucArr = numpy.zeros(m)
-    cdef unsigned int i, j, k, ind, p, q, nOmegai
-    cdef double partialAuc, ri, uivp
-
-    k = U.shape[1]
-
-    for i in range(m): 
-        omegai = colInds[indPtr[i]:indPtr[i+1]]
-        allOmegai = allColInds[allIndPtr[i]:allIndPtr[i+1]]
-        nOmegai = omegai.shape[0]
-        ri = r[i]
-        
-        if nOmegai * (n-nOmegai) != 0: 
-            partialAuc = 0    
-            omegaiSample = uniformChoice(omegai, numAucSamples)            
-            
-            for p in omegaiSample:                
-                q = inverseChoice(allOmegai, n)                
-                uivp = dot(U, i, V, p, k)
-
-                if uivp > ri and uivp > dot(U, i, V, q, k): 
-                    partialAuc += 1 
-                        
-            localAucArr[i] = partialAuc/float(omegaiSample.shape[0])     
-    
-    return localAucArr.mean()
+ 
