@@ -148,7 +148,6 @@ class MaxLocalAUC(object):
             X2 = sppy.csarray(X, storagetype="row")
             X = X2
             
-        
         #Set up order of indices for stochastic methods 
         permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
         permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
@@ -165,7 +164,12 @@ class MaxLocalAUC(object):
             
             if ind % self.recordStep == 0: 
                 r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
-                trainObjs.append(self.objectiveApprox((indPtr, colInds), muU, muV, muXi))
+                objArr = self.objectiveApprox((indPtr, colInds), muU, muV, muXi, full=True)
+                #userProbs = numpy.array(objArr > objArr.mean(), numpy.float)
+                #userProbs /= userProbs.sum()
+                #print(userProbs)
+                #permutedRowInds = numpy.random.choice(numpy.arange(m, dtype=numpy.uint32), size=m, p=userProbs)
+                trainObjs.append(objArr.mean())
                 trainAucs.append(MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r))
                 
                 if testX != None:
@@ -471,7 +475,7 @@ class MaxLocalAUC(object):
          
         return meanTestMetrics, stdTestMetrics
   
-    def objectiveApprox(self, positiveArray, U, V, xi, allArray=None): 
+    def objectiveApprox(self, positiveArray, U, V, xi, allArray=None, full=False): 
         """
         Compute the estimated local AUC for the score functions UV^T relative to X with 
         quantile w. The AUC is computed using positiveArray which is a tuple (indPtr, colInds)
@@ -485,10 +489,10 @@ class MaxLocalAUC(object):
         V = numpy.ascontiguousarray(V)        
         
         if allArray == None: 
-            return objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, xi, self.numRecordAucSamples, self.lmbda, self.C)         
+            return objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, xi, self.numRecordAucSamples, self.lmbda, self.C, full=full)         
         else:
             allIndPtr, allColInds = allArray
-            return objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, xi, self.numRecordAucSamples, self.lmbda, self.C)
+            return objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, xi, self.numRecordAucSamples, self.lmbda, self.C, full=full)
   
     def __str__(self): 
         outputStr = "MaxLocalAUC: k=" + str(self.k) + " eps=" + str(self.eps) 
