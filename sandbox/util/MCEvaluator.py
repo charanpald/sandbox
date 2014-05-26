@@ -169,6 +169,9 @@ class MCEvaluator(object):
         from positiveArray and negative ones are chosen to complement allArray.
         """
         
+        if type(positiveArray) != tuple: 
+            positiveArray = SparseUtils.getOmegaListPtr(positiveArray)          
+        
         indPtr, colInds = positiveArray
         U = numpy.ascontiguousarray(U)
         V = numpy.ascontiguousarray(V)        
