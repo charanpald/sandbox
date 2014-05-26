@@ -278,9 +278,8 @@ class MaxLocalAUC(object):
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic:                 
-            r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)
-            updateU(indPtr, colInds, U, V, sigma, r, self.nu)
-            updateV(indPtr, colInds, U, V, sigma, r, self.nu, self.lmbda)
+            updateU(indPtr, colInds, U, V, xi, sigma, self.lmbda, self.C, self.normalise)
+            updateV(indPtr, colInds, U, V, xi, sigma, self.lmbda, self.C, self.normalise)
         else: 
             if self.sampling == "uniform": 
                 colIndsCumProbs = self.omegaProbsUniform(indPtr, colInds, muU, muV)
@@ -293,11 +292,11 @@ class MaxLocalAUC(object):
             
             updateUVApprox(indPtr, colInds, U, V, muU, muV, xi, muXi, colIndsCumProbs, permutedRowInds, permutedColInds, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.C, self.normalise)
 
-    def derivativeUi(self, X, U, V, omegaList, i, r): 
+    def derivativeUi(self, indPtr, colInds, U, V, xi, i): 
         """
         delta phi/delta u_i
         """
-        return derivativeUi(X, U, V, omegaList, i, r, self.lmbda, self.C, self.normalise)
+        return derivativeUi(indPtr, colInds, U, V, xi, i, self.lmbda, self.C, self.normalise)
         
     def derivativeVi(self, X, U, V, omegaList, i, r): 
         """
@@ -468,7 +467,7 @@ class MaxLocalAUC(object):
         self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
         self.C = self.Cs[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[2]]
 
-        logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda) + " C=" + str(self.C))
+        logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda) + " C=" + str(self.C) + " max=" + str(numpy.max(meanTestMetrics)))
          
         return meanTestMetrics, stdTestMetrics
   
