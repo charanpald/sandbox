@@ -11,7 +11,6 @@ import logging
 import multiprocessing 
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
-from sandbox.recommendation.MaxLocalAUCCython import  localAUCApprox
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.Util import Util 
 from mrec.item_similarity.knn import CosineKNNRecommender
