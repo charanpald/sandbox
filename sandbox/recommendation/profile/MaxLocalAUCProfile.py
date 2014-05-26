@@ -2,7 +2,7 @@ import numpy
 import logging
 import sys
 from sandbox.util.ProfileUtils import ProfileUtils
-from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC, localAUCApprox
+from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.Sampling import Sampling
@@ -89,7 +89,7 @@ class MaxLocalAUCProfile(object):
         
         def run(): 
             for i in range(numRuns):
-                localAUCApprox(X, U, V, omegaList, numAucSamples, r)
+                MCEvaluator.localAUCApprox(X, U, V, omegaList, numAucSamples, r)
         
         ProfileUtils.profile('run()', globals(), locals())
 
