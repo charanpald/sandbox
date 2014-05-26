@@ -11,7 +11,6 @@ from sandbox.util.PathDefaults import PathDefaults
 from sandbox.util.Sampling import Sampling
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.MCEvaluatorCython import MCEvaluatorCython
-from sandbox.recommendation.MaxLocalAUCCython import localAUCApprox
 from bpr import BPRArgs, BPR, UniformPairWithoutReplacement 
 from sandbox.recommendation.RecommenderUtils import computeTestPrecision
 

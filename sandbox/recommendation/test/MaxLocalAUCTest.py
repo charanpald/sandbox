@@ -1,7 +1,7 @@
 import os
 import sys
 from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC 
-from sandbox.recommendation.MaxLocalAUCCython import objectiveApprox 
+from sandbox.recommendation.MaxLocalAUCCython import objectiveApprox, objective
 from sandbox.util.SparseUtils import SparseUtils
 import numpy
 import unittest
@@ -16,100 +16,150 @@ class MaxLocalAUCTest(unittest.TestCase):
         numpy.set_printoptions(precision=3, suppress=True, linewidth=150)
         
         numpy.seterr(all="raise")
-        numpy.random.seed(21)
+        numpy.random.seed(22)
     
     @unittest.skip("")
     def testLearnModel(self): 
         m = 50 
         n = 20 
         k = 5 
-        numInds = 500
-        X = SparseUtils.generateSparseLowRank((m, n), k, numInds)
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True)
+
         
-        X = X/X
-        
-        r = numpy.ones(m)*0.0
+        u = 0.1
+        w = 1-u
         eps = 0.05
-        maxLocalAuc = MaxLocalAUC(k, r, sigma=5.0, eps=eps)
+        maxLocalAuc = MaxLocalAUC(k, w, alpha=5.0, eps=eps)
         
         U, V = maxLocalAuc.learnModel(X)
         
+        
+        maxLocalAuc.stochastic = True 
+        U, V = maxLocalAuc.learnModel(X)
         #print(U)
         #print(V)
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testDerivativeU(self): 
         m = 10 
         n = 20 
-        k = 2 
-        numInds = 100
-        X = SparseUtils.generateSparseLowRank((m, n), k, numInds)
+        nnzPerRow = 5 
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), nnzPerRow, csarray=True)
         
-        X = X/X
-        
-        
-        r = numpy.ones(m)*0.0
-        maxLocalAuc = MaxLocalAUC(k, r)
-        maxLocalAuc.project = False
-        maxLocalAuc.nu = 1.0
-        omegaList = SparseUtils.getOmegaList(X)
+        k = 5
+        u = 0.1
+        w = 1-u
+        eps = 0.05
+        maxLocalAuc = MaxLocalAUC(k, w, alpha=1.0, eps=eps)
+        maxLocalAuc.normalise = False
+        maxLocalAuc.lmbda = 0
+        maxLocalAuc.C = 0
+        maxLocalAuc.numAucSamples = 100
 
         U = numpy.random.rand(m, k)
         V = numpy.random.rand(n, k)
-        rowInds, colInds = X.nonzero()
+        xi = numpy.zeros(m)
+        
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
 
         deltaU = numpy.zeros(U.shape)
         for i in range(X.shape[0]): 
-            deltaU[i, :] = maxLocalAuc.derivativeUi(X, U, V, omegaList, i, r)    
+            deltaU[i, :] = maxLocalAuc.derivativeUi(indPtr, colInds, U, V, xi, i)    
 
-        #deltaU, inds = maxLocalAuc.derivativeU(X, U, V, omegaList)
-        
-        deltaU2 = numpy.zeros(U.shape)    
-        
-        eps = 0.0001        
+        deltaU2 = numpy.zeros(U.shape) 
+        eps = 10**-12         
         
         for i in range(m): 
             for j in range(k):
                 tempU = U.copy() 
                 tempU[i,j] += eps
-                obj1 = objectiveApprox(X, tempU, V, omegaList, maxLocalAuc.numAucSamples, r, maxLocalAuc.lmbda, maxLocalAuc.rho)
+                obj1 = objective(indPtr, colInds, indPtr, colInds, tempU, V, xi, maxLocalAuc.lmbda, maxLocalAuc.C, False)
                 
                 tempU = U.copy() 
                 tempU[i,j] -= eps
-                obj2 = objectiveApprox(X, tempU, V, omegaList, maxLocalAuc.numAucSamples, r, maxLocalAuc.lmbda, maxLocalAuc.rho)
+                obj2 = objective(indPtr, colInds, indPtr, colInds, tempU, V, xi, maxLocalAuc.lmbda, maxLocalAuc.C, False)
                 
                 deltaU2[i,j] = (obj1-obj2)/(2*eps)
-            deltaU2[i,:] = deltaU2[i,:]/numpy.linalg.norm(deltaU2[i,:])
+
+            #deltaU2[i,:] = deltaU2[i,:]/numpy.linalg.norm(deltaU2[i,:])
+
+        nptst.assert_almost_equal(deltaU, deltaU2, 2)
+        
+        #Try xi != 0 and C > 0
+        xi = numpy.random.rand(m)
+        maxLocalAuc.C = 0.1
+        
+        deltaU = numpy.zeros(U.shape)
+        for i in range(X.shape[0]): 
+            deltaU[i, :] = maxLocalAuc.derivativeUi(indPtr, colInds, U, V, xi, i) 
+        
+        deltaU2 = numpy.zeros(U.shape) 
+        eps = 10**-9        
+        
+        for i in range(m): 
+            for j in range(k):
+                tempU = U.copy() 
+                tempU[i,j] += eps
+                obj1 = objective(indPtr, colInds, indPtr, colInds, tempU, V, xi, maxLocalAuc.lmbda, maxLocalAuc.C, False)
                 
-        #print(deltaU.T*10)
-        #print(deltaU2.T*10)                      
+                tempU = U.copy() 
+                tempU[i,j] -= eps
+                obj2 = objective(indPtr, colInds, indPtr, colInds, tempU, V, xi, maxLocalAuc.lmbda, maxLocalAuc.C, False)
+                
+                deltaU2[i,j] = (obj1-obj2)/(2*eps)
+                            
+        nptst.assert_almost_equal(deltaU, deltaU2, 2)
+        
+        #Try lmbda > 0
+        maxLocalAuc.lmbda = 0.1
+        
+        deltaU = numpy.zeros(U.shape)
+        for i in range(X.shape[0]): 
+            deltaU[i, :] = maxLocalAuc.derivativeUi(indPtr, colInds, U, V, xi, i) 
+        
+        deltaU2 = numpy.zeros(U.shape) 
+        eps = 10**-9        
+        
+        for i in range(m): 
+            for j in range(k):
+                tempU = U.copy() 
+                tempU[i,j] += eps
+                obj1 = objective(indPtr, colInds, indPtr, colInds, tempU, V, xi, maxLocalAuc.lmbda, maxLocalAuc.C, False)
+                
+                tempU = U.copy() 
+                tempU[i,j] -= eps
+                obj2 = objective(indPtr, colInds, indPtr, colInds, tempU, V, xi, maxLocalAuc.lmbda, maxLocalAuc.C, False)
+                
+                deltaU2[i,j] = (obj1-obj2)/(2*eps)
+                            
         nptst.assert_almost_equal(deltaU, deltaU2, 2)
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testDerivativeV(self): 
         m = 10 
         n = 20 
-        k = 2 
-        numInds = 100
-        X = SparseUtils.generateSparseLowRank((m, n), k, numInds)
+        nnzPerRow = 5 
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), nnzPerRow, csarray=True)
         
-        X = X/X
-        
-        r = numpy.ones(m)*0.0
-        maxLocalAuc = MaxLocalAUC(k, r)
-        maxLocalAuc.nu = 1
+        k = 5
+        u = 0.1
+        w = 1-u
+        eps = 0.05
+        maxLocalAuc = MaxLocalAUC(k, w, alpha=1.0, eps=eps)
+        maxLocalAuc.normalise = False
         maxLocalAuc.lmbda = 0
-        omegaList = SparseUtils.getOmegaList(X)
+        maxLocalAuc.C = 0
+        maxLocalAuc.numAucSamples = 100
 
         U = numpy.random.rand(m, k)
         V = numpy.random.rand(n, k)
-        rowInds, colInds = X.nonzero()
+        xi = numpy.zeros(m)
+        
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
 
         deltaV = numpy.zeros(V.shape)
-        for i in range(X.shape[1]): 
-            deltaV[i, :] = maxLocalAuc.derivativeVi(X, U, V, omegaList, i, r)    
-
-        #deltaV, inds = maxLocalAuc.derivativeV(X, U, V, omegaList)
+        for j in range(n): 
+            deltaV[j, :] = maxLocalAuc.derivativeVi(indPtr, colInds, U, V, xi, j)    
         
         deltaV2 = numpy.zeros(V.shape)    
         
@@ -119,55 +169,104 @@ class MaxLocalAUCTest(unittest.TestCase):
             for j in range(k):
                 tempV = V.copy() 
                 tempV[i,j] += eps
-                obj1 = objectiveApprox(X, U, tempV, omegaList, maxLocalAuc.numAucSamples, r, maxLocalAuc.lmbda, maxLocalAuc.C)
+                obj1 = objective(indPtr, colInds, indPtr, colInds, U, tempV, xi, maxLocalAuc.lmbda, maxLocalAuc.C, False)
                 
                 tempV = V.copy() 
                 tempV[i,j] -= eps
-                obj2 = objectiveApprox(X, U, tempV, omegaList, maxLocalAuc.numAucSamples, r, maxLocalAuc.lmbda, maxLocalAuc.C)
+                obj2 = objective(indPtr, colInds, indPtr, colInds, U, tempV, xi, maxLocalAuc.lmbda, maxLocalAuc.C, False)
                 
                 deltaV2[i,j] = (obj1-obj2)/(2*eps)
-            deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])
-         
-        #print(deltaV.T*10)
-        #print(deltaV2.T*10)                   
+            #deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])
+                       
+        nptst.assert_almost_equal(deltaV, deltaV2, 2)
+
+        #Try xi != 0 and C > 0
+        xi = numpy.random.rand(m)
+        maxLocalAuc.C = 1.0    
+        
+        deltaV = numpy.zeros(V.shape)
+        for j in range(n): 
+            deltaV[j, :] = maxLocalAuc.derivativeVi(indPtr, colInds, U, V, xi, j)    
+        
+        deltaV2 = numpy.zeros(V.shape)
+        
+        for i in range(n): 
+            for j in range(k):
+                tempV = V.copy() 
+                tempV[i,j] += eps
+                obj1 = objective(indPtr, colInds, indPtr, colInds, U, tempV, xi, maxLocalAuc.lmbda, maxLocalAuc.C, False)
+                
+                tempV = V.copy() 
+                tempV[i,j] -= eps
+                obj2 = objective(indPtr, colInds, indPtr, colInds, U, tempV, xi, maxLocalAuc.lmbda, maxLocalAuc.C, False)
+                
+                deltaV2[i,j] = (obj1-obj2)/(2*eps)
+            #deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])
+                       
+        nptst.assert_almost_equal(deltaV, deltaV2, 2)
+        
+        
+        #Try xi != 0 and C > 0
+        maxLocalAuc.lmbda = 0.1    
+        
+        deltaV = numpy.zeros(V.shape)
+        for j in range(n): 
+            deltaV[j, :] = maxLocalAuc.derivativeVi(indPtr, colInds, U, V, xi, j)    
+        
+        deltaV2 = numpy.zeros(V.shape)
+        
+        for i in range(n): 
+            for j in range(k):
+                tempV = V.copy() 
+                tempV[i,j] += eps
+                obj1 = objective(indPtr, colInds, indPtr, colInds, U, tempV, xi, maxLocalAuc.lmbda, maxLocalAuc.C, False)
+                
+                tempV = V.copy() 
+                tempV[i,j] -= eps
+                obj2 = objective(indPtr, colInds, indPtr, colInds, U, tempV, xi, maxLocalAuc.lmbda, maxLocalAuc.C, False)
+                
+                deltaV2[i,j] = (obj1-obj2)/(2*eps)
+            #deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])
+                       
         nptst.assert_almost_equal(deltaV, deltaV2, 2)
 
     @unittest.skip("")
     def testModelSelect(self): 
         m = 10 
         n = 20 
-        k = 2 
-        numInds = 100
-        X = SparseUtils.generateSparseLowRank((m, n), k, numInds)
+        k = 5 
         
-        X = X/X
+        u = 0.5
+        w = 1-u
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, w, csarray=True)
         
         os.system('taskset -p 0xffffffff %d' % os.getpid())
         
-        u = 0.2
         eps = 0.001
-        maxLocalAuc = MaxLocalAUC(k, u, eps=eps, stochastic=True)
-        maxLocalAuc.maxIterations = 20
+        k = 5
+        maxLocalAuc = MaxLocalAUC(k, w, eps=eps, stochastic=True)
+        maxLocalAuc.maxIterations = 5
         #maxLocalAuc.numProcesses = 1
+        maxLocalAuc.recordStep = 1
+        maxLocalAuc.validationSize = 3
         
         maxLocalAuc.modelSelect(X)
             
 
-    @unittest.skip("")
+    #@unittest.skip("")
     def testLearningRateSelect(self): 
         m = 10 
         n = 20 
-        k = 2 
-        numInds = 100
-        X = SparseUtils.generateSparseLowRank((m, n), k, numInds)
+        k = 5 
         
-        X = X/X
+        u = 0.5
+        w = 1-u
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, w, csarray=True)
         
-        u= 0.1
         eps = 0.001
         maxLocalAuc = MaxLocalAUC(k, u, eps=eps)
         maxLocalAuc.rate = "optimal"
-        maxLocalAuc.maxIterations = 200
+        maxLocalAuc.maxIterations = 5
         
         maxLocalAuc.learningRateSelect(X)
 

@@ -1,7 +1,7 @@
 import unittest
 import numpy
 import numpy.testing as nptst
-from sandbox.util.CythonUtils import inverseChoicePy, choicePy
+from sandbox.util.CythonUtils import inverseChoicePy, choicePy, dotPy
 
 class  CythonUtilsTest(unittest.TestCase):
     def testInverseChoicePy(self):
@@ -9,7 +9,7 @@ class  CythonUtilsTest(unittest.TestCase):
         a = numpy.array(numpy.random.randint(0, n, 50), numpy.int32)
         a = numpy.unique(a)
 
-        numRuns = 100 
+        numRuns = 1000 
         for i in range(numRuns): 
             j = inverseChoicePy(a, n)
             self.assertTrue(j not in a)
@@ -43,6 +43,17 @@ class  CythonUtilsTest(unittest.TestCase):
         
         nptst.assert_array_almost_equal(numpy.bincount(sample)/float(runs), probs, 2)
         
+    def testDotPy(self): 
+        m = 10 
+        n = 20 
+        k = 5 
+
+        U = numpy.random.rand(m, k)
+        V = numpy.random.rand(n, k)
+
+        for i in range(m): 
+            for j in range(n): 
+                self.assertAlmostEquals(U[i, :].dot(V[j, :]), dotPy(U, i, V, j, k))
         
 if __name__ == '__main__':
     unittest.main()

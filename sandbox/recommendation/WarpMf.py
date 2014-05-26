@@ -4,7 +4,7 @@ import logging
 import multiprocessing 
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
-from sandbox.recommendation.MaxLocalAUCCython import  localAUCApprox
+from sandbox.util.MCEvaluator import  MCEvaluator
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.Util import Util 
 from mrec.mf.warp import WARPMFRecommender
@@ -22,7 +22,7 @@ def localAucsLmbdas(args):
         U, V = learner.learnModel(trainX)
         
         r = SparseUtilsCython.computeR(U, V, 1-learner.u, learner.numAucSamples)
-        localAucs[j] = localAUCApprox(testX, U, V, testOmegaList, learner.numAucSamples, r) 
+        localAucs[j] = MCEvaluator.localAUCApprox(testX, U, V, testOmegaList, learner.numAucSamples, r) 
         logging.debug("Local AUC: " + str(localAucs[j]) + " with k = " + str(learner.k) + " and lmbda= " + str(learner.lmbda))
         
     return localAucs

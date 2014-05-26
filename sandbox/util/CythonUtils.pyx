@@ -42,6 +42,8 @@ cdef inline double dot(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int
         result += e1*e2
     return result
 
+def dotPy(U, i, V, j, k): 
+    return dot(U, i, V, j, k)
 
 cdef inline double normRow(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, unsigned int k):
     """

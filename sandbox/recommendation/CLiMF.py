@@ -12,7 +12,7 @@ from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.PathDefaults import PathDefaults
 from sandbox.util.Sampling import Sampling
 from sandbox.util.SparseUtils import SparseUtils
-from sandbox.recommendation.MaxLocalAUCCython import localAUCApprox
+from sandbox.util.MCEvaluator import  MCEvaluator
 from sandbox.recommendation.RecommenderUtils import computeTestPrecision
 
 import itertools
