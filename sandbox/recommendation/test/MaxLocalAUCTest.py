@@ -253,7 +253,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc.modelSelect(X)
             
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testLearningRateSelect(self): 
         m = 10 
         n = 20 
@@ -316,15 +316,23 @@ class MaxLocalAUCTest(unittest.TestCase):
     def testOmegaProbsTopZ(self):
         m = 10 
         n = 20
+        u = 0.5
+        w = 1-u
         p  = 5
-        X = SparseUtils.generateSparseBinaryMatrix((m, n), p, csarray=True)
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), p, w, csarray=True)
         
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
+        
+        X2 = numpy.zeros((m, n))
+        for i in range(m): 
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            X2[i, omegai] = 1
+            
+        nptst.assert_array_equal(X.toarray(), X2)
 
-        u= 0.1
         eps = 0.001
         k = 10 
-        maxLocalAuc = MaxLocalAUC(k, u, alpha=5.0, eps=eps)
+        maxLocalAuc = MaxLocalAUC(k, w, alpha=5.0, eps=eps)
         
         U, V = maxLocalAuc.initUV(X)
         
@@ -338,12 +346,13 @@ class MaxLocalAUCTest(unittest.TestCase):
             self.assertAlmostEquals(omegaiProbs[-1], 1)
             
             vals = Z[i, omegai]
+            
             sortedVals = numpy.flipud(numpy.sort(vals))
             ri = sortedVals[min(maxLocalAuc.z, sortedVals.shape[0])-1]
-
             probs = numpy.zeros(omegai.shape[0])
             probs[vals >= ri] = 1
             probs /= probs.sum()
+            
             probs = numpy.cumsum(probs)
             nptst.assert_array_almost_equal(probs, omegaiProbs)
 
