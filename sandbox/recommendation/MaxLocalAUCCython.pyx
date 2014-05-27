@@ -310,85 +310,6 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
     
     return deltaTheta
 
-def derivativeXii(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] xi, unsigned int i, double lmbda, double C, bint normalise):
-    """
-    Find  delta phi/delta u_i using the hinge loss.  
-    """
-    cdef unsigned int p, q, j
-    cdef unsigned int k = U.shape[1]
-    cdef double uivp, uivq, gamma, zeta, deltaTheta
-    cdef unsigned int m = U.shape[0], n = V.shape[0], numOmegai, numOmegaBari
-    cdef numpy.ndarray[int, ndim=1, mode="c"] omegai
-    cdef numpy.ndarray[int, ndim=1, mode="c"] omegaBari
-      
-    omegai = colInds[indPtr[i]:indPtr[i+1]]
-    omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.int32), omegai, assume_unique=True)
-    numOmegai = omegai.shape[0]
-    numOmegaBari = n-numOmegai
-    
-    deltaTheta = 0
-    
-    if numOmegai * numOmegaBari != 0:         
-        for p in omegai:             
-            for q in omegaBari: 
-                uivp = dot(U, i, V, p, k)
-                uivq = dot(U, i, V, q, k)
-                
-                gamma = uivp - uivq
-                zeta = 1 - gamma - xi[i]
-                                
-                if zeta > 0: 
-                    deltaTheta -= zeta
-                
-        deltaTheta /= float(numOmegai * numOmegaBari * m)
-    
-    deltaTheta += C/m
-    
-    return deltaTheta
-
-def derivativeXiiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] xi, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples,  double lmbda, double C, bint normalise):
-    """
-    Find an approximation of delta phi/delta u_i using the simple objective without 
-    sigmoid functions. 
-    """
-    cdef unsigned int p, q
-    cdef unsigned int k = U.shape[1]    
-    cdef unsigned int m = U.shape[0], n = V.shape[0], numOmegai, numOmegaBari
-    cdef double uivp, uivq, gamma, zeta, deltaTheta 
-    cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] omegaProbsi
-    cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
-    cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
-                
-    omegai = colInds[indPtr[i]:indPtr[i+1]]
-    omegaProbsi = colIndsCumProbs[indPtr[i]:indPtr[i+1]]
-    numOmegai = omegai.shape[0]
-    numOmegaBari = n-numOmegai
-    
-    deltaTheta = 0
-    
-    if numOmegai * numOmegaBari != 0: 
-        omegaiSample = choice(omegai, numAucSamples, omegaProbsi) 
-        #omegaiSample = choice(omegai, numAucSamples, computeOmegaProbs(i, omegai, U, V))
-        #omegaiSample = numpy.random.choice(omegai, numAucSamples, p=numpy.r_[omegaProbsi[0], numpy.diff(omegaProbsi)])
-        
-        for p in omegaiSample:
-            q = inverseChoice(omegai, n) 
-        
-            uivp = dot(U, i, V, p, k)
-            uivq = dot(U, i, V, q, k)
-            
-            gamma = uivp - uivq
-            zeta = 1 - gamma - xi[i]
-            
-            if zeta > 0: 
-                deltaTheta -= zeta 
-            
-        deltaTheta /= float(omegaiSample.shape[0] * m)
-    
-    deltaTheta += C/m 
-
-    return deltaTheta
-
 def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[double, ndim=1, mode="c"] xi, numpy.ndarray[double, ndim=1, mode="c"] muXi, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, unsigned int ind, double sigma, unsigned int numRowSamples, unsigned int numAucSamples, double w, double lmbda, double C, bint normalise): 
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]    
@@ -405,8 +326,6 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
         
         j = permutedColInds[(ind + s) % n]
         dVj = derivativeViApprox(indPtr, colInds, colIndsCumProbs, U, V, xi, j, numRowSamples, numAucSamples, lmbda, C, normalise)
-
-        dXii = derivativeXiiApprox(indPtr, colInds, colIndsCumProbs, U, V, xi, i, numRowSamples, numAucSamples, lmbda, C, normalise)
 
         plusEquals(U, i, -sigma*dUi, k)
         

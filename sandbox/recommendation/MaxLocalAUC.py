@@ -128,8 +128,8 @@ class MaxLocalAUC(object):
         lastObj = 0
         obj = 2
         
-        xi = numpy.ones(m)*0.5   
-        #xi = numpy.zeros(m) 
+        #xi = numpy.ones(m)*0.5   
+        xi = numpy.zeros(m) 
         
         muU = U.copy() 
         muV = V.copy()
