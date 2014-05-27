@@ -18,6 +18,20 @@ cdef extern from "math.h":
     bint isnan(double x)  
     double sqrt(double x)
 
+cdef computeOmegaProbs(unsigned int i, numpy.ndarray[int, ndim=1, mode="c"] omegai, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V): 
+    cdef numpy.ndarray[double, ndim=1, mode="c"] uiVOmegai
+    cdef numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs
+    cdef double ri, z = 5
+    
+    uiVOmegai = U[i, :].T.dot(V[omegai, :].T)
+    #Check this line when omegai.shape < z 
+    ri = numpy.sort(uiVOmegai)[-min(z, uiVOmegai.shape[0])]
+    colIndsCumProbs = numpy.array(uiVOmegai >= ri, numpy.float)
+    colIndsCumProbs /= colIndsCumProbs.sum()
+    colIndsCumProbs = numpy.cumsum(colIndsCumProbs)
+    
+    return colIndsCumProbs
+
 def derivativeUi(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] xi, unsigned int i, double lmbda, double C, bint normalise):
     """
     Find  delta phi/delta u_i using the hinge loss.  
@@ -111,6 +125,7 @@ def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
     
     if numOmegai * numOmegaBari != 0: 
         omegaiSample = choice(omegai, numAucSamples, omegaProbsi)   
+        #omegaiSample = choice(omegai, numAucSamples, computeOmegaProbs(i, omegai, U, V))
         #omegaiSample = numpy.random.choice(omegai, numAucSamples, p=numpy.r_[omegaProbsi[0], numpy.diff(omegaProbsi)])
         
         for p in omegaiSample:
@@ -267,6 +282,7 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
             uivq = dot(U, i, V, q, k)
             nu = 1 + uivq - xii
             omegaiSample = choice(omegai, numAucSamples, omegaProbsi)
+            #omegaiSample = choice(omegai, numAucSamples, computeOmegaProbs(i, omegai, U, V))
             #omegaiSample = numpy.random.choice(omegai, numAucSamples, p=numpy.r_[omegaProbsi[0], numpy.diff(omegaProbsi)])
 
             for p in omegaiSample: 
@@ -352,6 +368,7 @@ def derivativeXiiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
     
     if numOmegai * numOmegaBari != 0: 
         omegaiSample = choice(omegai, numAucSamples, omegaProbsi) 
+        #omegaiSample = choice(omegai, numAucSamples, computeOmegaProbs(i, omegai, U, V))
         #omegaiSample = numpy.random.choice(omegai, numAucSamples, p=numpy.r_[omegaProbsi[0], numpy.diff(omegaProbsi)])
         
         for p in omegaiSample:
