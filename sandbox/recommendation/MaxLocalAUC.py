@@ -21,6 +21,7 @@ def computeObjective(args):
     X, U, V, maxLocalAuc  = args 
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
     obj = trainObjs[-1]
+
         
     logging.debug("Final objective: " + str(obj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
     return obj
@@ -383,17 +384,21 @@ class MaxLocalAUC(object):
                     maxLocalAuc.alpha = alpha 
                     paramList.append((X, U, V, maxLocalAuc))
                     
-        pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-        resultsIterator = pool.imap(computeObjective, paramList, self.chunkSize)
-        #import itertools
-        #resultsIterator = itertools.imap(computeObjective, paramList)
+        if self.numProcesses != 1: 
+            pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
+            resultsIterator = pool.imap(computeObjective, paramList, self.chunkSize)
+        else: 
+            import itertools
+            resultsIterator = itertools.imap(computeObjective, paramList)
         
         for k in range(numInitalUVs):
             for i, t0 in enumerate(self.t0s): 
                 for j, alpha in enumerate(self.alphas):  
                     objectives[i, j] += resultsIterator.next()
             
-        pool.terminate()
+        if self.numProcesses != 1: 
+            pool.terminate()
+            
         objectives /= float(numInitalUVs)   
         logging.debug("t0s=" + str(self.t0s))
         logging.debug("alphas=" + str(self.alphas))
