@@ -30,7 +30,7 @@ def computeTestAuc(args):
     
     U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
     muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
-    logging.debug("Weighted local AUC: " + str(muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
+    logging.debug("Weighted local AUC: " + str('%.4f' % muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
         
     return muAuc
     
@@ -42,7 +42,7 @@ def computeTestPrecision(args):
     testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, maxLocalAuc.validationSize, trainX)
     precision = MCEvaluator.precisionAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, maxLocalAuc.validationSize)
 
-    logging.debug("Precision@" + str(maxLocalAuc.validationSize) + ": " + str(precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
+    logging.debug("Precision@" + str(maxLocalAuc.validationSize) + ": " + str('%.4f' % precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
         
     return precision
       
