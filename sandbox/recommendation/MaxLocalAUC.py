@@ -81,7 +81,7 @@ class MaxLocalAUC(object):
         
         self.normalise = True
         self.lmbda = lmbda 
-        self.rho = 0.00 #Penalty on soft margin slack variables xi 
+        self.rho = 1.00 #Penalise low rank elements 
         
         self.recordStep = 20
         self.numRowSamples = 20
