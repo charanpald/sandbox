@@ -251,7 +251,7 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]
     cdef unsigned int s = 0
-    cdef double uivp, uivq,  betaScale, normTheta, gamma, kappa, nu, nuPrime, hGamma, hKappa
+    cdef double uivp, uivq,  betaScale, normTheta, gamma, kappa, nu, nuPrime, hGamma, hKappa, zeta
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] omegaProbsi
@@ -280,9 +280,10 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
                 #gamma = uivp - uivq
                 
                 hGamma = nu + uivq 
+                zeta = hGamma*hKappa
                                 
-                if hGamma > 0 and hKappa > 0: 
-                    betaScale += hGamma*hKappa**2 + hGamma**2*hKappa*rho
+                if zeta > 0: 
+                    betaScale += zeta*hKappa + hGamma*zeta*rho
                 
             deltaBeta = scale(U, i, -betaScale/(numOmegai*numAucSamples), k)
         else:
@@ -300,8 +301,10 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
                 hGamma = nu - uivp
                 hKappa = nuPrime - rho*uivp
                 
-                if hGamma > 0 and hKappa > 0: 
-                    betaScale += hGamma*hKappa**2
+                zeta = hGamma*hKappa
+                
+                if zeta > 0: 
+                    betaScale += zeta*hKappa
 
             if numOmegai != 0:
                 deltaBeta = scale(U, i, betaScale/(omegaiSample.shape[0]*numOmegaBari), k)  
