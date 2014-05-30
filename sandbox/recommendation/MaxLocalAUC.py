@@ -85,8 +85,8 @@ class MaxLocalAUC(object):
         self.rho = 1.00 #Penalise low rank elements 
         
         self.recordStep = 20
-        self.numRowSamples = 20
-        self.numAucSamples = 50
+        self.numRowSamples = 100
+        self.numAucSamples = 10
         self.numRecordAucSamples = 500
         #1 iterations is a complete run over the dataset (i.e. m gradients)
         self.maxIterations = 50
@@ -105,8 +105,8 @@ class MaxLocalAUC(object):
         self.metric = "auc"
 
         #Learning rate selection 
-        self.alphas = 2.0**-numpy.arange(0, 9, 1)
-        self.t0s = numpy.logspace(-1, -4, 6, base=10)
+        self.t0s = 10**-numpy.arange(2, 5, 0.5)
+        self.alphas = 2.0**-numpy.arange(-1, 3, 0.5)
     
     def learnModel(self, X, verbose=False, U=None, V=None, testX=None): 
         """
