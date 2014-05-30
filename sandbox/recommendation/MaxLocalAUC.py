@@ -100,8 +100,7 @@ class MaxLocalAUC(object):
         self.folds = 2 
         self.validationSize = 3
         self.ks = 2**numpy.arange(3, 8)
-        self.lmbdas = 2.0**-numpy.arange(1, 10, 2)
-        self.rhos = 2.0**-numpy.arange(-1, 10, 2)
+        self.lmbdas = 2.0**-numpy.arange(-1, 6)
         self.metric = "auc"
 
         #Learning rate selection 
@@ -420,7 +419,7 @@ class MaxLocalAUC(object):
         """
         m, n = X.shape
         trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize)
-        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], self.rhos.shape[0], len(trainTestXs)))
+        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection with test leave out per row of " + str(self.validationSize))
         paramList = []        
@@ -431,13 +430,11 @@ class MaxLocalAUC(object):
             for icv, (trainX, testX) in enumerate(trainTestXs):
                 U, V = self.initUV(trainX)
                 for j, lmbda in enumerate(self.lmbdas): 
-                    for s, rho in enumerate(self.rhos):
-                        maxLocalAuc = self.copy()
-                        maxLocalAuc.k = k    
-                        maxLocalAuc.lmbda = lmbda
-                        maxLocalAuc.rho = rho 
-                    
-                        paramList.append((trainX, testX, U.copy(), V.copy(), maxLocalAuc))
+                    maxLocalAuc = self.copy()
+                    maxLocalAuc.k = k    
+                    maxLocalAuc.lmbda = lmbda
+                
+                    paramList.append((trainX, testX, U.copy(), V.copy(), maxLocalAuc))
             
         logging.debug("Set parameters")
         if self.numProcesses != 1: 
@@ -456,25 +453,22 @@ class MaxLocalAUC(object):
         for i, k in enumerate(self.ks):
             for icv in range(len(trainTestXs)): 
                 for j, lmbda in enumerate(self.lmbdas): 
-                    for s, rho in enumerate(self.rhos):
-                        testAucs[i, j, s, icv] = resultsIterator.next()
+                    testAucs[i, j, icv] = resultsIterator.next()
         
         if self.numProcesses != 1: 
             pool.terminate()
         
-        meanTestMetrics = numpy.mean(testAucs, 3)
-        stdTestMetrics = numpy.std(testAucs, 3)
+        meanTestMetrics = numpy.mean(testAucs, 2)
+        stdTestMetrics = numpy.std(testAucs, 2)
         
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdas=" + str(self.lmbdas)) 
-        logging.debug("rhos=" + str(self.rhos)) 
         logging.debug("Mean metrics =" + str(meanTestMetrics))
         
         self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[0]]
         self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
-        self.rho = self.rhos[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[2]]
 
-        logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho) + " max=" + str(numpy.max(meanTestMetrics)))
+        logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda) + " max=" + str(numpy.max(meanTestMetrics)))
          
         return meanTestMetrics, stdTestMetrics
   
