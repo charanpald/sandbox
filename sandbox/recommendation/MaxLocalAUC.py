@@ -13,6 +13,7 @@ from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
 from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
 from sandbox.recommendation.WeightedMf import WeightedMf
+from sandbox.misc.RandomisedSVD import RandomisedSVD
 
 def computeObjective(args): 
     """
@@ -174,7 +175,7 @@ class MaxLocalAUC(object):
                     testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
                     testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, X)
                     precision = MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.z)                      
-                printStr = "Iteration: " + str(ind)
+                printStr = "Iteration: " + str(ind/m)
                 printStr += " LAUC~" + str('%.4f' % trainAucs[-1]) 
                 printStr += " obj~" + str('%.4f' % trainObjs[-1]) 
                 if testX != None:
@@ -244,11 +245,9 @@ class MaxLocalAUC(object):
             U = numpy.random.randn(m, self.k)
             V = numpy.random.randn(n, self.k)
         elif self.initialAlg == "svd":
-            logging.debug("Initialising with SVD")
-            try: 
-                U, s, V = SparseUtils.svdPropack(X, self.k, kmax=numpy.min([self.k*15, m-1, n-1]))
-            except ImportError: 
-                U, s, V = SparseUtils.svdArpack(X, self.k)
+            logging.debug("Initialising with Randomised SVD")
+            U, s, V = RandomisedSVD.svd(X, self.k)
+            U = U*s
         elif self.initialAlg == "softimpute": 
             logging.debug("Initialising with softimpute")
             trainIterator = iter([X.toScipyCsc()])
