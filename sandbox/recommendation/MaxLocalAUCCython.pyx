@@ -339,7 +339,7 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
 
     for s in range(m):
         if s % 1000 == 0: 
-            print(str(s/m) + " ", end="")
+            print(str(s) + " ", end="")
             
         i = permutedRowInds[(ind + s) % m]
         dUi = derivativeUiApprox(indPtr, colInds, colIndsCumProbs, U, V, r, i, numRowSamples, numAucSamples, lmbda, rho, normalise)
@@ -369,7 +369,7 @@ def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[i
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]
     cdef unsigned int i, j, k, p, q
-    cdef double uivp, uivq, gamma, kappa
+    cdef double uivp, uivq, gamma, kappa, ri, partialObj, hGamma, hKappa, zeta
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] allOmegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
@@ -399,10 +399,12 @@ def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[i
                 hGamma = 1 - gamma
                                 
                 kappa = rho*(uivp - ri) 
-                hKappa = 1-kappa
+                hKappa = 1 - kappa
                 
-                if hGamma > 0 and hKappa > 0: 
-                    partialObj += hGamma**2 * hKappa**2
+                zeta = hGamma**2 * hKappa**2
+                
+                if zeta > 0: 
+                    partialObj += zeta
                 
             objVector[i] = partialObj/float(omegaiSample.shape[0])
     
