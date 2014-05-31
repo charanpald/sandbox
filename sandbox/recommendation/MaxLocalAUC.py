@@ -85,7 +85,7 @@ class MaxLocalAUC(object):
         self.lmbda = lmbda 
         self.rho = 1.00 #Penalise low rank elements 
         
-        self.recordStep = 20
+        self.recordStep = 5
         self.numRowSamples = 100
         self.numAucSamples = 10
         self.numRecordAucSamples = 500
@@ -160,7 +160,7 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
             
-            if ind % self.recordStep == 0: 
+            if (ind/m) % self.recordStep == 0: 
                 r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
                 objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, full=True)
                 #userProbs = numpy.array(objArr > objArr.mean(), numpy.float)
@@ -214,7 +214,7 @@ class MaxLocalAUC(object):
             testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))          
             
         totalTime = time.time() - startTime
-        printStr = "Total iterations: " + str(ind)
+        printStr = "Total iterations: " + str(ind/m)
         printStr += " time=" + str('%.1f' % totalTime) 
         printStr += " LAUC~" + str('%.4f' % trainAucs[-1]) 
         printStr += " obj~" + str('%.4f' % trainObjs[-1]) 
@@ -496,7 +496,7 @@ class MaxLocalAUC(object):
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
         outputStr += " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho) + " numProcesses=" + str(self.numProcesses) + " validationSize=" + str(self.validationSize)
-        outputStr += " sampling=" + str(self.sampling) + " z=" + str(self.z)
+        outputStr += " sampling=" + str(self.sampling) + " z=" + str(self.z) + " recordStep=" + str(self.recordStep)
         
         return outputStr 
 
