@@ -2,12 +2,14 @@
 #cython: boundscheck=False
 #cython: wraparound=False
 #cython: nonecheck=False
+from __future__ import print_function
 import cython
 from cython.parallel import parallel, prange
 cimport numpy
 import numpy
 from sandbox.util.CythonUtils cimport dot, scale, choice, inverseChoice, uniformChoice, plusEquals
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
+
 
 from libc.stdlib cimport rand
 cdef extern from "limits.h":
@@ -336,6 +338,9 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
     cdef numpy.ndarray[double, ndim=1, mode="c"] r = SparseUtilsCython.computeR(U, V, w, 200)
 
     for s in range(m):
+        if s % 1000 == 0: 
+            print(str(s/m) + " ", end="")
+            
         i = permutedRowInds[(ind + s) % m]
         dUi = derivativeUiApprox(indPtr, colInds, colIndsCumProbs, U, V, r, i, numRowSamples, numAucSamples, lmbda, rho, normalise)
         
