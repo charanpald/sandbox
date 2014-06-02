@@ -14,12 +14,11 @@ def computeTestPrecision(args):
     """
     trainX, testX, learner = args 
     p = learner.validationSize 
-    testOmegaList = SparseUtils.getOmegaList(testX)
         
     learner.learnModel(trainX)
     
     testOrderedItems = MCEvaluatorCython.recommendAtk(learner.U, learner.V, p, trainX)
-    precision = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)
+    precision = MCEvaluator.precisionAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.validationSize) 
     logging.debug("Precision@" + str(learner.validationSize) +  ": " + str('%.4f' % precision) + " " + str(learner))
         
     return precision
