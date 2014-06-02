@@ -75,7 +75,6 @@ def learnPredictPrecision(args):
     p = learner.validationSize 
     
     precisions = numpy.zeros(rhos.shape[0])
-    testOmegaList = SparseUtils.getOmegaList(testX)
     
     for j, Z in enumerate(ZIter): 
         U, s, V = Z
@@ -84,7 +83,7 @@ def learnPredictPrecision(args):
         V = numpy.ascontiguousarray(V)
         
         testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, p, trainX)
-        precisions[j] = MCEvaluator.precisionAtK(testX, testOrderedItems, p, omegaList=testOmegaList)
+        precisions[j] = MCEvaluator.precisionAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.validationSize) 
         logging.debug("Precision@" + str(learner.validationSize) +  ": " + str('%.4f' % precisions[j]) + " " + str(learner))
         gc.collect()
         

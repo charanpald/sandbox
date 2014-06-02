@@ -627,7 +627,11 @@ class SparseUtils(object):
         Returns two arrays omega, indPtr, such that omega[indPtr[i]:indPtr[i+1]] 
         is the set of nonzero elements in the ith row of X. Only works on sppy 
         matrices. 
-        """        
+        """
+        if scipy.sparse.issparse(X): 
+            import sppy
+            X = sppy.csarray(X)
+        
         indPtr, colInds = X.nonzeroRowsPtr()
         return indPtr, colInds
         
