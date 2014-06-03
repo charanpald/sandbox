@@ -41,7 +41,7 @@ def derivativeUi(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int,
     cdef unsigned int p, q
     cdef unsigned int k = U.shape[1]
     cdef double uivp, uivq, gamma, kappa, ri
-    cdef double  normDeltaTheta, hGamma, hKappa 
+    cdef double  normDeltaTheta, hGamma, hKappa, vpScale
     cdef unsigned int m = U.shape[0], n = V.shape[0], numOmegai, numOmegaBari
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegaBari 
@@ -165,7 +165,7 @@ def derivativeVi(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int,
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0], ind
     cdef unsigned int s = 0
-    cdef double uivp, uivq,  betaScale, ri, normTheta
+    cdef double uivp, uivq,  betaScale, ri, normTheta, gamma, kappa, hGamma, hKappa
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
