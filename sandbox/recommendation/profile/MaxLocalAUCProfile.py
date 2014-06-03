@@ -15,25 +15,23 @@ class MaxLocalAUCProfile(object):
         numpy.random.seed(21)        
         
         #Create a low rank matrix  
-        m = 1000 
-        n = 500 
-        self.k = 10 
+        m = 500
+        n = 200
+        self.k = 8 
         self.X = SparseUtils.generateSparseBinaryMatrix((m, n), self.k, csarray=True)
         
         
     def profileLearnModel(self):
         #Profile full gradient descent 
-        m = 100 
-        n = 50 
-        self.k = 10 
-        self.X = SparseUtils.generateSparseBinaryMatrix((m, n), self.k, csarray=True)    
-    
-        rho = 0.00001
-        u = 0.5
-        eps = 0.01
-        sigma = 100
-        maxLocalAuc = MaxLocalAUC(rho, self.k, u, sigma=sigma, eps=eps, stochastic=False)
-        maxLocalAuc.maxIterations = 100
+        u = 0.2
+        w = 1-u
+        eps = 10**-6
+        alpha = 0.5
+        maxLocalAuc = MaxLocalAUC(self.k, w, alpha=alpha, eps=eps, stochastic=False)
+        maxLocalAuc.maxIterations = 10
+        maxLocalAuc.initialAlg = "svd"
+        maxLocalAuc.rate = "optimal"
+        print(maxLocalAuc)
                 
         ProfileUtils.profile('maxLocalAuc.learnModel(self.X)', globals(), locals())
 
@@ -103,7 +101,7 @@ class MaxLocalAUCProfile(object):
         ProfileUtils.profile('run()', globals(), locals())
 
 profiler = MaxLocalAUCProfile()
-#profiler.profileLearnModel()  
-profiler.profileLearnModel2()
+profiler.profileLearnModel()  
+#profiler.profileLearnModel2()
 #profiler.profileLocalAucApprox()
 #profiler.profileRandomChoice()
