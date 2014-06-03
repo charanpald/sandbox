@@ -161,7 +161,7 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
             
-            if (loopInd/m) % self.recordStep == 0: 
+            if loopInd % self.recordStep == 0: 
                 r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
                 objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, full=True)
                 #userProbs = numpy.array(objArr > objArr.mean(), numpy.float)
@@ -421,23 +421,28 @@ class MaxLocalAUC(object):
         """
         m, n = X.shape
         trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize)
-        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
+        testAucs = numpy.zeros((self.alphas.shape[0], self.t0s.shape[0], self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection with test leave out per row of " + str(self.validationSize))
         paramList = []        
         
-        for i, k in enumerate(self.ks): 
-            self.k = k
-            
-            for icv, (trainX, testX) in enumerate(trainTestXs):
-                U, V = self.initUV(trainX)
-                for j, lmbda in enumerate(self.lmbdas): 
-                    maxLocalAuc = self.copy()
-                    maxLocalAuc.k = k    
-                    maxLocalAuc.lmbda = lmbda
+        
+        for s, alpha in enumerate(self.alphas): 
+            for r, t0 in enumerate(self.t0s):
+                for i, k in enumerate(self.ks): 
+                    self.k = k
+                    
+                    for icv, (trainX, testX) in enumerate(trainTestXs):
+                        U, V = self.initUV(trainX)
+                        for j, lmbda in enumerate(self.lmbdas): 
+                            maxLocalAuc = self.copy()
+                            maxLocalAuc.k = k    
+                            maxLocalAuc.lmbda = lmbda
+                            maxLocalAuc.alpha = alpha
+                            maxLocalAuc.t0 = t0
+                        
+                            paramList.append((trainX, testX, U.copy(), V.copy(), maxLocalAuc))
                 
-                    paramList.append((trainX, testX, U.copy(), V.copy(), maxLocalAuc))
-            
         logging.debug("Set parameters")
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
@@ -452,25 +457,32 @@ class MaxLocalAUC(object):
             elif self.metric == "precision": 
                 resultsIterator = itertools.imap(computeTestPrecision, paramList)
         
-        for i, k in enumerate(self.ks):
-            for icv in range(len(trainTestXs)): 
-                for j, lmbda in enumerate(self.lmbdas): 
-                    testAucs[i, j, icv] = resultsIterator.next()
+        for s, alpha in enumerate(self.alphas): 
+            for r, t0 in enumerate(self.t0s): 
+                for i, k in enumerate(self.ks):
+                    for icv in range(len(trainTestXs)): 
+                        for j, lmbda in enumerate(self.lmbdas): 
+                            testAucs[s, r, i, j, icv] = resultsIterator.next()
         
         if self.numProcesses != 1: 
             pool.terminate()
         
-        meanTestMetrics = numpy.mean(testAucs, 2)
-        stdTestMetrics = numpy.std(testAucs, 2)
+        meanTestMetrics = numpy.mean(testAucs, 4)
+        stdTestMetrics = numpy.std(testAucs, 4)
         
+        logging.debug("alphas=" + str(self.alphas)) 
+        logging.debug("t0s=" + str(self.t0s)) 
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdas=" + str(self.lmbdas)) 
         logging.debug("Mean metrics =" + str(meanTestMetrics))
         
-        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[0]]
-        self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
+        self.alpha = self.alphas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[0]]
+        self.lmbda = self.t0s[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
+        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[2]]
+        self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[3]]
 
-        logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda) + " max=" + str(numpy.max(meanTestMetrics)))
+        logging.debug(self)
+        logging.debug("Model max=" + str(numpy.max(meanTestMetrics)))
          
         return meanTestMetrics, stdTestMetrics
   
