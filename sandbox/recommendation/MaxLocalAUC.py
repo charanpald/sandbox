@@ -138,7 +138,8 @@ class MaxLocalAUC(object):
         testObjs = []
         testAucs = []
         
-        ind = 0
+        loopInd = 0
+        gradientInd = 0
         
         #Convert to a csarray for faster access 
         if scipy.sparse.issparse(X):
@@ -152,15 +153,15 @@ class MaxLocalAUC(object):
         
         startTime = time.time()
     
-        while ind < self.maxIterations*m and abs(obj- lastObj) > self.eps:           
+        while loopInd < self.maxIterations and abs(obj- lastObj) > self.eps:           
             if self.rate == "constant": 
                 sigma = self.alpha 
             elif self.rate == "optimal":
-                sigma = self.alpha/((1 + self.alpha*self.t0*ind**self.beta))
+                sigma = self.alpha/((1 + self.alpha*self.t0*loopInd**self.beta))
             else: 
                 raise ValueError("Invalid rate: " + self.rate)
             
-            if (ind/m) % self.recordStep == 0: 
+            if (loopInd/m) % self.recordStep == 0: 
                 r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
                 objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, full=True)
                 #userProbs = numpy.array(objArr > objArr.mean(), numpy.float)
@@ -175,7 +176,7 @@ class MaxLocalAUC(object):
                     testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
                     testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, X)
                     precision = MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.z)                      
-                printStr = "Iteration: " + str(ind/m)
+                printStr = "Iteration: " + str(loopInd)
                 printStr += " LAUC~" + str('%.4f' % trainAucs[-1]) 
                 printStr += " obj~" + str('%.4f' % trainObjs[-1]) 
                 if testX != None:
@@ -197,12 +198,14 @@ class MaxLocalAUC(object):
             
             U  = numpy.ascontiguousarray(U)
             
-            self.updateUV(indPtr, colInds, U, V, lastU, lastV, muU, muV, permutedRowInds, permutedColInds, ind, sigma)                       
-                            
+            self.updateUV(indPtr, colInds, U, V, lastU, lastV, muU, muV, permutedRowInds, permutedColInds, gradientInd, sigma)                       
+                
+            loopInd += 1
+            
             if self.stochastic: 
-                ind += m
+                gradientInd = loopInd*m                
             else: 
-                ind += 1
+                gradientInd = loopInd
             
         #Compute quantities for last U and V 
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
@@ -214,7 +217,7 @@ class MaxLocalAUC(object):
             testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))          
             
         totalTime = time.time() - startTime
-        printStr = "Total iterations: " + str(ind/m)
+        printStr = "Total iterations: " + str(loopInd)
         printStr += " time=" + str('%.1f' % totalTime) 
         printStr += " LAUC~" + str('%.4f' % trainAucs[-1]) 
         printStr += " obj~" + str('%.4f' % trainObjs[-1]) 
@@ -230,7 +233,7 @@ class MaxLocalAUC(object):
         self.V = muV                  
                   
         if verbose:     
-            return muU, muV, numpy.array(trainObjs), numpy.array(trainAucs), numpy.array(testObjs), numpy.array(testAucs), ind, totalTime
+            return muU, muV, numpy.array(trainObjs), numpy.array(trainAucs), numpy.array(testObjs), numpy.array(testAucs), loopInd, totalTime
         else: 
             return muU, muV
       
