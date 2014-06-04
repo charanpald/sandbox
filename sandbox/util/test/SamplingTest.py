@@ -127,8 +127,30 @@ class  SamplingTest(unittest.TestCase):
             testX = trainTestXs[i][1]
                         
             nptst.assert_array_almost_equal(X.toarray(), (trainX+testX).toarray())
-            
             nptst.assert_array_equal(testX.sum(1), testSize*numpy.ones(m))
+            self.assertEquals(X.nnz, trainX.nnz + testX.nnz)
+        
+        trainTestXs = Sampling.shuffleSplitRows(X, k2, testSize, csarray=False)
+        for i in range(k2): 
+            trainX = trainTestXs[i][0]
+            testX = trainTestXs[i][1]
+                        
+            nptst.assert_array_almost_equal(X.toarray(), (trainX+testX).toarray())
+            
+            nptst.assert_array_equal(numpy.ravel(testX.sum(1)), testSize*numpy.ones(m))
+            self.assertEquals(X.nnz, trainX.nnz + testX.nnz)
+
+        testSize = 0
+        trainTestXs = Sampling.shuffleSplitRows(X, k2, testSize)
+        
+        for i in range(k2): 
+            trainX = trainTestXs[i][0]
+            testX = trainTestXs[i][1]
+                        
+            nptst.assert_array_almost_equal(X.toarray(), (trainX+testX).toarray())
+            nptst.assert_array_equal(testX.sum(1), testSize*numpy.ones(m))
+            self.assertEquals(X.nnz, trainX.nnz + testX.nnz)
+            self.assertEquals(testX.nnz, 0)
 
 if __name__ == '__main__':
     unittest.main()
