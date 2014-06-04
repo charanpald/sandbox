@@ -30,7 +30,7 @@ def computeObjective(args):
 def computeTestAuc(args): 
     trainX, testX, U, V, maxLocalAuc  = args 
     
-    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, U=U, V=V, verbose=True)
+    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, U=U, V=V, verbose=True)
     muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
     logging.debug("Weighted local AUC: " + str('%.4f' % muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
         
@@ -40,7 +40,7 @@ def computeTestPrecision(args):
     trainX, testX, U, V, maxLocalAuc = args 
     
     #logging.debug("About to learn")
-    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, testX=testX, verbose=True)
+    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, verbose=True)
     testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, maxLocalAuc.validationSize, trainX)
     precision = MCEvaluator.precisionAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, maxLocalAuc.validationSize)
 
@@ -200,7 +200,6 @@ class MaxLocalAUC(object):
                 
                 if precisions[-1] > bestPrecision: 
                     bestPrecision = precisions[-1]
-                    print(bestPrecision)
                     bestU = muU 
                     bestV = muV 
                 
