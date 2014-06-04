@@ -376,11 +376,9 @@ class MaxLocalAUC(object):
         paramList = []   
         logging.debug("t0s=" + str(self.t0s))
         logging.debug("alphas=" + str(self.alphas))
+        logging.debug(self)
         
-        if self.initialAlg == "rand": 
-            numInitalUVs = self.folds
-        else: 
-            numInitalUVs = 1
+        numInitalUVs = self.folds
             
         for k in range(numInitalUVs):
             U, V = self.initUV(X)
