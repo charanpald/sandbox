@@ -288,7 +288,7 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
                     betaScale += zeta*hKappa + hGamma*zeta*rho
                 
             deltaBeta = scale(U, i, -betaScale/(numOmegai*numAucSamples), k)
-        else:
+        elif numOmegai != 0:
             q = j 
             uivq = dot(U, i, V, q, k)
             nu = 1 + uivq 
@@ -364,7 +364,8 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
         else: 
             muU[i, :] = U[i, :]
             muV[j, :] = V[j, :]
-         
+                 
+        
 def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r, unsigned int numAucSamples, double lmbda, double rho, bint full=False):         
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]
