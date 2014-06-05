@@ -191,16 +191,17 @@ class Sampling(object):
         return indexList 
         
     @staticmethod 
-    def shuffleSplitRows(X, k, testSize, csarray=True, rowMajor=True): 
+    def shuffleSplitRows(X, k, testSize, numRows=None, csarray=True, rowMajor=True): 
         """
         Take a sparse binary matrix and create k number of train-test splits 
         in which the test split contains at most testSize elements and the train 
-        split contains the remaining elements from X. The splits are computed 
-        randomly. Returns sppy.csarray objects. 
+        split contains the remaining elements from X for each row. The splits are 
+        computed randomly. Returns sppy.csarray objects by default. 
         """
         import sppy 
         trainTestXList = []
         omegaList = SparseUtils.getOmegaList(X)
+        m, n = X.shape
         
         for i in range(k):
             trainInd = 0 
@@ -211,12 +212,22 @@ class Sampling(object):
             
             testRowInds = numpy.zeros(X.shape[0]*testSize, numpy.int32)
             testColInds = numpy.zeros(X.shape[0]*testSize, numpy.int32)
+
+            if numRows != None: 
+                rowSample = numpy.random.choice(m, numRows, replace=False)
+            else: 
+                rowSample = numpy.arange(m)
             
-            for j in range(X.shape[0]):
-                inds = numpy.random.permutation(omegaList[j].shape[0])
-                trainInds = inds[testSize:]
-                testInds = inds[0:testSize]
+            for j in range(m):
                 
+                if j in rowSample: 
+                    inds = numpy.random.permutation(omegaList[j].shape[0])
+                    trainInds = inds[testSize:]
+                    testInds = inds[0:testSize]
+                else: 
+                    trainInds = numpy.arange(omegaList[j].shape[0]) 
+                    testInds = numpy.array([], numpy.int)
+                    
                 trainRowInds[trainInd:trainInd+trainInds.shape[0]] = numpy.ones(trainInds.shape[0], dtype=numpy.uint)*j
                 trainColInds[trainInd:trainInd+trainInds.shape[0]] = omegaList[j][trainInds]
                 trainInd += trainInds.shape[0]
@@ -232,10 +243,15 @@ class Sampling(object):
             testColInds = testColInds[0:testInd]
             
             if csarray: 
-                trainX = sppy.csarray(X.shape,  dtype=numpy.int)
+                if rowMajor: 
+                    stype = "row" 
+                else: 
+                    stype = "col"
+                
+                trainX = sppy.csarray(X.shape,  dtype=numpy.int, storagetype=stype)
                 trainX.put(numpy.ones(trainRowInds.shape[0], numpy.int), trainRowInds, trainColInds, True)
                 
-                testX = sppy.csarray(X.shape,  dtype=numpy.int)
+                testX = sppy.csarray(X.shape,  dtype=numpy.int, storagetype=stype)
                 testX.put(numpy.ones(testRowInds.shape[0], numpy.int), testRowInds, testColInds, True)
             else: 
                 if rowMajor: 

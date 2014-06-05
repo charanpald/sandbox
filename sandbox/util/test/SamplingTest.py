@@ -120,15 +120,29 @@ class  SamplingTest(unittest.TestCase):
         
         k2 = 5 
         testSize = 2
-        trainTestXs = Sampling.shuffleSplitRows(X, k2, testSize)
+        trainTestXs = Sampling.shuffleSplitRows(X, k2, testSize, rowMajor=True)
         
         for i in range(k2): 
             trainX = trainTestXs[i][0]
             testX = trainTestXs[i][1]
                         
+            self.assertEquals(trainX.storagetype, "row")
+            self.assertEquals(testX.storagetype, "row")
             nptst.assert_array_almost_equal(X.toarray(), (trainX+testX).toarray())
             nptst.assert_array_equal(testX.sum(1), testSize*numpy.ones(m))
             self.assertEquals(X.nnz, trainX.nnz + testX.nnz)
+        
+        trainTestXs = Sampling.shuffleSplitRows(X, k2, testSize, rowMajor=False)
+        
+        for i in range(k2): 
+            trainX = trainTestXs[i][0]
+            testX = trainTestXs[i][1]
+                       
+            self.assertEquals(trainX.storagetype, "col")
+            self.assertEquals(testX.storagetype, "col")                       
+            nptst.assert_array_almost_equal(X.toarray(), (trainX+testX).toarray())
+            nptst.assert_array_equal(testX.sum(1), testSize*numpy.ones(m))
+            self.assertEquals(X.nnz, trainX.nnz + testX.nnz)        
         
         trainTestXs = Sampling.shuffleSplitRows(X, k2, testSize, csarray=False)
         for i in range(k2): 
@@ -151,6 +165,20 @@ class  SamplingTest(unittest.TestCase):
             nptst.assert_array_equal(testX.sum(1), testSize*numpy.ones(m))
             self.assertEquals(X.nnz, trainX.nnz + testX.nnz)
             self.assertEquals(testX.nnz, 0)
+            
+        #Test sampling a subset of the rows 
+        testSize = 2
+        numRows = 5
+        trainTestXs = Sampling.shuffleSplitRows(X, k2, testSize, numRows=numRows, rowMajor=False)
+
+        for i in range(k2): 
+            trainX = trainTestXs[i][0]
+            testX = trainTestXs[i][1]
+            
+            nptst.assert_array_almost_equal(X.toarray(), (trainX+testX).toarray())
+            self.assertEquals(numpy.nonzero(testX.sum(1))[0].shape[0], numRows)
+            self.assertEquals(X.nnz, trainX.nnz + testX.nnz)
+            self.assertEquals(testX.nnz, testSize*numRows)
 
 if __name__ == '__main__':
     unittest.main()
