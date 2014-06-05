@@ -367,6 +367,7 @@ class SparseUtilsCythonTest(unittest.TestCase):
             
             nptst.assert_array_almost_equal((X1+X2).toarray(), X.toarray()) 
     
+    @unittest.skip("")
     def testPruneMatrix(self): 
         m = 50 
         n = 30 
@@ -595,7 +596,34 @@ class SparseUtilsCythonTest(unittest.TestCase):
         
         for i in range(m):
             nptst.assert_array_almost_equal(omegaList[i], X.toarray()[i, :].nonzero()[0])
+    
+    def testGetOmegaListPtr(self): 
+        import sppy 
+        m = 10 
+        n = 5
+        X = scipy.sparse.rand(m, n, 0.1)
+        X = X.tocsr()
         
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
+
+        for i in range(m): 
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            nptst.assert_array_almost_equal(omegai, X.toarray()[i, :].nonzero()[0])
+        
+        Xsppy = sppy.csarray(X)
+        indPtr, colInds  = SparseUtils.getOmegaListPtr(Xsppy)
+        
+        for i in range(m):
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            nptst.assert_array_almost_equal(omegai, X.toarray()[i, :].nonzero()[0])
+        
+        #Test a zero array (scipy doesn't work in this case)
+        X = sppy.csarray((m,n))
+        
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
+   
+        for i in range(m): 
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
    
 if __name__ == '__main__':
     unittest.main()
