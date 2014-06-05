@@ -100,6 +100,7 @@ class MaxLocalAUC(object):
         #Model selection parameters 
         self.folds = 2 
         self.validationSize = 3
+        self.validationUsers = 100
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 2.0**-numpy.arange(-1, 6)
         self.metric = "auc"
@@ -120,7 +121,7 @@ class MaxLocalAUC(object):
             X = X2        
         
         #We keep a validation set in order to determine when to stop 
-        trainX, testX = Sampling.shuffleSplitRows(X, 1, self.validationSize)[0]  
+        trainX, testX = Sampling.shuffleSplitRows(X, 1, self.validationSize, numRows=self.validationUsers)[0]  
         
         m = trainX.shape[0]
         n = trainX.shape[1]
