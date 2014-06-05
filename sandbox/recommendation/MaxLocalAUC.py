@@ -100,7 +100,7 @@ class MaxLocalAUC(object):
         #Model selection parameters 
         self.folds = 2 
         self.validationSize = 3
-        self.validationUsers = 100
+        self.validationUsers = 0.2
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 2.0**-numpy.arange(-1, 6)
         self.metric = "auc"
@@ -121,8 +121,9 @@ class MaxLocalAUC(object):
             X = X2        
         
         #We keep a validation set in order to determine when to stop 
-        trainX, testX = Sampling.shuffleSplitRows(X, 1, self.validationSize, numRows=self.validationUsers)[0]  
-        
+        numValidationUsers = int(X.shape[0]*self.validationUsers)
+        trainX, testX, rowSamples = Sampling.shuffleSplitRows(X, 1, self.validationSize, numRows=numValidationUsers)[0]  
+
         m = trainX.shape[0]
         n = trainX.shape[1]
         indPtr, colInds = SparseUtils.getOmegaListPtr(trainX)
@@ -183,7 +184,8 @@ class MaxLocalAUC(object):
                 testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, allArray=(allIndPtr, allColInds)))
                 testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
                 testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.validationSize, trainX)
-                precisions.append(MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.validationSize))   
+                precisionArray, orderedItems = MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.validationSize, verbose=True)
+                precisions.append(precisionArray[rowSamples].mean())   
                    
                 printStr = "Iteration " + str(loopInd) + ":"
                 printStr += " sigma=" + str('%.4f' % sigma)
