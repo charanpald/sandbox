@@ -69,7 +69,7 @@ class MCEvaluator(object):
         precisions = MCEvaluatorCython.precisionAtk(indPtr, colInds, orderedItems)
         
         if verbose: 
-            return precisions.mean(), orderedItems
+            return precisions, orderedItems
         else: 
             return precisions.mean()
 
@@ -91,7 +91,7 @@ class MCEvaluator(object):
         recalls = MCEvaluatorCython.recallAtk(indPtr, colInds, orderedItems)
         
         if verbose: 
-            return recalls.mean(), orderedItems
+            return recalls, orderedItems
         else: 
             return recalls.mean()
 
