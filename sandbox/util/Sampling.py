@@ -261,7 +261,9 @@ class Sampling(object):
                     trainX = scipy.sparse.csc_matrix((numpy.ones(trainRowInds.shape[0], numpy.int), (trainRowInds, trainColInds)), shape=X.shape)
                     testX = scipy.sparse.csc_matrix((numpy.ones(testRowInds.shape[0], numpy.int), (testRowInds, testColInds)), shape=X.shape)
                     
-            
-            trainTestXList.append((trainX, testX))
+            if numRows == None: 
+                trainTestXList.append((trainX, testX))
+            else: 
+                trainTestXList.append((trainX, testX, rowSample))
         
         return trainTestXList 
