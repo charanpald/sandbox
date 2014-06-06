@@ -306,11 +306,11 @@ class MaxLocalAUC(object):
             
             updateUVApprox(indPtr, colInds, U, V, muU, muV, colIndsCumProbs, permutedRowInds, permutedColInds, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
 
-    def derivativeUi(self, indPtr, colInds, U, V, xi, i): 
+    def derivativeUi(self, indPtr, colInds, U, V, r, i): 
         """
         delta phi/delta u_i
         """
-        return derivativeUi(indPtr, colInds, U, V, xi, i, self.lmbda, self.rho, self.normalise)
+        return derivativeUi(indPtr, colInds, U, V, r, i, self.lmbda, self.rho, self.normalise)
         
     def derivativeVi(self, X, U, V, omegaList, i, r): 
         """
