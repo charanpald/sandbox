@@ -145,5 +145,60 @@ class SparseUtilsCythonTest(unittest.TestCase):
         
         self.assertTrue(numpy.linalg.norm(r-r2) < 0.5)
 
+    def testComputeR2(self): 
+        m = 10 
+        n = 15
+        U = numpy.random.rand(m, 5)
+        V = numpy.random.rand(n, 5)
+        
+        Z = U.dot(V.T)
+        
+        w = numpy.ones(m)*1.0
+        r = SparseUtilsCython.computeR2(U, V, w)
+               
+        tol = 0.1
+        self.assertTrue(numpy.linalg.norm(Z.max(1) - r)/numpy.linalg.norm(Z.max(1)) < tol)
+        
+        w =  numpy.zeros(m)
+        r = SparseUtilsCython.computeR2(U, V, w)
+        self.assertTrue(numpy.linalg.norm(Z.min(1) - r)/numpy.linalg.norm(Z.min(1)) < tol)
+        
+        w = numpy.zeros(m)
+        w[5:10] = 1
+        r = SparseUtilsCython.computeR2(U, V, w)
+        self.assertTrue(numpy.linalg.norm(Z[0:5, :].min(1) - r[0:5])/numpy.linalg.norm(Z[0:5, :].min(1)) < tol)
+        self.assertTrue(numpy.linalg.norm(Z[5:, :].max(1) - r[5:])/numpy.linalg.norm(Z[5:, :].min(1)) < tol)
+        
+        w =  numpy.ones(m)*0.3
+        r = SparseUtilsCython.computeR2(U, V, w) 
+        r2 = numpy.zeros(m)
+        for i in range(m): 
+            r2[i] = numpy.percentile(Z[i, :], w[i]*100.0)
+        nptst.assert_array_almost_equal(r, r2)
+        
+        w =  numpy.random.rand(m)
+        r = SparseUtilsCython.computeR2(U, V, w) 
+        r2 = numpy.zeros(m)
+
+        for i in range(m): 
+            r2[i] = numpy.percentile(Z[i, :], w[i]*100.0)
+        nptst.assert_array_almost_equal(r, r2)        
+        
+        #Try a larger matrix 
+        m = 100 
+        n = 105
+        U = numpy.random.rand(m, 5)
+        V = numpy.random.rand(n, 5)
+        
+        Z = U.dot(V.T)
+        w =  numpy.random.rand(m)
+        r = SparseUtilsCython.computeR2(U, V, w) 
+        r2 = numpy.zeros(m) 
+        for i in range(m): 
+            r2[i] = numpy.percentile(Z[i, :], w[i]*100.0)
+        
+        print(numpy.linalg.norm(r-r2)) 
+        self.assertTrue(numpy.linalg.norm(r-r2) < 0.7)
+
 if __name__ == '__main__':
     unittest.main()
