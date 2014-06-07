@@ -291,8 +291,8 @@ class MaxLocalAUC(object):
         """
         Find the derivative with respect to V or part of it. 
         """
-        r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)  
-        #r = SparseUtilsCython.computeR2(U, V, self.wv, self.numRecordAucSamples)
+        #r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)  
+        r = SparseUtilsCython.computeR2(U, V, self.wv, self.numRecordAucSamples)
         
         if not self.stochastic:               
             
