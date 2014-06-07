@@ -163,6 +163,7 @@ class MaxLocalAUC(object):
         permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
         
         startTime = time.time()
+        self.wv = 1 - X.sum(1)/float(n)
     
         while loopInd < self.maxIterations and abs(obj- lastObj) > self.eps:           
             if self.rate == "constant": 
@@ -290,7 +291,8 @@ class MaxLocalAUC(object):
         """
         Find the derivative with respect to V or part of it. 
         """
-        r = SparseUtilsCython.computeR(U, U, self.w, self.numRecordAucSamples)        
+        r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)  
+        #r = SparseUtilsCython.computeR2(U, V, self.wv, self.numRecordAucSamples)
         
         if not self.stochastic:               
             
