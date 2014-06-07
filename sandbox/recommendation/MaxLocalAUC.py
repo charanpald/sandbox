@@ -290,8 +290,10 @@ class MaxLocalAUC(object):
         """
         Find the derivative with respect to V or part of it. 
         """
+        r = SparseUtilsCython.computeR(U, U, self.w, self.numRecordAucSamples)        
+        
         if not self.stochastic:               
-            r = SparseUtilsCython.computeR(U, U, self.w, self.numRecordAucSamples)
+            
             updateU(indPtr, colInds, U, V, r, sigma, self.lmbda, self.rho, self.normalise)
             updateV(indPtr, colInds, U, V, r, sigma, self.lmbda, self.rho, self.normalise)
         else: 
@@ -304,7 +306,7 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Unknown sampling scheme: " + self.sampling)
             
-            updateUVApprox(indPtr, colInds, U, V, muU, muV, colIndsCumProbs, permutedRowInds, permutedColInds, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
+            updateUVApprox(indPtr, colInds, U, V, muU, muV, colIndsCumProbs, permutedRowInds, permutedColInds, ind, sigma, self.numRowSamples, self.numAucSamples, r, self.lmbda, self.rho, self.normalise)
 
     def derivativeUi(self, indPtr, colInds, U, V, r, i): 
         """
@@ -505,8 +507,8 @@ class MaxLocalAUC(object):
         outputStr = "MaxLocalAUC: k=" + str(self.k) + " eps=" + str(self.eps) 
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) 
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
-        outputStr += " w=" + str(self.w) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
-        outputStr += " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho) + " numProcesses=" + str(self.numProcesses) + " validationSize=" + str(self.validationSize)
+        outputStr += " w=" + str(self.w) + " rho=" + str(self.rho) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
+        outputStr += " lmbda=" + str(self.lmbda) +  " numProcesses=" + str(self.numProcesses) + " validationSize=" + str(self.validationSize)
         outputStr += " sampling=" + str(self.sampling) + " z=" + str(self.z) + " recordStep=" + str(self.recordStep)
         
         return outputStr 
