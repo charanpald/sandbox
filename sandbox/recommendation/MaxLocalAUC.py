@@ -190,13 +190,13 @@ class MaxLocalAUC(object):
                    
                 printStr = "Iteration " + str(loopInd) + ":"
                 printStr += " sigma=" + str('%.4f' % sigma)
-                printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(U))
-                printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(V))
                 printStr += " train: LAUC~" + str('%.4f' % trainAucs[-1]) 
                 printStr += " obj~" + str('%.4f' % trainObjs[-1]) 
                 printStr += " validation: LAUC~" + str('%.4f' % testAucs[-1])
                 printStr += " obj~" + str('%.4f' % testObjs[-1])
                 printStr += " p@" + str(self.validationSize) + "=" + str('%.4f' % precisions[-1])
+                printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(U))
+                printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(V))
                 logging.debug(printStr)
                 
                 lastObj = obj
@@ -232,12 +232,12 @@ class MaxLocalAUC(object):
         printStr = "Total iterations: " + str(loopInd)
         printStr += " time=" + str('%.1f' % totalTime) 
         printStr += " sigma=" + str('%.4f' % sigma)
-        printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(U))
-        printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(V))
         printStr += " train: LAUC~" + str('%.4f' % trainAucs[-1]) 
         printStr += " obj~" + str('%.4f' % trainObjs[-1]) 
         printStr += " test: LAUC~" + str('%.4f' % testAucs[-1])
         printStr += " obj~" + str('%.4f' % testObjs[-1])
+        printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(U))
+        printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(V))
         logging.debug(printStr)
          
         self.U = bestU 
@@ -291,11 +291,9 @@ class MaxLocalAUC(object):
         """
         Find the derivative with respect to V or part of it. 
         """
-        #r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)  
-        r = SparseUtilsCython.computeR2(U, V, self.wv, self.numRecordAucSamples)
-        
         if not self.stochastic:               
-            
+            r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)  
+            r = SparseUtilsCython.computeR2(U, V, self.wv, self.numRecordAucSamples)
             updateU(indPtr, colInds, U, V, r, sigma, self.lmbda, self.rho, self.normalise)
             updateV(indPtr, colInds, U, V, r, sigma, self.lmbda, self.rho, self.normalise)
         else: 
@@ -308,7 +306,7 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Unknown sampling scheme: " + self.sampling)
             
-            updateUVApprox(indPtr, colInds, U, V, muU, muV, colIndsCumProbs, permutedRowInds, permutedColInds, ind, sigma, self.numRowSamples, self.numAucSamples, r, self.lmbda, self.rho, self.normalise)
+            updateUVApprox(indPtr, colInds, U, V, muU, muV, colIndsCumProbs, permutedRowInds, permutedColInds, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
 
     def derivativeUi(self, indPtr, colInds, U, V, r, i): 
         """
