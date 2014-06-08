@@ -135,8 +135,6 @@ class MaxLocalAUC(object):
         if U==None or V==None:
             U, V = self.initUV(trainX)
         
-        lastU = numpy.random.rand(m, self.k)
-        lastV = numpy.random.rand(n, self.k)
         lastObj = 0
         obj = 2
         sigma = self.alpha
@@ -207,12 +205,9 @@ class MaxLocalAUC(object):
                     bestU = muU 
                     bestV = muV 
                 
-            lastU = U.copy() 
-            lastV = V.copy()
-            
             U  = numpy.ascontiguousarray(U)
             
-            self.updateUV(indPtr, colInds, U, V, lastU, lastV, muU, muV, permutedRowInds, permutedColInds, gradientInd, sigma)                       
+            self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gradientInd, sigma)                       
                 
             loopInd += 1
             
@@ -287,15 +282,18 @@ class MaxLocalAUC(object):
         
         return U, V
         
-    def updateUV(self, indPtr, colInds, U, V, lastU, lastV, muU, muV, permutedRowInds, permutedColInds, ind, sigma): 
+    def updateUV(self, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, ind, sigma): 
         """
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic:               
             r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)  
-            r = SparseUtilsCython.computeR2(U, V, self.wv, self.numRecordAucSamples)
+            #r = SparseUtilsCython.computeR2(U, V, self.wv, self.numRecordAucSamples)
             updateU(indPtr, colInds, U, V, r, sigma, self.lmbda, self.rho, self.normalise)
             updateV(indPtr, colInds, U, V, r, sigma, self.lmbda, self.rho, self.normalise)
+            
+            muU[:] = U[:] 
+            muV[:] = V[:]
         else: 
             if self.sampling == "uniform": 
                 colIndsCumProbs = self.omegaProbsUniform(indPtr, colInds, muU, muV)
