@@ -20,7 +20,7 @@ def computeObjective(args):
     Compute the objective for a particular parameter set. Used to set a learning rate. 
     """
     X, U, V, maxLocalAuc  = args 
-    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
+    U, V, trainObjs, trainAucs, testObjs, testAucs, precisions, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
     obj = trainObjs[-1]
 
         
@@ -30,7 +30,7 @@ def computeObjective(args):
 def computeTestAuc(args): 
     trainX, testX, U, V, maxLocalAuc  = args 
     
-    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, U=U, V=V, verbose=True)
+    U, V, trainObjs, trainAucs, testObjs, testAucs, precisions, iterations, totalTime = maxLocalAuc.learnModel(trainX, U=U, V=V, verbose=True)
     muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
     logging.debug("Weighted local AUC: " + str('%.4f' % muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
         
@@ -40,7 +40,7 @@ def computeTestPrecision(args):
     trainX, testX, U, V, maxLocalAuc = args 
     
     #logging.debug("About to learn")
-    U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, totalTime = maxLocalAuc.learnModel(trainX, verbose=True)
+    U, V, trainObjs, trainAucs, testObjs, testAucs, precisions, iterations, totalTime = maxLocalAuc.learnModel(trainX, verbose=True)
     testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, maxLocalAuc.validationSize, trainX)
     precision = MCEvaluator.precisionAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, maxLocalAuc.validationSize)
 
@@ -100,7 +100,7 @@ class MaxLocalAUC(object):
         #Model selection parameters 
         self.folds = 2 
         self.validationSize = 3
-        self.validationUsers = 0.2
+        self.validationUsers = 0.1
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 2.0**-numpy.arange(-1, 6)
         self.metric = "auc"
