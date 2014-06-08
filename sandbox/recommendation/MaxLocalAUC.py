@@ -202,7 +202,7 @@ class MaxLocalAUC(object):
                 lastObj = obj
                 obj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1, dtype=numpy.float)))
                 
-                if precisions[-1] > bestPrecision: 
+                if precisions[-1] >= bestPrecision: 
                     bestPrecision = precisions[-1]
                     bestU = muU 
                     bestV = muV 
@@ -244,9 +244,9 @@ class MaxLocalAUC(object):
         self.V = bestV
          
         if verbose:     
-            return bestU, bestV, numpy.array(trainObjs), numpy.array(trainAucs), numpy.array(testObjs), numpy.array(testAucs), loopInd, totalTime
+            return self.U, self.V, numpy.array(trainObjs), numpy.array(trainAucs), numpy.array(testObjs), numpy.array(testAucs), numpy.array(precisions), loopInd, totalTime
         else: 
-            return bestU, bestV
+            return self.U, self.V
       
     def predict(self, maxItems): 
         return MCEvaluator.recommendAtk(self.U, self.V, maxItems)
