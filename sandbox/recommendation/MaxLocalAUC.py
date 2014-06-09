@@ -95,7 +95,7 @@ class MaxLocalAUC(object):
         #Possible choices are uniform, top, rank 
         self.sampling = "uniform"
         #The number of items to use to compute precision, sample for probabilities etc.         
-        self.z = 1
+        self.z = 5
         
         #Model selection parameters 
         self.folds = 2 
@@ -182,8 +182,8 @@ class MaxLocalAUC(object):
                 trainAucs.append(MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r))
                 testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, allArray=(allIndPtr, allColInds)))
                 testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
-                testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.validationSize, trainX)
-                precisionArray, orderedItems = MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.validationSize, verbose=True)
+                testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, trainX)
+                precisionArray, orderedItems = MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.z, verbose=True)
                 precisions.append(precisionArray[rowSamples].mean())   
                    
                 printStr = "Iteration " + str(loopInd) + ":"
@@ -192,7 +192,7 @@ class MaxLocalAUC(object):
                 printStr += " obj~" + str('%.4f' % trainObjs[-1]) 
                 printStr += " validation: LAUC~" + str('%.4f' % testAucs[-1])
                 printStr += " obj~" + str('%.4f' % testObjs[-1])
-                printStr += " p@" + str(self.validationSize) + "=" + str('%.4f' % precisions[-1])
+                printStr += " p@" + str(self.z) + "=" + str('%.4f' % precisions[-1])
                 printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(U))
                 printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(V))
                 logging.debug(printStr)
@@ -202,6 +202,7 @@ class MaxLocalAUC(object):
                 
                 if precisions[-1] >= bestPrecision: 
                     bestPrecision = precisions[-1]
+                    #logging.debug("Best precision so far: " + str(bestPrecision))
                     bestU = muU 
                     bestV = muV 
                 
