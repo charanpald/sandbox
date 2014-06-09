@@ -344,10 +344,10 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
         r = SparseUtilsCython.computeR(U, V, w, numAucSamples)
             
         i = permutedRowInds[(ind + s) % m]
-        dUi = derivativeUiApprox(indPtr, colInds, colIndsCumProbs, U, V, r, i, numRowSamples, numAucSamples, lmbda, rho, normalise)
+        dUi = derivativeUiApprox(indPtr, colInds, colIndsCumProbs, U, V, r, i, numRowSamples, numAucSamples, 0, rho, normalise)
         
         j = permutedColInds[(ind + s) % n]
-        dVj = derivativeViApprox(indPtr, colInds, colIndsCumProbs, U, V, r, j, numRowSamples, numAucSamples, lmbda, rho, normalise)
+        dVj = derivativeViApprox(indPtr, colInds, colIndsCumProbs, U, V, r, j, numRowSamples, numAucSamples, 0, rho, normalise)
 
         plusEquals(U, i, -sigma*dUi, k)
         
@@ -357,7 +357,11 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
             U[i,:] = scale(U, i, 1/normUi, k)             
         
         plusEquals(V, j, -sigma*dVj, k)
-                        
+        
+        normVj = numpy.linalg.norm(V[j,:])        
+        if normVj != 0: 
+            V[j,:] = scale(V, j, lmbda/normVj, k)                  
+                
         ind2 = ind/m
         
         if ind2 > startAverage: 
@@ -412,7 +416,7 @@ def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[i
             objVector[i] = partialObj/float(omegaiSample.shape[0])
     
     objVector /= 2       
-    objVector +=  (lmbda/(2*m))*numpy.linalg.norm(V)**2
+    #objVector +=  (lmbda/(2*m))*numpy.linalg.norm(V)**2
     
     if full: 
         return objVector
@@ -458,7 +462,7 @@ def objective(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, nd
             objVector[i] = partialObj/float(omegai.shape[0]*omegaBari.shape[0])
     
     objVector /= 2       
-    objVector += (lmbda/(2*m))*numpy.linalg.norm(V)**2
+    #objVector += (lmbda/(2*m))*numpy.linalg.norm(V)**2
     
     if full: 
         return objVector
