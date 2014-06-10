@@ -186,6 +186,9 @@ class MaxLocalAUC(object):
                 precisionArray, orderedItems = MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.z, verbose=True)
                 precisions.append(precisionArray[rowSamples].mean())   
                    
+                if loopInd != 0: 
+                    print("")
+                   
                 printStr = "Iteration " + str(loopInd) + ":"
                 printStr += " sigma=" + str('%.4f' % sigma)
                 printStr += " train: LAUC~" + str('%.4f' % trainAucs[-1]) 
