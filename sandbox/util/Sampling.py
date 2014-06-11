@@ -267,3 +267,30 @@ class Sampling(object):
                 trainTestXList.append((trainX, testX, rowSample))
         
         return trainTestXList 
+        
+    @staticmethod 
+    def sampleUsers(X, k): 
+        """
+        Let's pick a sample of users from X such that each item has at least 2 
+        users
+        """
+        m, n = X.shape        
+        
+        if X.shape[0] <= k: 
+            return X 
+        else: 
+            itemInds = numpy.random.permutation(n)
+            userInds = numpy.array([], numpy.int32)
+            i = 0
+            
+            while len(userInds) < k and i < n: 
+                userInds = numpy.union1d(userInds, numpy.nonzero(X[:, itemInds[i]].sum(1))[0])
+
+                i += 1
+                
+            userInds = numpy.random.choice(userInds, min(k, userInds.shape[0]), replace=False)
+            userInds = numpy.sort(userInds)
+            
+            return X[userInds, :]
+        
+        

@@ -180,6 +180,34 @@ class  SamplingTest(unittest.TestCase):
             self.assertEquals(X.nnz, trainX.nnz + testX.nnz)
             self.assertEquals(testX.nnz, testSize*numRows)
 
+
+    def testSampleUsers(self): 
+        m = 10
+        n = 15
+        r = 5 
+        u = 0.3
+        w = 1-u
+        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), r, w, csarray=True, verbose=True, indsPerRow=200)
+
+        k = 50
+        X2 = Sampling.sampleUsers(X, k)
+
+        nptst.assert_array_equal(X.toarray(), X2.toarray())
+        
+        numRuns = 50
+        for i in range(numRuns): 
+            m = numpy.random.randint(10, 100)
+            n = numpy.random.randint(10, 100)
+            k = numpy.random.randint(10, 100)
+
+            X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), r, w, csarray=True, verbose=True, indsPerRow=200)
+
+            X2 = Sampling.sampleUsers(X, k)
+            
+            self.assertEquals(X2.shape[0], min(k, m))
+            self.assertTrue((X.dot(X.T)!=numpy.zeros((m, m)).all()))
+        
+
 if __name__ == '__main__':
     unittest.main()
 
