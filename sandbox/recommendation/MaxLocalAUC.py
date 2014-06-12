@@ -121,7 +121,7 @@ class MaxLocalAUC(object):
             X = X2        
         
         #We keep a validation set in order to determine when to stop 
-        numValidationUsers = int(X.shape[0]*self.validationUsers)
+        numValidationUsers = max(int(X.shape[0]*self.validationUsers), 2)
         trainX, testX, rowSamples = Sampling.shuffleSplitRows(X, 1, self.validationSize, numRows=numValidationUsers)[0]  
 
         m = trainX.shape[0]
