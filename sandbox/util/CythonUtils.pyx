@@ -56,7 +56,7 @@ cdef inline double normRow(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned
 
     return sqrt(result)
 
-cdef numpy.ndarray[double, ndim = 1, mode="c"] scale(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, double d, unsigned int k):
+cdef inline numpy.ndarray[double, ndim = 1, mode="c"] scale(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, double d, unsigned int k):
     """
     Computes U[i, :] * d where k is U.shape[1]
     """
@@ -82,7 +82,7 @@ cdef inline numpy.ndarray[double, ndim = 1, mode="c"] plusEquals1d(numpy.ndarray
     for s in range(k):
         u[s] = u[s] + d[s]
 
-cdef unsigned int getNonZeroRow(X, unsigned int i, unsigned int n):
+cdef inline unsigned int getNonZeroRow(X, unsigned int i, unsigned int n):
     """
     Find a random nonzero element in the ith row of X
     """
@@ -92,7 +92,7 @@ cdef unsigned int getNonZeroRow(X, unsigned int i, unsigned int n):
         q = numpy.random.randint(0, n)
     return q
 
-cdef unsigned int inverseChoice(numpy.ndarray[int, ndim=1, mode="c"] v, unsigned int n):
+cdef inline unsigned int inverseChoice(numpy.ndarray[int, ndim=1, mode="c"] v, unsigned int n):
     """
     Find a random nonzero element in the range 0:n not in v
     """
@@ -113,7 +113,7 @@ cdef unsigned int inverseChoice(numpy.ndarray[int, ndim=1, mode="c"] v, unsigned
 def inverseChoicePy(v, n): 
     return inverseChoice(v, n)
     
-cdef numpy.ndarray[int, ndim=1, mode="c"] choice(numpy.ndarray[int, ndim=1, mode="c"] inds, unsigned int numSamples, numpy.ndarray[double, ndim=1, mode="c"] cumProbs):
+cdef inline numpy.ndarray[int, ndim=1, mode="c"] choice(numpy.ndarray[int, ndim=1, mode="c"] inds, unsigned int numSamples, numpy.ndarray[double, ndim=1, mode="c"] cumProbs):
     """
     Given a list of numbers in inds, and associated cumulative probabilties, pick numSample 
     elements according to the probabilities. Note that probabilties must sum to 
@@ -132,7 +132,7 @@ cdef numpy.ndarray[int, ndim=1, mode="c"] choice(numpy.ndarray[int, ndim=1, mode
     
     return sampleArray
 
-cdef numpy.ndarray[int, ndim=1, mode="c"] uniformChoice(numpy.ndarray[int, ndim=1, mode="c"] inds, unsigned int numSamples):
+cdef inline numpy.ndarray[int, ndim=1, mode="c"] uniformChoice(numpy.ndarray[int, ndim=1, mode="c"] inds, unsigned int numSamples):
     """
     Given a list of numbers in inds, pick numSample elements uniformly randomly.
     """
