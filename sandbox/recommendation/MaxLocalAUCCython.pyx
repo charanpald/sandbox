@@ -50,7 +50,7 @@ cdef inline itemRank(numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[do
         rank += 1
         uivq = dot(U, i, V, q, k)
         
-        if rank >= numOmegaBari or uivq > uivp + 1: 
+        if rank >= numOmegaBari or uivq <= uivp - 1: 
             break 
         
     return rank+1
@@ -627,14 +627,14 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
     cdef unsigned int n = V.shape[0]    
     cdef unsigned int k = U.shape[1] 
     cdef unsigned int i, j, s, ind2
-    cdef unsigned int startAverage = 10
+    cdef unsigned int startAverage = 10, printStep = 1000
     cdef double normUi, beta=0.1
     cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(k)
     cdef numpy.ndarray[double, ndim=1, mode="c"] dVj = numpy.zeros(k)
     cdef numpy.ndarray[double, ndim=1, mode="c"] r 
 
     for s in range(m):
-        if s % 1000 == 0: 
+        if s % printStep == 0: 
             print(str(s) + " ", end="")
             
         r = SparseUtilsCython.computeR(U, V, w, numAucSamples)
