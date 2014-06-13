@@ -500,10 +500,10 @@ class MaxLocalAUC(object):
         V = numpy.ascontiguousarray(V)        
         
         if allArray == None: 
-            return objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, r, self.numRecordAucSamples, self.lmbda, self.rho, full=full)         
+            return objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, r, self.numRecordAucSamples, self.rho, full=full)         
         else:
             allIndPtr, allColInds = allArray
-            return objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, r, self.numRecordAucSamples, self.lmbda, self.rho, full=full)
+            return objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, r, self.numRecordAucSamples, self.rho, full=full)
   
     def __str__(self): 
         outputStr = "MaxLocalAUC: k=" + str(self.k) + " eps=" + str(self.eps) 
