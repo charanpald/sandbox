@@ -8,6 +8,7 @@ import sys
 import logging
 import scipy.sparse 
 from sandbox.util.SparseUtils import SparseUtils
+from sandbox.util.SparseUtilsCython import SparseUtilsCython
 from sandbox.util.Util import Util 
 from sandbox.util.MCEvaluator import MCEvaluator 
 from sandbox.recommendation.SoftImpute import SoftImpute 
@@ -456,6 +457,36 @@ class SparseUtilsCythonTest(unittest.TestCase):
         #nptst.assert_array_almost_equal(X.toarray(), numpy.ones((m,n)))
         
         nptst.assert_array_equal(Xcsarray, Xscipy)
+        
+        #Test variation in the quantiles 
+        w = 0.7
+        X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), k, w, sd=0.1, csarray=True, verbose=True)
+        
+        Z = (U*s).dot(V.T)
+        X2 = numpy.zeros((m, n))
+        r2 = numpy.zeros(m)
+        for i in range(m): 
+            r2[i] = numpy.percentile(numpy.sort(Z[i, :]), wv[i]*100)
+            X2[i, Z[i, :]>r2[i]] = 1 
+        r = SparseUtilsCython.computeR2(U*s, V, wv)
+
+        nptst.assert_array_almost_equal(X.toarray(), X2)
+        nptst.assert_array_almost_equal(r, r2)
+        
+        #Test a larger standard deviation
+        w = 0.7
+        X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), k, w, sd=0.5, csarray=True, verbose=True)
+        
+        Z = (U*s).dot(V.T)
+        X2 = numpy.zeros((m, n))
+        r2 = numpy.zeros(m)
+        for i in range(m): 
+            r2[i] = numpy.percentile(numpy.sort(Z[i, :]), wv[i]*100)
+            X2[i, Z[i, :]>=r2[i]] = 1 
+        r = SparseUtilsCython.computeR2(U*s, V, wv)
+
+        nptst.assert_array_almost_equal(X.toarray(), X2)
+        nptst.assert_array_almost_equal(r, r2)
         
     def testEquals(self):
         A = numpy.array([[4, 2, 1], [6, 3, 9], [3, 6, 0]])

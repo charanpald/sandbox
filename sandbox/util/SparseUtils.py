@@ -509,7 +509,7 @@ class SparseUtils(object):
 
 
     @staticmethod
-    def generateSparseBinaryMatrix(shape, p, w=0.9, csarray=False, verbose=False, indsPerRow=50):
+    def generateSparseBinaryMatrix(shape, p, w=0.9, sd=0, csarray=False, verbose=False, indsPerRow=50):
         """
         Create an underlying matrix Z = UsV.T of rank p and then go through each row 
         and threshold so that a proportion quantile numbers are kept. The final matrix 
@@ -520,7 +520,10 @@ class SparseUtils(object):
         U, s, V = SparseUtils.generateLowRank(shape, p)
         
         X = (U*s).dot(V.T)
-        r = SparseUtilsCython.computeR((U*s), V, w, indsPerRow=indsPerRow)
+        
+        wv = numpy.random.randn(m)*sd + w
+        wv = numpy.clip(wv, 0, 1)
+        r = SparseUtilsCython.computeR2((U*s), V, wv, indsPerRow=indsPerRow)
         
         for i in range(m):
             X[i, X[i, :] >= r[i]] = 1
@@ -533,7 +536,7 @@ class SparseUtils(object):
             X = scipy.sparse.csr_matrix(X)
             
         if verbose: 
-            return X, U, s, V 
+            return X, U, s, V, wv 
         else: 
             return X
 
