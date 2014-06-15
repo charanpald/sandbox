@@ -314,13 +314,13 @@ class MaxLocalAUC(object):
         """
         delta phi/delta u_i
         """
-        return derivativeUi(indPtr, colInds, U, V, r, i, self.lmbda, self.rho, self.normalise)
+        return derivativeUi(indPtr, colInds, U, V, r, i, self.rho, self.normalise)
         
     def derivativeVi(self, X, U, V, omegaList, i, r): 
         """
         delta phi/delta v_i
         """
-        return derivativeVi(X, U, V, omegaList, i, r, self.lmbda, self.rho, self.normalise)           
+        return derivativeVi(X, U, V, omegaList, i, r, self.rho, self.normalise)           
 
     def omegaProbsUniform(self, indPtr, colInds, U, V): 
         """

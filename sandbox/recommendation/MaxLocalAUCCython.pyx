@@ -91,10 +91,11 @@ def derivativeUi(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int,
                 hGamma = 1-gamma 
                 
                 if hGamma > 0 and hKappa > 0: 
-                    vpScale -= hGamma*(hKappa**2) + (hGamma**2)*hKappa*rho
-                    deltaTheta += V[q, :]*hGamma*(hKappa**2)
+                    #vpScale -= hGamma*(hKappa**2) + (hGamma**2)*hKappa*rho
+                    #deltaTheta += V[q, :]*hGamma*(hKappa**2)
+                    deltaTheta += (V[q, :] - V[p, :])*hGamma*tanh(hKappa) - V[p, :]*(rho/2)*(hGamma**2)*(1 - tanh(hKappa)**2)
                 
-            deltaTheta += V[p, :]*vpScale 
+            #deltaTheta += V[p, :]*vpScale 
                 
         deltaTheta /= float(numOmegai * numOmegaBari * m)
                     
@@ -165,7 +166,8 @@ def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
             hKappa = 1 - kappa
             
             if hGamma > 0 and hKappa > 0:             
-                deltaTheta += V[q, :]*hGamma*hKappa**2 - V[p, :]*(hGamma*(hKappa**2) + (hGamma**2)*hKappa*rho)  
+                deltaTheta += V[q, :]*hGamma*hKappa**2 - V[p, :]*(hGamma*(hKappa**2) + (hGamma**2)*hKappa*rho) 
+                #deltaTheta += (V[q, :] - V[p, :])*hGamma*tanh(hKappa) - V[p, :]*(rho/2)*(hGamma**2)*(1 - tanh(hKappa)**2)
             
         deltaTheta /= float(omegaiSample.shape[0] * m)
                     
@@ -380,7 +382,8 @@ def derivativeVi(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int,
                 hKappa = 1-kappa
 
                 if hGamma > 0 and hKappa>0: 
-                    betaScale += hGamma*hKappa**2 + hGamma**2*hKappa*rho
+                    #betaScale += hGamma*hKappa**2 + hGamma**2*hKappa*rho
+                    betaScale += hGamma*tanh(hKappa) + (rho/2)*hGamma**2 * (1- tanh(hKappa)**2) 
 
             deltaBeta = scale(U, i, -betaScale/(numOmegai*numOmegaBari), k)
         else:
@@ -396,7 +399,8 @@ def derivativeVi(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int,
                 hKappa = 1-kappa
                 
                 if hGamma > 0 and hKappa>0:   
-                    betaScale += hGamma*hKappa**2
+                    #betaScale += hGamma*hKappa**2
+                    betaScale += hGamma * tanh(hKappa)
 
             if numOmegai != 0:
                 deltaBeta = scale(U, i, betaScale/(numOmegai*numOmegaBari), k)  
@@ -704,7 +708,7 @@ def derivativeViApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
             p = j 
             uivp = dot(U, i, V, p, k)
             nu = 1 - uivp
-            hKappa = max(1 - rho*(uivp - ri), 0)
+            hKappa = 1 - rho*(uivp - ri)
 
             for s in range(numAucSamples): 
                 q = inverseChoice(omegai, n)
@@ -713,12 +717,8 @@ def derivativeViApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
                 
                 hGamma = nu + uivq 
                                 
-                if hGamma > 0: 
-                    betaScale += hGamma*tanh(hKappa) 
-                    
-                    if hKappa > 0: 
-                        betaScale += (rho/2)*hGamma**2 * (1- tanh(hKappa)**2)
-                        
+                if hGamma > 0 and hKappa > 0: 
+                    betaScale += hGamma*tanh(hKappa) + (rho/2)*hGamma**2 * (1- tanh(hKappa)**2)                        
                 
             deltaBeta = scale(U, i, -betaScale/(numOmegai*numAucSamples), k)
         elif numOmegai != 0:
@@ -734,10 +734,9 @@ def derivativeViApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
                 uivp = dot(U, i, V, p, k)
                 #gamma = uivp - uivq
                 hGamma = nu - uivp
-                hKappa = max(nuPrime - rho*uivp, 0)
+                hKappa = nuPrime - rho*uivp
                 
-                
-                if hGamma > 0: 
+                if hGamma > 0 and hKappa > 0: 
                     betaScale += hGamma*tanh(hKappa)
 
             if numOmegai != 0:
@@ -812,7 +811,7 @@ def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[i
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]
     cdef unsigned int i, j, k, p, q
-    cdef double uivp, uivq, gamma, kappa, ri, partialObj, hGamma, hKappa, zeta, beta=0.1
+    cdef double uivp, uivq, gamma, kappa, ri, partialObj, hGamma, hKappa, zeta
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] allOmegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
@@ -841,14 +840,15 @@ def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[i
                 gamma = uivp - uivq
                 hGamma = 1 - gamma
                                 
-                kappa = max(rho*(uivp - ri), beta) 
+                kappa = rho*(uivp - ri)
                 hKappa = 1 - kappa
                 
-                zeta = hGamma**2 * hKappa**0.5
+                #zeta = hGamma**2 * hKappa**0.5
                 
-                if zeta > 0: 
-                    partialObj += zeta
-                
+                if hGamma > 0 and hKappa > 0: 
+                    #partialObj += hGamma**2 * hKappa**2
+                    partialObj += hGamma**2 * tanh(hKappa)
+            
             objVector[i] = partialObj/float(omegaiSample.shape[0])
     
     objVector /= 2       
@@ -892,7 +892,8 @@ def objective(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, nd
                     hGamma = 1-gamma
                     
                     if hGamma > 0 and hKappa > 0: 
-                        partialObj += hGamma**2 * hKappa**2
+                        #partialObj += hGamma**2 * hKappa**2
+                        partialObj += hGamma**2 * tanh(hKappa)
                 
             objVector[i] = partialObj/float(omegai.shape[0]*omegaBari.shape[0])
     

@@ -75,11 +75,11 @@ class MaxLocalAUCTest(unittest.TestCase):
                 for j in range(k):
                     tempU = U.copy() 
                     tempU[i,j] += eps
-                    obj1 = objective(indPtr, colInds, indPtr, colInds, tempU, V, r, maxLocalAuc.lmbda, maxLocalAuc.rho, False)
+                    obj1 = objective(indPtr, colInds, indPtr, colInds, tempU, V, r, maxLocalAuc.rho, False)
                     
                     tempU = U.copy() 
                     tempU[i,j] -= eps
-                    obj2 = objective(indPtr, colInds, indPtr, colInds, tempU, V, r, maxLocalAuc.lmbda, maxLocalAuc.rho, False)
+                    obj2 = objective(indPtr, colInds, indPtr, colInds, tempU, V, r,  maxLocalAuc.rho, False)
                     
                     deltaU2[i,j] = (obj1-obj2)/(2*eps)
     
@@ -105,11 +105,11 @@ class MaxLocalAUCTest(unittest.TestCase):
                 for j in range(k):
                     tempU = U.copy() 
                     tempU[i,j] += eps
-                    obj1 = objective(indPtr, colInds, indPtr, colInds, tempU, V, r, maxLocalAuc.lmbda, maxLocalAuc.rho, False)
+                    obj1 = objective(indPtr, colInds, indPtr, colInds, tempU, V, r,  maxLocalAuc.rho, False)
                     
                     tempU = U.copy() 
                     tempU[i,j] -= eps
-                    obj2 = objective(indPtr, colInds, indPtr, colInds, tempU, V, r, maxLocalAuc.lmbda, maxLocalAuc.rho, False)
+                    obj2 = objective(indPtr, colInds, indPtr, colInds, tempU, V, r,  maxLocalAuc.rho, False)
                     
                     deltaU2[i,j] = (obj1-obj2)/(2*eps)
                                 
@@ -132,11 +132,11 @@ class MaxLocalAUCTest(unittest.TestCase):
                 for j in range(k):
                     tempU = U.copy() 
                     tempU[i,j] += eps
-                    obj1 = objective(indPtr, colInds, indPtr, colInds, tempU, V, r, maxLocalAuc.lmbda, maxLocalAuc.rho, False)
+                    obj1 = objective(indPtr, colInds, indPtr, colInds, tempU, V, r, maxLocalAuc.rho, False)
                     
                     tempU = U.copy() 
                     tempU[i,j] -= eps
-                    obj2 = objective(indPtr, colInds, indPtr, colInds, tempU, V, r, maxLocalAuc.lmbda, maxLocalAuc.rho, False)
+                    obj2 = objective(indPtr, colInds, indPtr, colInds, tempU, V, r, maxLocalAuc.rho, False)
                     
                     deltaU2[i,j] = (obj1-obj2)/(2*eps)
                                 
@@ -173,17 +173,17 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             deltaV2 = numpy.zeros(V.shape)    
             
-            eps = 0.0001        
+            eps = 0.00001        
             
             for i in range(n): 
                 for j in range(k):
                     tempV = V.copy() 
                     tempV[i,j] += eps
-                    obj1 = objective(indPtr, colInds, indPtr, colInds, U, tempV, r, maxLocalAuc.lmbda, maxLocalAuc.rho, False)
+                    obj1 = objective(indPtr, colInds, indPtr, colInds, U, tempV, r, maxLocalAuc.rho, False)
                     
                     tempV = V.copy() 
                     tempV[i,j] -= eps
-                    obj2 = objective(indPtr, colInds, indPtr, colInds, U, tempV, r, maxLocalAuc.lmbda, maxLocalAuc.rho, False)
+                    obj2 = objective(indPtr, colInds, indPtr, colInds, U, tempV, r, maxLocalAuc.rho, False)
                     
                     deltaV2[i,j] = (obj1-obj2)/(2*eps)
                 #deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])                   
@@ -207,11 +207,11 @@ class MaxLocalAUCTest(unittest.TestCase):
                 for j in range(k):
                     tempV = V.copy() 
                     tempV[i,j] += eps
-                    obj1 = objective(indPtr, colInds, indPtr, colInds, U, tempV, r, maxLocalAuc.lmbda, maxLocalAuc.rho, False)
+                    obj1 = objective(indPtr, colInds, indPtr, colInds, U, tempV, r,  maxLocalAuc.rho, False)
                     
                     tempV = V.copy() 
                     tempV[i,j] -= eps
-                    obj2 = objective(indPtr, colInds, indPtr, colInds, U, tempV, r, maxLocalAuc.lmbda, maxLocalAuc.rho, False)
+                    obj2 = objective(indPtr, colInds, indPtr, colInds, U, tempV, r,  maxLocalAuc.rho, False)
                     
                     deltaV2[i,j] = (obj1-obj2)/(2*eps)
                 #deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])
@@ -235,11 +235,11 @@ class MaxLocalAUCTest(unittest.TestCase):
                 for j in range(k):
                     tempV = V.copy() 
                     tempV[i,j] += eps
-                    obj1 = objective(indPtr, colInds, indPtr, colInds, U, tempV, r, maxLocalAuc.lmbda, maxLocalAuc.rho, False)
+                    obj1 = objective(indPtr, colInds, indPtr, colInds, U, tempV, r, maxLocalAuc.rho, False)
                     
                     tempV = V.copy() 
                     tempV[i,j] -= eps
-                    obj2 = objective(indPtr, colInds, indPtr, colInds, U, tempV, r, maxLocalAuc.lmbda, maxLocalAuc.rho, False)
+                    obj2 = objective(indPtr, colInds, indPtr, colInds, U, tempV, r, maxLocalAuc.rho, False)
                     
                     deltaV2[i,j] = (obj1-obj2)/(2*eps)
                 #deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])
