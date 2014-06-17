@@ -109,9 +109,9 @@ class MCEvaluatorCython(object):
             
             if nOmegai * (n-nOmegai) != 0: 
                 partialAuc = 0    
-                #omegaiSample = uniformChoice(omegai, numAucSamples)  
+                omegaiSample = uniformChoice(omegai, numAucSamples)  
                 #omegaiSample = numpy.random.choice(omegai, numAucSamples)
-                omegaiSample = omegai
+                #omegaiSample = omegai
                 
                 for p in omegaiSample:                
                     q = inverseChoice(allOmegai, n)                
