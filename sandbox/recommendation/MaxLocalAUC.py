@@ -85,7 +85,7 @@ class MaxLocalAUC(object):
         self.lmbda = lmbda 
         self.rho = 1.00 #Penalise low rank elements 
         
-        self.recordStep = 5
+        self.recordStep = 10
         self.numRowSamples = 100
         self.numAucSamples = 10
         self.numRecordAucSamples = 500

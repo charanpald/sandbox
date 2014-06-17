@@ -51,6 +51,7 @@ class MaxLocalAUCProfile(object):
         maxLocalAuc.numAucSamples = 10
         maxLocalAuc.maxIterations = 10
         maxLocalAuc.numRecordAucSamples = 100
+        maxLocalAuc.recordStep = 10
         maxLocalAuc.initialAlg = "rand"
         maxLocalAuc.rate = "optimal"
                 
