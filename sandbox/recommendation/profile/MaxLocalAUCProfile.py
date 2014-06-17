@@ -7,6 +7,7 @@ from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.Sampling import Sampling
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
+from wallhack.rankingexp.DatasetUtils import DatasetUtils
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
@@ -37,6 +38,8 @@ class MaxLocalAUCProfile(object):
 
     def profileLearnModel2(self):
         #Profile stochastic case 
+        X, U, V = DatasetUtils.syntheticDataset1(n=20000)
+    
         rho = 0.00
         u = 0.2
         w = 1-u
@@ -51,11 +54,11 @@ class MaxLocalAUCProfile(object):
         maxLocalAuc.initialAlg = "rand"
         maxLocalAuc.rate = "optimal"
                 
-        trainTestX = Sampling.shuffleSplitRows(self.X, maxLocalAuc.folds, 5)
+        trainTestX = Sampling.shuffleSplitRows(X, maxLocalAuc.folds, 5)
         trainX, testX = trainTestX[0]
 
         def run(): 
-            U, V, trainObjs, trainAucs, testObjs, testAucs, iterations, time = maxLocalAuc.learnModel(trainX, True)  
+            U, V, trainObjs, trainAucs, testObjs, testAucs, precisions, iterations, time = maxLocalAuc.learnModel(trainX, True)  
             #logging.debug("Train Precision@5=" + str(MCEvaluator.precisionAtK(trainX, U, V, 5)))
             #logging.debug("Train Precision@10=" + str(MCEvaluator.precisionAtK(trainX, U, V, 10)))
             #logging.debug("Train Precision@20=" + str(MCEvaluator.precisionAtK(trainX, U, V, 20)))
@@ -101,7 +104,7 @@ class MaxLocalAUCProfile(object):
         ProfileUtils.profile('run()', globals(), locals())
 
 profiler = MaxLocalAUCProfile()
-profiler.profileLearnModel()  
-#profiler.profileLearnModel2()
+#profiler.profileLearnModel()  
+profiler.profileLearnModel2()
 #profiler.profileLocalAucApprox()
 #profiler.profileRandomChoice()
