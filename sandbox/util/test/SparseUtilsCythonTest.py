@@ -20,6 +20,8 @@ class SparseUtilsCythonTest(unittest.TestCase):
         U, s, V = numpy.linalg.svd(Y)
         V = V.T 
         
+        V = numpy.ascontiguousarray(V)
+        
         rowInds, colInds = numpy.nonzero(Y)  
         rowInds = numpy.array(rowInds, numpy.int32)
         colInds = numpy.array(colInds, numpy.int32)
@@ -56,6 +58,8 @@ class SparseUtilsCythonTest(unittest.TestCase):
             
             U, s, V = numpy.linalg.svd(Y,  full_matrices=0)
             V = V.T 
+            
+            V = numpy.ascontiguousarray(V)
             
             rowInds, colInds = numpy.nonzero(Y)  
             rowInds = numpy.array(rowInds, numpy.int32)
@@ -120,19 +124,20 @@ class SparseUtilsCythonTest(unittest.TestCase):
         Z = U.dot(V.T)
         
         u = 1.0
-        r = SparseUtilsCython.computeR(U, V, u)
+        r = SparseUtilsCython.computeR(U, V, u, indsPerRow=1000)
                
         tol = 0.1
         self.assertTrue(numpy.linalg.norm(Z.max(1) - r)/numpy.linalg.norm(Z.max(1)) < tol)
         
         u = 0.0
-        r = SparseUtilsCython.computeR(U, V, u)
+        r = SparseUtilsCython.computeR(U, V, u, indsPerRow=1000)
         self.assertTrue(numpy.linalg.norm(Z.min(1) - r)/numpy.linalg.norm(Z.min(1)) < tol)
         
         u = 0.3
-        r = SparseUtilsCython.computeR(U, V, u) 
+        r = SparseUtilsCython.computeR(U, V, u, indsPerRow=1000) 
         r2 = numpy.percentile(Z, u*100.0, 1)
-        nptst.assert_array_almost_equal(r, r2)
+        #nptst.assert_array_almost_equal(r, r2, 2)
+        self.assertTrue(numpy.linalg.norm(r - r2)/numpy.linalg.norm(r) < tol)
         
         #Try a larger matrix 
         U = numpy.random.rand(100, 5)
@@ -154,27 +159,27 @@ class SparseUtilsCythonTest(unittest.TestCase):
         Z = U.dot(V.T)
         
         w = numpy.ones(m)*1.0
-        r = SparseUtilsCython.computeR2(U, V, w)
+        r = SparseUtilsCython.computeR2(U, V, w, indsPerRow=1000)
                
         tol = 0.1
         self.assertTrue(numpy.linalg.norm(Z.max(1) - r)/numpy.linalg.norm(Z.max(1)) < tol)
         
         w =  numpy.zeros(m)
-        r = SparseUtilsCython.computeR2(U, V, w)
+        r = SparseUtilsCython.computeR2(U, V, w, indsPerRow=1000)
         self.assertTrue(numpy.linalg.norm(Z.min(1) - r)/numpy.linalg.norm(Z.min(1)) < tol)
         
         w = numpy.zeros(m)
         w[5:10] = 1
-        r = SparseUtilsCython.computeR2(U, V, w)
+        r = SparseUtilsCython.computeR2(U, V, w, indsPerRow=1000)
         self.assertTrue(numpy.linalg.norm(Z[0:5, :].min(1) - r[0:5])/numpy.linalg.norm(Z[0:5, :].min(1)) < tol)
         self.assertTrue(numpy.linalg.norm(Z[5:, :].max(1) - r[5:])/numpy.linalg.norm(Z[5:, :].min(1)) < tol)
         
         w =  numpy.ones(m)*0.3
-        r = SparseUtilsCython.computeR2(U, V, w) 
+        r = SparseUtilsCython.computeR2(U, V, w, indsPerRow=1000) 
         r2 = numpy.zeros(m)
         for i in range(m): 
             r2[i] = numpy.percentile(Z[i, :], w[i]*100.0)
-        nptst.assert_array_almost_equal(r, r2)
+        self.assertTrue(numpy.linalg.norm(r2 - r)/numpy.linalg.norm(r2) < tol)
         
         w =  numpy.random.rand(m)
         r = SparseUtilsCython.computeR2(U, V, w) 
@@ -182,7 +187,7 @@ class SparseUtilsCythonTest(unittest.TestCase):
 
         for i in range(m): 
             r2[i] = numpy.percentile(Z[i, :], w[i]*100.0)
-        nptst.assert_array_almost_equal(r, r2)        
+        self.assertTrue(numpy.linalg.norm(r2 - r)/numpy.linalg.norm(r2) < tol)       
         
         #Try a larger matrix 
         m = 100 
@@ -192,13 +197,12 @@ class SparseUtilsCythonTest(unittest.TestCase):
         
         Z = U.dot(V.T)
         w =  numpy.random.rand(m)
-        r = SparseUtilsCython.computeR2(U, V, w) 
+        r = SparseUtilsCython.computeR2(U, V, w, indsPerRow=10000) 
         r2 = numpy.zeros(m) 
         for i in range(m): 
             r2[i] = numpy.percentile(Z[i, :], w[i]*100.0)
         
-        print(numpy.linalg.norm(r-r2)) 
-        self.assertTrue(numpy.linalg.norm(r-r2) < 0.7)
+        self.assertTrue(numpy.linalg.norm(r-r2) < 0.4)
 
 if __name__ == '__main__':
     unittest.main()

@@ -5,6 +5,7 @@ import struct
 import numpy 
 cimport numpy
 import scipy.sparse 
+from sandbox.util.CythonUtils cimport uniformChoice
 numpy.import_array()
 
 cdef extern from "SparseUtilsCython.cpp": 
@@ -84,12 +85,12 @@ class SparseUtilsCython(object):
         """
         cdef unsigned int m = U.shape[0]
         cdef unsigned int n = V.shape[0]
-        indsPerRow = min(indsPerRow, n)
+        #indsPerRow = min(indsPerRow, n)
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] r = numpy.zeros(m, numpy.float)
         cdef numpy.ndarray[numpy.float_t, ndim=2, mode="c"] tempRows = numpy.zeros((m, indsPerRow), numpy.float)
         cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] colInds = numpy.zeros(indsPerRow, numpy.int)
 
-        colInds = numpy.random.permutation(n)[0:indsPerRow]
+        colInds = numpy.random.choice(n, indsPerRow, replace=True)
         tempRows = U.dot(V[colInds, :].T)
         r = numpy.percentile(tempRows, w*100.0, 1)
         
@@ -106,12 +107,12 @@ class SparseUtilsCython(object):
         """
         cdef unsigned int m = U.shape[0]
         cdef unsigned int n = V.shape[0]
-        indsPerRow = min(indsPerRow, n)
+        #indsPerRow = min(indsPerRow, n)
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] r = numpy.zeros(m, numpy.float)
         cdef numpy.ndarray[numpy.float_t, ndim=2, mode="c"] tempRows = numpy.zeros((m, indsPerRow), numpy.float)
         cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] colInds = numpy.zeros(indsPerRow, numpy.int)
 
-        colInds = numpy.random.permutation(n)[0:indsPerRow]
+        colInds = numpy.random.choice(n, indsPerRow, replace=True)
         tempRows = U.dot(V[colInds, :].T)
         
         for i in range(m): 
