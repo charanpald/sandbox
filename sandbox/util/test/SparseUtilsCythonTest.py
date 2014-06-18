@@ -5,6 +5,7 @@ import numpy
 import numpy.testing as nptst 
 import sys 
 import logging
+import sppy 
 import scipy.sparse 
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
 
@@ -203,6 +204,22 @@ class SparseUtilsCythonTest(unittest.TestCase):
             r2[i] = numpy.percentile(Z[i, :], w[i]*100.0)
         
         self.assertTrue(numpy.linalg.norm(r-r2) < 0.4)
+
+    def testCenterRowsCsarray(self):
+        
+        numRuns = 10        
+        
+        for i in range(numRuns): 
+            density = numpy.random.rand()
+            m = numpy.random.randint(10, 100) 
+            n = numpy.random.randint(10, 100) 
+            X = sppy.rand((m,n), density)
+            
+    
+            SparseUtilsCython.centerRowsCsarray(X)
+    
+            
+            nptst.assert_array_almost_equal(X.sum(1), numpy.zeros(m))
 
 if __name__ == '__main__':
     unittest.main()

@@ -118,4 +118,23 @@ class SparseUtilsCython(object):
         for i in range(m): 
             r[i] = numpy.percentile(tempRows[i, :], w[i]*100.0)
         
-        return r      
+        return r  
+    
+    @staticmethod
+    def centerRowsCsarray(X):
+        """
+        Center the nonzero elements of X by row. 
+        """
+        cdef unsigned int i 
+        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] mu
+        cdef numpy.ndarray[int, ndim=1, mode="c"] rowInds
+        cdef numpy.ndarray[int, ndim=1, mode="c"] colInds
+        
+        rowInds, colInds = X.nonzero()
+
+        mu = X.sum(1)/numpy.bincount(rowInds, minlength=X.shape[0])
+        
+        for i in range(rowInds.shape[0]): 
+            X[rowInds[i], colInds[i]] = X[rowInds[i], colInds[i]] - mu[rowInds[i]] 
+        
+        return X
