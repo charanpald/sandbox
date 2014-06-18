@@ -163,6 +163,10 @@ class MaxLocalAUC(object):
         
         startTime = time.time()
         self.wv = 1 - X.sum(1)/float(n)
+        
+        self.itemWeights = 1- X.sum(0)/float(m)
+        #self.itemWeights = numpy.ones(n)
+        #print(self.itemWeights.shape)
     
         while loopInd < self.maxIterations and abs(obj- lastObj) > self.eps:           
             if self.rate == "constant": 
@@ -173,6 +177,7 @@ class MaxLocalAUC(object):
                 raise ValueError("Invalid rate: " + self.rate)
             
             if loopInd % self.recordStep == 0: 
+   
                 r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
                 objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, full=True)
                 #userProbs = numpy.array(objArr > objArr.mean(), numpy.float)
@@ -309,7 +314,7 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Unknown sampling scheme: " + self.sampling)
             
-            updateUVApprox(indPtr, colInds, U, V, muU, muV, colIndsCumProbs, permutedRowInds, permutedColInds, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
+            updateUVApprox(indPtr, colInds, U, V, muU, muV, colIndsCumProbs, permutedRowInds, permutedColInds, self.itemWeights, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
 
     def derivativeUi(self, indPtr, colInds, U, V, r, i): 
         """

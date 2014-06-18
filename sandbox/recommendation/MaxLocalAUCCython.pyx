@@ -288,7 +288,7 @@ def derivativeUiApprox3(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
     
     return deltaTheta
 
-def derivativeUiApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V,  numpy.ndarray[double, ndim=1, mode="c"] r, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, double rho, bint normalise):
+def derivativeUiApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V,  numpy.ndarray[double, ndim=1, mode="c"] r, numpy.ndarray[double, ndim=1, mode="c"] itemWeights, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, double rho, bint normalise):
     """
     Find an approximation of delta phi/delta u_i using the simple objective without 
     sigmoid functions. 
@@ -326,6 +326,7 @@ def derivativeUiApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
             gamma = uivp - uivq
             kappa = rho*(uivp - ri) 
             hGamma = 1 - gamma
+            hGamma *= itemWeights[p]
             hKappa = max(1 - kappa, 0)
             
             if hGamma > 0 and hKappa > 0:       
@@ -674,7 +675,7 @@ def derivativeViApprox3(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
     
     return deltaTheta
 
-def derivativeViApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,  unsigned int j, unsigned int numRowSamples, unsigned int numAucSamples, double rho, bint normalise): 
+def derivativeViApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] itemWeights, unsigned int j, unsigned int numRowSamples, unsigned int numAucSamples, double rho, bint normalise): 
     """
     delta phi/delta v_i  using the hinge loss. 
     """
@@ -713,6 +714,7 @@ def derivativeViApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
                 #gamma = uivp - uivq
                 
                 hGamma = nu + uivq 
+                hGamma *= itemWeights[p]
                                 
                 if hGamma > 0 and hKappa > 0: 
                     betaScale += hGamma*tanh(hKappa) + (rho/2)*hGamma**2 * (1- tanh(hKappa)**2)                        
@@ -731,6 +733,7 @@ def derivativeViApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
                 uivp = dot(U, i, V, p, k)
                 #gamma = uivp - uivq
                 hGamma = nu - uivp
+                hGamma *= itemWeights[p]
                 hKappa = nuPrime - rho*uivp
                 
                 if hGamma > 0 and hKappa > 0: 
@@ -752,7 +755,7 @@ def derivativeViApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
     return deltaTheta
 
 
-def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, unsigned int ind, double sigma, unsigned int numRowSamples, unsigned int numAucSamples, double w, double lmbda, double rho, bint normalise): 
+def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, numpy.ndarray[double, ndim=1, mode="c"] itemWeights, unsigned int ind, double sigma, unsigned int numRowSamples, unsigned int numAucSamples, double w, double lmbda, double rho, bint normalise): 
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]    
     cdef unsigned int k = U.shape[1] 
@@ -773,13 +776,13 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
         #dUi = derivativeUiApprox(indPtr, colInds, colIndsCumProbs, U, V, r, i, numRowSamples, numAucSamples, rho, normalise)
         #dUi = derivativeUiApprox2(indPtr, colInds, colIndsCumProbs, U, V, r, i, numRowSamples, numAucSamples, rho, beta, normalise)
         #dUi = derivativeUiApprox3(indPtr, colInds, colIndsCumProbs, U, V, r, i, numRowSamples, numAucSamples, rho, normalise)
-        dUi = derivativeUiApprox4(indPtr, colInds, colIndsCumProbs, U, V, r, i, numRowSamples, numAucSamples, rho, normalise)
+        dUi = derivativeUiApprox4(indPtr, colInds, colIndsCumProbs, U, V, r, itemWeights, i, numRowSamples, numAucSamples, rho, normalise)
         
         j = permutedColInds[(ind + s) % n]
         #dVj = derivativeViApprox(indPtr, colInds, colIndsCumProbs, U, V, r, j, numRowSamples, numAucSamples, rho, normalise)
         #dVj = derivativeViApprox2(indPtr, colInds, colIndsCumProbs, U, V, r, j, numRowSamples, numAucSamples, rho, beta, normalise)
         #dVj = derivativeViApprox3(indPtr, colInds, colIndsCumProbs, U, V, r, j, numRowSamples, numAucSamples, rho, normalise)
-        dVj = derivativeViApprox4(indPtr, colInds, colIndsCumProbs, U, V, r, j, numRowSamples, numAucSamples, rho, normalise)
+        dVj = derivativeViApprox4(indPtr, colInds, colIndsCumProbs, U, V, r, itemWeights, j, numRowSamples, numAucSamples, rho, normalise)
 
         plusEquals(U, i, -sigma*dUi, k)
         
