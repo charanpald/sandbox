@@ -328,11 +328,8 @@ def derivativeUiApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
             hGamma = 1 - gamma
             hKappa = max(1 - kappa, 0)
             
-            if hGamma > 0:             
-                deltaTheta += (V[q, :]- V[p, :])*hGamma*tanh(hKappa) 
-                
-                if hKappa > 0: 
-                    deltaTheta -= (rho/2)* V[p, :]*hGamma**2*(1 - tanh(hKappa)**2)    
+            if hGamma > 0 and hKappa > 0:       
+                deltaTheta += (V[q, :] - V[p, :])*hGamma*tanh(hKappa) - (rho/2)* V[p, :]*hGamma**2*(1 - tanh(hKappa)**2)    
             
         deltaTheta /= float(omegaiSample.shape[0] * m)
                     
