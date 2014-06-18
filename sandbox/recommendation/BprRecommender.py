@@ -128,8 +128,10 @@ class BprRecommender(object):
         return meanTestLocalAucs, stdTestLocalAucs
         
     def copy(self): 
-        learner = BprRecommender(self.k, self.lmbdaUser, self.lmbdaPos, self.lmbdaNeg, self.gamma)
+        learner = BprRecommender(self.k, self.lmbdaUser, self.lmbdaPos, self.lmbdaNeg, self.biasReg, self.gamma, self.w)
         learner.maxIterations = self.maxIterations
+        learner.validationSize = self.validationSize
+        
         
         return learner 
 
