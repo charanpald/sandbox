@@ -164,7 +164,8 @@ class MaxLocalAUC(object):
         startTime = time.time()
         self.wv = 1 - X.sum(1)/float(n)
         
-        self.itemWeights = 1- X.sum(0)/float(m)
+        self.itemWeights = X.sum(0)**1.0
+        self.itemWeights = self.itemWeights/self.itemWeights.mean()
         #self.itemWeights = numpy.ones(n)
         #print(self.itemWeights.shape)
     
