@@ -6,6 +6,7 @@ import numpy
 import numpy.testing as nptst 
 import sys 
 import logging
+import sppy 
 import scipy.sparse 
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
@@ -368,28 +369,44 @@ class SparseUtilsCythonTest(unittest.TestCase):
             
             nptst.assert_array_almost_equal((X1+X2).toarray(), X.toarray()) 
     
-    @unittest.skip("")
-    def testPruneMatrix(self): 
-        m = 50 
-        n = 30 
+    def testPruneMatrixRows(self): 
+        m = 30 
+        n = 20 
         density = 0.5 
-        X = scipy.sparse.rand(m, n, density)
-        X = X.tocsc()
+        X = sppy.rand((m, n), density)
+        X[X.nonzero()] = 1        
+                
+        newX, rowInds = SparseUtils.pruneMatrixRows(X, 10, verbose=True)
         
-        newX = SparseUtils.pruneMatrix(X, 0, 0)
+        nnzRows = numpy.zeros(m)
+        for i in range(m): 
+            nnzRows[i] = X.toarray()[i, :].nonzero()[0].shape[0]
+            
+            if nnzRows[i] >= 10: 
+                self.assertTrue(i in rowInds)
+            
+            
+        self.assertTrue((newX.sum(1) >= 10).all())
+         
+    def testPruneMatrixCols(self): 
+        m = 30 
+        n = 20 
+        density = 0.5 
+        X = sppy.rand((m, n), density)
+        X[X.nonzero()] = 1        
+                
+        newX, rowInds = SparseUtils.pruneMatrixCols(X, 10, verbose=True)
         
-        nptst.assert_array_almost_equal(newX.todense(), X.todense())   
-        
-        X = numpy.array([[0, 0, 0.1, 0.2], [0, 0.5, 0.1, 0.2], [0, 0, 0.0, 0.2], [0, 0, 0.1, 0.2]])
-        X = scipy.sparse.csc_matrix(X)
-        
-        newX = SparseUtils.pruneMatrix(X, 2, 0)
-        
-        nptst.assert_array_almost_equal(newX.todense(), numpy.array([[0, 0, 0.1, 0.2], [0, 0.5, 0.1, 0.2], [0, 0, 0.1, 0.2]]))
-        
-        newX = SparseUtils.pruneMatrix(X, 0, 2)
-        
-        nptst.assert_array_almost_equal(newX.todense(), numpy.array([[0.1, 0.2], [0.1, 0.2], [0.0, 0.2], [0.1, 0.2]]))
+        nnzRows = numpy.zeros(m)
+        for i in range(m): 
+            nnzRows[i] = X.toarray()[i, :].nonzero()[0].shape[0]
+            
+            if nnzRows[i] >= 10: 
+                self.assertTrue(i in rowInds)
+            
+            
+        self.assertTrue((newX.sum(1) >= 10).all())    
+    
 
     def testHellingerDistances(self): 
         m = 10 
