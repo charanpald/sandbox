@@ -38,9 +38,9 @@ class MaxLocalAUCProfile(object):
 
     def profileLearnModel2(self):
         #Profile stochastic case 
-        X = DatasetUtils.mendeley()
-        X = Sampling.sampleUsers(X, 1000)
-        #X, U, V = DatasetUtils.syntheticDataset1(u=0.001, n=100000)
+        #X = DatasetUtils.mendeley()
+        #X = Sampling.sampleUsers(X, 1000)
+        X, U, V = DatasetUtils.syntheticDataset1(u=0.001, n=100000)
     
         rho = 0.00
         u = 0.2
