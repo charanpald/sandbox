@@ -164,9 +164,10 @@ class MaxLocalAUC(object):
         startTime = time.time()
         self.wv = 1 - X.sum(1)/float(n)
         
-        self.itemWeights = X.sum(0)**1.0
-        self.itemWeights = self.itemWeights/self.itemWeights.mean()
-        #self.itemWeights = numpy.ones(n)
+        #A more popular item has a lower weight 
+        #self.itemWeights = (X.sum(0)/float(n))**2.0
+        #self.itemWeights = self.itemWeights/self.itemWeights.mean()
+        self.itemWeights = numpy.ones(n)
         #print(self.itemWeights.shape)
     
         while loopInd < self.maxIterations and abs(obj- lastObj) > self.eps:           
