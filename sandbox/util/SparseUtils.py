@@ -476,7 +476,7 @@ class SparseUtils(object):
         rowInds, colInds = X.nonzero()
         u = numpy.bincount(colInds, minlength=X.shape[1])
 
-        newColInds = numpy.arange(0, X.shape[1])[u >= maxNnzCols]
+        newColInds = numpy.arange(0, X.shape[1])[u <= maxNnzCols]
         newX = X[:, newColInds]
 
         if verbose:

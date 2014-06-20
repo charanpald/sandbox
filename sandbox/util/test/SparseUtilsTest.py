@@ -397,16 +397,14 @@ class SparseUtilsCythonTest(unittest.TestCase):
                 
         newX, rowInds = SparseUtils.pruneMatrixCols(X, 10, verbose=True)
         
-        nnzRows = numpy.zeros(m)
-        for i in range(m): 
-            nnzRows[i] = X.toarray()[i, :].nonzero()[0].shape[0]
+        nnzCols = numpy.zeros(n)
+        for i in range(n): 
+            nnzCols[i] = X.toarray()[:, i].nonzero()[0].shape[0]
             
-            if nnzRows[i] >= 10: 
+            if nnzCols[i] <= 10: 
                 self.assertTrue(i in rowInds)
             
-            
-        self.assertTrue((newX.sum(1) >= 10).all())    
-    
+        self.assertTrue((newX.sum(0) <= 10).all()) 
 
     def testHellingerDistances(self): 
         m = 10 
