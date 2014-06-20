@@ -165,10 +165,10 @@ class MaxLocalAUC(object):
         self.wv = 1 - X.sum(1)/float(n)
         
         #A more popular item has a lower weight 
-        #self.itemWeights = (X.sum(0)/float(n))**2.0
-        #self.itemWeights = self.itemWeights/self.itemWeights.mean()
-        self.itemWeights = numpy.ones(n)
-        #print(self.itemWeights.shape)
+        c = (1- X.sum(0)/float(n))**2.0
+        c = c/c.mean()
+        #c = numpy.ones(n)
+        #print(c)
     
         while loopInd < self.maxIterations and abs(obj- lastObj) > self.eps:           
             if self.rate == "constant": 
@@ -181,14 +181,14 @@ class MaxLocalAUC(object):
             if loopInd % self.recordStep == 0: 
    
                 r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
-                objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, full=True)
+                objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, c, full=True)
                 #userProbs = numpy.array(objArr > objArr.mean(), numpy.float)
                 #userProbs /= userProbs.sum()
                 #print(userProbs)
                 #permutedRowInds = numpy.random.choice(numpy.arange(m, dtype=numpy.uint32), size=m, p=userProbs)
                 trainObjs.append(objArr.mean())
                 trainAucs.append(MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r))
-                testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, allArray=(allIndPtr, allColInds)))
+                testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, c, allArray=(allIndPtr, allColInds)))
                 testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
                 testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, trainX)
                 precisionArray, orderedItems = MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.z, verbose=True)
@@ -219,7 +219,7 @@ class MaxLocalAUC(object):
                 
             U  = numpy.ascontiguousarray(U)
             
-            self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gradientInd, sigma)                       
+            self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, c, gradientInd, sigma)                       
                 
             loopInd += 1
             
@@ -230,9 +230,9 @@ class MaxLocalAUC(object):
             
         #Compute quantities for last U and V 
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
-        trainObjs.append(self.objectiveApprox((indPtr, colInds), muU, muV, r))
+        trainObjs.append(self.objectiveApprox((indPtr, colInds), muU, muV, r, c))
         trainAucs.append(MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r))
-        testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, allArray=(allIndPtr, allColInds)))
+        testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, c, allArray=(allIndPtr, allColInds)))
         testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))          
             
         totalTime = time.time() - startTime
@@ -249,6 +249,7 @@ class MaxLocalAUC(object):
          
         self.U = bestU 
         self.V = bestV
+        self.c = c
          
         if verbose:     
             return self.U, self.V, numpy.array(trainObjs), numpy.array(trainAucs), numpy.array(testObjs), numpy.array(testAucs), numpy.array(precisions), loopInd, totalTime
@@ -294,7 +295,7 @@ class MaxLocalAUC(object):
         
         return U, V
         
-    def updateUV(self, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, ind, sigma): 
+    def updateUV(self, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, c, ind, sigma): 
         """
         Find the derivative with respect to V or part of it. 
         """
@@ -316,7 +317,7 @@ class MaxLocalAUC(object):
             else: 
                 raise ValueError("Unknown sampling scheme: " + self.sampling)
             
-            updateUVApprox(indPtr, colInds, U, V, muU, muV, colIndsCumProbs, permutedRowInds, permutedColInds, self.itemWeights, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
+            updateUVApprox(indPtr, colInds, U, V, muU, muV, colIndsCumProbs, permutedRowInds, permutedColInds, c, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
 
     def derivativeUi(self, indPtr, colInds, U, V, r, c, i): 
         """
@@ -499,7 +500,7 @@ class MaxLocalAUC(object):
          
         return meanTestMetrics, stdTestMetrics
   
-    def objectiveApprox(self, positiveArray, U, V, r, allArray=None, full=False): 
+    def objectiveApprox(self, positiveArray, U, V, r, c, allArray=None, full=False): 
         """
         Compute the estimated local AUC for the score functions UV^T relative to X with 
         quantile w. The AUC is computed using positiveArray which is a tuple (indPtr, colInds)
@@ -513,10 +514,10 @@ class MaxLocalAUC(object):
         V = numpy.ascontiguousarray(V)        
         
         if allArray == None: 
-            return objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, r, self.numRecordAucSamples, self.rho, full=full)         
+            return objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, r, c, self.numRecordAucSamples, self.rho, full=full)         
         else:
             allIndPtr, allColInds = allArray
-            return objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, r, self.numRecordAucSamples, self.rho, full=full)
+            return objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, r, c, self.numRecordAucSamples, self.rho, full=full)
   
     def __str__(self): 
         outputStr = "MaxLocalAUC: k=" + str(self.k) + " eps=" + str(self.eps) 

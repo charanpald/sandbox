@@ -169,8 +169,10 @@ def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
             normBeta += c[p]*c[q]
             
             if hGamma > 0 and hKappa > 0:       
-                deltaTheta += c[p]*c[q] * ((V[q, :] - V[p, :])*hGamma*tanh(hKappa) - (rho/2)* V[p, :]*hGamma**2*(1 - tanh(hKappa)**2))         
-        deltaTheta /= float(normBeta * m)
+                deltaTheta += c[p]*c[q] * ((V[q, :] - V[p, :])*hGamma*tanh(hKappa) - (rho/2)* V[p, :]*hGamma**2*(1 - tanh(hKappa)**2))      
+                
+        if normBeta != 0: 
+            deltaTheta /= float(normBeta * m)
                     
     #Normalise gradient to have unit norm 
     normDeltaTheta = numpy.linalg.norm(deltaTheta)
@@ -341,7 +343,7 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]
     cdef unsigned int s = 0
-    cdef double uivp, uivq,  betaScale, normTheta, gamma, kappa, nu, nuPrime, hGamma, hKappa, zeta, ri, normBeta
+    cdef double uivp, uivq,  betaScale, normTheta, gamma, kappa, nu, nuPrime, hGamma, hKappa, zeta, ri, normBeta, omegaiC, omegaBariC
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] omegaProbsi
@@ -378,8 +380,9 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
                                 
                 if hGamma > 0 and hKappa > 0: 
                     betaScale += c[p]*c[q] * (hGamma*tanh(hKappa) + (rho/2)*hGamma**2 * (1- tanh(hKappa)**2))                   
-                
-            deltaBeta = scale(U, i, -betaScale/(normBeta*omegaiC), k)
+               
+            if normBeta*omegaiC != 0:
+                deltaBeta = scale(U, i, -betaScale/(normBeta*omegaiC), k)
         elif numOmegai != 0:
             q = j 
             uivq = dot(U, i, V, q, k)
@@ -399,7 +402,7 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
                 if hGamma > 0 and hKappa > 0: 
                     betaScale += c[p]*c[q]*hGamma*tanh(hKappa)
 
-            if numOmegai != 0:
+            if normBeta*omegaBariC != 0:
                 deltaBeta = scale(U, i, betaScale/(normBeta*omegaBariC), k)  
                 
         deltaTheta += deltaBeta
