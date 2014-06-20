@@ -326,11 +326,11 @@ def derivativeUiApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
             gamma = uivp - uivq
             kappa = rho*(uivp - ri) 
             hGamma = 1 - gamma
-            hGamma *= itemWeights[p]
             hKappa = max(1 - kappa, 0)
             
             if hGamma > 0 and hKappa > 0:       
                 deltaTheta += (V[q, :] - V[p, :])*hGamma*tanh(hKappa) - (rho/2)* V[p, :]*hGamma**2*(1 - tanh(hKappa)**2)    
+                deltaTheta *= itemWeights[p]*itemWeights[q]
             
         deltaTheta /= float(omegaiSample.shape[0] * m)
                     
@@ -717,7 +717,8 @@ def derivativeViApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
                 hGamma *= itemWeights[p]
                                 
                 if hGamma > 0 and hKappa > 0: 
-                    betaScale += hGamma*tanh(hKappa) + (rho/2)*hGamma**2 * (1- tanh(hKappa)**2)                        
+                    betaScale += hGamma*tanh(hKappa) + (rho/2)*hGamma**2 * (1- tanh(hKappa)**2)    
+                    betaScale *= itemWeights[p]*itemWeights[q]                    
                 
             deltaBeta = scale(U, i, -betaScale/(numOmegai*numAucSamples), k)
         elif numOmegai != 0:
@@ -733,11 +734,11 @@ def derivativeViApprox4(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarr
                 uivp = dot(U, i, V, p, k)
                 #gamma = uivp - uivq
                 hGamma = nu - uivp
-                hGamma *= itemWeights[p]
                 hKappa = nuPrime - rho*uivp
                 
                 if hGamma > 0 and hKappa > 0: 
                     betaScale += hGamma*tanh(hKappa)
+                    betaScale *= itemWeights[p]*itemWeights[q]
 
             if numOmegai != 0:
                 deltaBeta = scale(U, i, betaScale/(omegaiSample.shape[0]*numOmegaBari), k)  
