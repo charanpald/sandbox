@@ -83,8 +83,8 @@ class SparseUtilsCython(object):
         for computing quantiles. Thus u=0 implies the smallest element and u=1 implies 
         the largest. 
         """
-        cdef unsigned int m = U.shape[0]
-        cdef unsigned int n = V.shape[0]
+        cdef int m = U.shape[0]
+        cdef int n = V.shape[0]
         #indsPerRow = min(indsPerRow, n)
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] r = numpy.zeros(m, numpy.float)
         cdef numpy.ndarray[numpy.float_t, ndim=2, mode="c"] tempRows = numpy.zeros((m, indsPerRow), numpy.float)
@@ -105,8 +105,8 @@ class SparseUtilsCython(object):
         for computing quantiles. Thus u=0 implies the smallest element and u=1 implies 
         the largest. 
         """
-        cdef unsigned int m = U.shape[0]
-        cdef unsigned int n = V.shape[0]
+        cdef int m = U.shape[0]
+        cdef int n = V.shape[0]
         #indsPerRow = min(indsPerRow, n)
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] r = numpy.zeros(m, numpy.float)
         cdef numpy.ndarray[numpy.float_t, ndim=2, mode="c"] tempRows = numpy.zeros((m, indsPerRow), numpy.float)
