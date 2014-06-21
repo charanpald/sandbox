@@ -164,8 +164,8 @@ class MaxLocalAUC(object):
         startTime = time.time()
         self.wv = 1 - X.sum(1)/float(n)
         
-        #A more popular item has a higher weight 
-        c = (X.sum(0)/float(n))**2.0
+        #A more popular item has a lower weight 
+        c = (1- X.sum(0)/float(n))**0.5
         c = c/c.mean()
         #c = numpy.ones(n)
         #print(c)
