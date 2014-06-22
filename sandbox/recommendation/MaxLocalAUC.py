@@ -165,8 +165,10 @@ class MaxLocalAUC(object):
         self.wv = 1 - X.sum(1)/float(n)
         
         #A more popular item has a lower weight 
-        c = (1- X.sum(0)/float(n))**0.5
+        c = (1/(X.sum(0)+1))**0.5
         c = c/c.mean()
+        #print(c)
+        #print(numpy.min(c), numpy.max(c))
         #c = numpy.ones(n)
         #print(c)
     
