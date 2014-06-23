@@ -587,7 +587,7 @@ def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[i
                     #partialObj += hGamma**2 * hKappa**2
                     partialObj += c[p] * hGamma**2 * tanh(hKappa)
             
-            objVector[i] = partialObj/float(normObj * omegaiSample.shape[0])
+            objVector[i] = partialObj/float(normObj)
     
     objVector /= 2       
     
