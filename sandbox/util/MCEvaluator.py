@@ -94,6 +94,32 @@ class MCEvaluator(object):
             return recalls, orderedItems
         else: 
             return recalls.mean()
+            
+    @staticmethod       
+    def f1AtK(positiveArray, orderedItems, k, verbose=False): 
+        """
+        Return the F1@k measure for each row of the predicted matrix UV.T 
+        using real values in positiveArray. positiveArray is a tuple (indPtr, colInds)
+        
+        :param orderedItems: The ordered items for each user (users are rows, items are cols)  
+        
+        :param verbose: If true return recall and first k recommendation for each row, otherwise just precisions
+        """
+        if type(positiveArray) != tuple: 
+            positiveArray = SparseUtils.getOmegaListPtr(positiveArray)        
+        
+        orderedItems = orderedItems[:, 0:k]
+        indPtr, colInds = positiveArray
+        
+        precisions = MCEvaluatorCython.precisionAtk(indPtr, colInds, orderedItems)
+        recalls = MCEvaluatorCython.recallAtk(indPtr, colInds, orderedItems)
+        
+        f1s = 2*precisions*recalls/(precisions+recalls)
+        
+        if verbose: 
+            return f1s, orderedItems
+        else: 
+            return f1s.mean()
 
     @staticmethod 
     def recommendAtk(U, V, k, blockSize=1000, omegaList=None): 
