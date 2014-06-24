@@ -39,7 +39,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         #print(U)
         #print(V)
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testDerivativeU(self): 
         m = 10 
         n = 20 
@@ -143,7 +143,7 @@ class MaxLocalAUCTest(unittest.TestCase):
                                 
             nptst.assert_almost_equal(deltaU, deltaU2, 2)
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testDerivativeV(self): 
         m = 10 
         n = 20 
@@ -271,7 +271,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc.modelSelect(X)
             
 
-    @unittest.skip("")
+    #@unittest.skip("")
     def testLearningRateSelect(self): 
         m = 10 
         n = 20 
@@ -282,9 +282,10 @@ class MaxLocalAUCTest(unittest.TestCase):
         X = SparseUtils.generateSparseBinaryMatrix((m, n), k, w, csarray=True)
         
         eps = 0.001
-        maxLocalAuc = MaxLocalAUC(k, u, eps=eps)
+        maxLocalAuc = MaxLocalAUC(k, u, eps=eps, stochastic=True)
         maxLocalAuc.rate = "optimal"
         maxLocalAuc.maxIterations = 5
+        #maxLocalAuc.numProcesses = 1
         
         maxLocalAuc.learningRateSelect(X)
 

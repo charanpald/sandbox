@@ -20,8 +20,8 @@ def computeObjective(args):
     Compute the objective for a particular parameter set. Used to set a learning rate. 
     """
     X, U, V, maxLocalAuc  = args 
-    U, V, trainObjs, trainAucs, testObjs, testAucs, precisions, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
-    obj = trainObjs[-1]
+    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
+    obj = trainMeasures[-1, 0]
 
         
     logging.debug("Final objective: " + str(obj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
@@ -30,7 +30,8 @@ def computeObjective(args):
 def computeTestAuc(args): 
     trainX, testX, U, V, maxLocalAuc  = args 
     
-    U, V, trainObjs, trainAucs, testObjs, testAucs, precisions, iterations, totalTime = maxLocalAuc.learnModel(trainX, U=U, V=V, verbose=True)
+    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.learnModel(trainX, U=U, V=V, verbose=True)
+    testAucs = testMeasures[:, 1]
     muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
     logging.debug("Weighted local AUC: " + str('%.4f' % muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
         
@@ -40,7 +41,7 @@ def computeTestPrecision(args):
     trainX, testX, U, V, maxLocalAuc = args 
     
     #logging.debug("About to learn")
-    U, V, trainObjs, trainAucs, testObjs, testAucs, precisions, iterations, totalTime = maxLocalAuc.learnModel(trainX, verbose=True)
+    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.learnModel(trainX, verbose=True)
     testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, maxLocalAuc.validationSize, trainX)
     precision = MCEvaluator.precisionAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, maxLocalAuc.validationSize)
 
@@ -290,7 +291,7 @@ class MaxLocalAUC(object):
         if not self.stochastic:               
             r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)  
             #r = SparseUtilsCython.computeR2(U, V, self.wv, self.numRecordAucSamples)
-            updateU(indPtr, colInds, U, V, r, sigma, self.lmbda, self.rho, self.normalise)
+            updateU(indPtr, colInds, U, V, r, sigma, self.rho, self.normalise)
             updateV(indPtr, colInds, U, V, r, sigma, self.lmbda, self.rho, self.normalise)
             
             muU[:] = U[:] 
