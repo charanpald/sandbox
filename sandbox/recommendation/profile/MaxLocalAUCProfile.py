@@ -61,7 +61,7 @@ class MaxLocalAUCProfile(object):
         trainX, testX = trainTestX[0]
 
         def run(): 
-            U, V, trainObjs, trainAucs, testObjs, testAucs, precisions, iterations, time = maxLocalAuc.learnModel(trainX, True)  
+            U, V, trainMeasures, testMeasures, iterations, time = maxLocalAuc.learnModel(trainX, True)  
             #logging.debug("Train Precision@5=" + str(MCEvaluator.precisionAtK(trainX, U, V, 5)))
             #logging.debug("Train Precision@10=" + str(MCEvaluator.precisionAtK(trainX, U, V, 10)))
             #logging.debug("Train Precision@20=" + str(MCEvaluator.precisionAtK(trainX, U, V, 20)))
