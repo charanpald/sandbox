@@ -104,7 +104,6 @@ class MCEvaluatorCython(object):
         
         return rrs  
         
-
     @staticmethod
     def localAUCApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r): 
         """
