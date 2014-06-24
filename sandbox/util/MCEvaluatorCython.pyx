@@ -84,6 +84,28 @@ class MCEvaluatorCython(object):
         return recalls  
 
     @staticmethod
+    def reciprocalRankAtk(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=2] indices): 
+        """
+        Take a list of nonzero indices, and also a list of predicted indices and compute 
+        the reciprocal rank at k. 
+        """
+        cdef unsigned int i, j
+        cdef unsigned int k = indices.shape[1]
+        cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
+        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] rrs = numpy.zeros(indices.shape[0], numpy.float)
+        
+        for i in range(indices.shape[0]):
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            count = 0 
+            for j in range(k): 
+                if indices[i, j] in omegai: 
+                    rrs[i] = 1/float(1+j)
+                    break
+        
+        return rrs  
+        
+
+    @staticmethod
     def localAUCApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, unsigned int numAucSamples, numpy.ndarray[double, ndim=1, mode="c"] r): 
         """
         Compute the estimated local AUC for the score functions UV^T relative to a matrix 

@@ -19,7 +19,7 @@ class  MCEvaluatorCythonTest(unittest.TestCase):
         n = 50 
         r = 3 
 
-        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), r, 0.5, verbose=True)
+        X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), r, 0.5, verbose=True)
 
         import sppy 
         X = sppy.csarray(X)  
@@ -55,6 +55,43 @@ class  MCEvaluatorCythonTest(unittest.TestCase):
         
         nptst.assert_array_equal(orderedItems, orderedItems2)
 
+            
+    def testReciprocalRankAtk(self): 
+        m = 20 
+        n = 50 
+        r = 3 
+        X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), r, 0.5, verbose=True, csarray=True)
+        
+        k = 5
+        orderedItems = numpy.random.randint(0, n, m*k)
+        orderedItems = numpy.reshape(orderedItems, (m, k))
+        orderedItems = numpy.array(orderedItems, numpy.int32)
+        
+        (indPtr, colInds) = X.nonzeroRowsPtr()
+        rrs = MCEvaluatorCython.reciprocalRankAtk(indPtr, colInds, orderedItems)
+        
+        rrs2 = numpy.zeros(m)
+        for i in range(m): 
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            for j in range(k): 
+                if orderedItems[i, j] in omegai: 
+                    rrs2[i] = 1/float(1+j)
+                    break 
+        
+        nptst.assert_array_equal(rrs, rrs2)
+        
+        #Test case where no items are in ranking 
+        orderedItems = numpy.ones((m, k), numpy.int32) * (n+1)
+        rrs = MCEvaluatorCython.reciprocalRankAtk(indPtr, colInds, orderedItems)
+        nptst.assert_array_equal(rrs, numpy.zeros(m))
+        
+        #Now, make all items rank 2
+        for i in range(m): 
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            orderedItems[i, 1] = omegai[0]
+        
+        rrs = MCEvaluatorCython.reciprocalRankAtk(indPtr, colInds, orderedItems)
+        nptst.assert_array_equal(rrs, numpy.ones(m)*0.5)     
             
 if __name__ == '__main__':
     unittest.main()
