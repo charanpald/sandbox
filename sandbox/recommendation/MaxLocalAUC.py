@@ -22,8 +22,6 @@ def computeObjective(args):
     X, U, V, maxLocalAuc  = args 
     U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
     obj = trainMeasures[-1, 0]
-
-        
     logging.debug("Final objective: " + str(obj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
     return obj
     
@@ -48,6 +46,31 @@ def computeTestPrecision(args):
     logging.debug("Precision@" + str(maxLocalAuc.z) + ": " + str('%.4f' % precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
         
     return precision
+    
+def computeTestRecall(args): 
+    trainX, testX, U, V, maxLocalAuc = args 
+    
+    #logging.debug("About to learn")
+    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.learnModel(trainX, verbose=True)
+    testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, maxLocalAuc.z, trainX)
+    recall = MCEvaluator.recallAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, maxLocalAuc.z)
+
+    logging.debug("Recall@" + str(maxLocalAuc.z) + ": " + str('%.4f' % recall) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
+        
+    return recall    
+   
+def computeTestF1(args): 
+    trainX, testX, U, V, maxLocalAuc = args 
+    
+    #logging.debug("About to learn")
+    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.learnModel(trainX, verbose=True)
+    testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, maxLocalAuc.z, trainX)
+    f1 = MCEvaluator.f1AtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, maxLocalAuc.z)
+
+    logging.debug("F1@" + str(maxLocalAuc.z) + ": " + str('%.4f' % f1) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
+        
+    return f1    
+   
       
 class MaxLocalAUC(object): 
     def __init__(self, k, w, alpha=0.05, eps=10**-6, lmbda=0.001, stochastic=False, numProcesses=None): 
@@ -122,6 +145,8 @@ class MaxLocalAUC(object):
         testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, trainX)
         precisionArray, orderedItems = MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.z, verbose=True)
         testMeasuresRow.append(precisionArray[rowSamples].mean())   
+        recallArray, orderedItems = MCEvaluator.recallAtK((testIndPtr, testColInds), testOrderedItems, self.z, verbose=True)
+        testMeasuresRow.append(recallArray[rowSamples].mean())  
         mrr = MCEvaluatorCython.reciprocalRankAtk(testIndPtr, testColInds, testOrderedItems)
         testMeasuresRow.append(mrr[rowSamples].mean())
         testMeasures.append(testMeasuresRow)
@@ -133,7 +158,8 @@ class MaxLocalAUC(object):
         printStr += " validation: obj~" + str('%.4f' % testMeasuresRow[0])
         printStr += " LAUC~" + str('%.4f' % testMeasuresRow[1])
         printStr += " p@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[2])
-        printStr += " mrr@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[3])
+        printStr += " r@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[3])
+        printStr += " mrr@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[4])
         printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(muU))
         printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(muV))
         
@@ -449,18 +475,23 @@ class MaxLocalAUC(object):
                         paramList.append((trainX, testX, U.copy(), V.copy(), maxLocalAuc))
             
         logging.debug("Set parameters")
+        if self.metric == "auc":
+            evaluationMethod = computeTestAuc
+        elif self.metric == "precision": 
+            evaluationMethod = computeTestPrecision
+        elif self.metric == "recall": 
+            evaluationMethod = computeTestRecall
+        elif self.metric == "f1": 
+            evaluationMethod = computeTestF1
+        else: 
+            raise ValueError("Invalid metric: " + self.metric)
+        
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-            if self.metric == "auc": 
-                resultsIterator = pool.imap(computeTestAuc, paramList, self.chunkSize)
-            elif self.metric == "precision": 
-                resultsIterator = pool.imap(computeTestPrecision, paramList, self.chunkSize)
+            resultsIterator = pool.imap(evaluationMethod, paramList, self.chunkSize)
         else: 
             import itertools
-            if self.metric == "auc": 
-                resultsIterator = itertools.imap(computeTestAuc, paramList)
-            elif self.metric == "precision": 
-                resultsIterator = itertools.imap(computeTestPrecision, paramList)
+            resultsIterator = itertools.imap(computeTestAuc, paramList)
         
         for i, k in enumerate(self.ks):
             for icv in range(len(trainTestXs)): 

@@ -248,7 +248,7 @@ class MaxLocalAUCTest(unittest.TestCase):
                            
             nptst.assert_almost_equal(deltaV, deltaV2, 2)
 
-    @unittest.skip("")
+    #@unittest.skip("")
     def testModelSelect(self): 
         m = 10 
         n = 20 
@@ -264,14 +264,15 @@ class MaxLocalAUCTest(unittest.TestCase):
         k = 5
         maxLocalAuc = MaxLocalAUC(k, w, eps=eps, stochastic=True)
         maxLocalAuc.maxIterations = 5
-        #maxLocalAuc.numProcesses = 1
+        maxLocalAuc.numProcesses = 1
         maxLocalAuc.recordStep = 1
         maxLocalAuc.validationSize = 3
+        maxLocalAuc.metric = "f1"
         
         maxLocalAuc.modelSelect(X)
             
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testLearningRateSelect(self): 
         m = 10 
         n = 20 
@@ -285,7 +286,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc = MaxLocalAUC(k, u, eps=eps, stochastic=True)
         maxLocalAuc.rate = "optimal"
         maxLocalAuc.maxIterations = 5
-        #maxLocalAuc.numProcesses = 1
+        maxLocalAuc.numProcesses = 1
         
         maxLocalAuc.learningRateSelect(X)
 
