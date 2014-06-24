@@ -110,6 +110,34 @@ class MaxLocalAUC(object):
         self.t0s = 10**-numpy.arange(2, 5, 0.5)
         self.alphas = 2.0**-numpy.arange(-1, 3, 0.5)
     
+    def recordResults(self, muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, c, trainX): 
+        r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
+        objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, c, full=True)
+        trainMeasures.append([objArr.mean(), MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r)]) 
+        
+        testMeasuresRow = []
+        testMeasuresRow.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, c, allArray=(allIndPtr, allColInds)))
+        testMeasuresRow.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
+        testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, trainX)
+        precisionArray, orderedItems = MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.z, verbose=True)
+        testMeasuresRow.append(precisionArray[rowSamples].mean())   
+        mrr = MCEvaluatorCython.reciprocalRankAtk(testIndPtr, testColInds, testOrderedItems)
+        testMeasuresRow.append(mrr[rowSamples].mean())
+        testMeasures.append(testMeasuresRow)
+           
+        printStr = "iteration " + str(loopInd) + ":"
+        printStr += " sigma=" + str('%.4f' % sigma)
+        printStr += " obj~" + str('%.4f' % trainMeasures[-1][0]) 
+        printStr += " train: LAUC~" + str('%.4f' % trainMeasures[-1][1]) 
+        printStr += " obj~" + str('%.4f' % testMeasuresRow[0])
+        printStr += " validation: LAUC~" + str('%.4f' % testMeasuresRow[1])
+        printStr += " p@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[2])
+        printStr += " mrr@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[3])
+        printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(muU))
+        printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(muV))
+        
+        return printStr
+    
     def learnModel(self, X, verbose=False, U=None, V=None): 
         """
         Max local AUC with Frobenius norm penalty on V. Solve with (stochastic) gradient descent. 
@@ -136,8 +164,6 @@ class MaxLocalAUC(object):
         if U==None or V==None:
             U, V = self.initUV(trainX)
         
-        lastObj = 0
-        obj = 2
         sigma = self.alpha
         
         muU = U.copy() 
@@ -148,12 +174,9 @@ class MaxLocalAUC(object):
         bestU = 0 
         bestV = 0
         
-        trainObjs = []
-        trainAucs = []
-        testObjs = []
-        testAucs = []
-        precisions = []
-        
+        trainMeasures = []
+        testMeasures = []        
+    
         loopInd = 0
         gradientInd = 0
         
@@ -172,7 +195,7 @@ class MaxLocalAUC(object):
         #c = numpy.ones(n)
         #print(c)
     
-        while loopInd < self.maxIterations and abs(obj- lastObj) > self.eps:           
+        while loopInd < self.maxIterations:           
             if self.rate == "constant": 
                 sigma = self.alpha 
             elif self.rate == "optimal":
@@ -182,40 +205,15 @@ class MaxLocalAUC(object):
             
             if loopInd % self.recordStep == 0: 
    
-                r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
-                objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, c, full=True)
-                #userProbs = numpy.array(objArr > objArr.mean(), numpy.float)
-                #userProbs /= userProbs.sum()
-                #print(userProbs)
-                #permutedRowInds = numpy.random.choice(numpy.arange(m, dtype=numpy.uint32), size=m, p=userProbs)
-                trainObjs.append(objArr.mean())
-                trainAucs.append(MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r))
-                testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, c, allArray=(allIndPtr, allColInds)))
-                testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
-                testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, trainX)
-                precisionArray, orderedItems = MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.z, verbose=True)
-                precisions.append(precisionArray[rowSamples].mean())   
-                   
+                printStr = self.recordResults(muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, c, trainX)
+                               
                 if loopInd != 0: 
-                    print("")
-                   
-                printStr = "Iteration " + str(loopInd) + ":"
-                printStr += " sigma=" + str('%.4f' % sigma)
-                printStr += " train: LAUC~" + str('%.4f' % trainAucs[-1]) 
-                printStr += " obj~" + str('%.4f' % trainObjs[-1]) 
-                printStr += " validation: LAUC~" + str('%.4f' % testAucs[-1])
-                printStr += " obj~" + str('%.4f' % testObjs[-1])
-                printStr += " p@" + str(self.z) + "=" + str('%.4f' % precisions[-1])
-                printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(U))
-                printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(V))
-                logging.debug(printStr)
-                
-                lastObj = obj
-                obj = numpy.average(trainObjs, weights=numpy.flipud(1/numpy.arange(1, len(trainObjs)+1, dtype=numpy.float)))
-                
-                if precisions[-1] >= bestPrecision: 
-                    bestPrecision = precisions[-1]
-                    #logging.debug("Best precision so far: " + str(bestPrecision))
+                    print("")  
+                    
+                logging.debug(printStr) 
+                                
+                if testMeasures[-1][2] >= bestPrecision: 
+                    bestPrecision = testMeasures[-1][2]
                     bestU = muU 
                     bestV = muV 
                 
@@ -231,22 +229,10 @@ class MaxLocalAUC(object):
                 gradientInd = loopInd
             
         #Compute quantities for last U and V 
-        r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
-        trainObjs.append(self.objectiveApprox((indPtr, colInds), muU, muV, r, c))
-        trainAucs.append(MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r))
-        testObjs.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, c, allArray=(allIndPtr, allColInds)))
-        testAucs.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))          
-            
         totalTime = time.time() - startTime
-        printStr = "Total iterations: " + str(loopInd)
-        printStr += " time=" + str('%.1f' % totalTime) 
-        printStr += " sigma=" + str('%.4f' % sigma)
-        printStr += " train: LAUC~" + str('%.4f' % trainAucs[-1]) 
-        printStr += " obj~" + str('%.4f' % trainObjs[-1]) 
-        printStr += " test: LAUC~" + str('%.4f' % testAucs[-1])
-        printStr += " obj~" + str('%.4f' % testObjs[-1])
-        printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(U))
-        printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(V))
+        printStr = "\nTotal iterations: " + str(loopInd)
+        printStr += " time=" + str('%.1f' % totalTime) + " "
+        printStr += self.recordResults(muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, c, trainX)
         logging.debug(printStr)
          
         self.U = bestU 
@@ -254,7 +240,7 @@ class MaxLocalAUC(object):
         self.c = c
          
         if verbose:     
-            return self.U, self.V, numpy.array(trainObjs), numpy.array(trainAucs), numpy.array(testObjs), numpy.array(testAucs), numpy.array(precisions), loopInd, totalTime
+            return self.U, self.V, numpy.array(trainMeasures), numpy.array(testMeasures), loopInd, totalTime
         else: 
             return self.U, self.V
       
