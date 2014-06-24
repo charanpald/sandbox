@@ -42,10 +42,10 @@ def computeTestPrecision(args):
     
     #logging.debug("About to learn")
     U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.learnModel(trainX, verbose=True)
-    testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, maxLocalAuc.validationSize, trainX)
-    precision = MCEvaluator.precisionAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, maxLocalAuc.validationSize)
+    testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, maxLocalAuc.z, trainX)
+    precision = MCEvaluator.precisionAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, maxLocalAuc.z)
 
-    logging.debug("Precision@" + str(maxLocalAuc.validationSize) + ": " + str('%.4f' % precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
+    logging.debug("Precision@" + str(maxLocalAuc.z) + ": " + str('%.4f' % precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
         
     return precision
       
@@ -126,12 +126,12 @@ class MaxLocalAUC(object):
         testMeasuresRow.append(mrr[rowSamples].mean())
         testMeasures.append(testMeasuresRow)
            
-        printStr = "iteration " + str(loopInd) + ":"
+        printStr = "iter " + str(loopInd) + ":"
         printStr += " sigma=" + str('%.4f' % sigma)
-        printStr += " obj~" + str('%.4f' % trainMeasures[-1][0]) 
-        printStr += " train: LAUC~" + str('%.4f' % trainMeasures[-1][1]) 
-        printStr += " obj~" + str('%.4f' % testMeasuresRow[0])
-        printStr += " validation: LAUC~" + str('%.4f' % testMeasuresRow[1])
+        printStr += " train: obj~" + str('%.4f' % trainMeasures[-1][0]) 
+        printStr += " LAUC~" + str('%.4f' % trainMeasures[-1][1]) 
+        printStr += " validation: obj~" + str('%.4f' % testMeasuresRow[0])
+        printStr += " LAUC~" + str('%.4f' % testMeasuresRow[1])
         printStr += " p@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[2])
         printStr += " mrr@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[3])
         printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(muU))
@@ -191,7 +191,6 @@ class MaxLocalAUC(object):
         #A more popular item has a lower weight 
         #c = (1/(X.sum(0)+1))**0.5
         #c = c/c.mean()
-        #print(c)
         #print(numpy.min(c), numpy.max(c))
         c = numpy.ones(n)
         #print(c)
@@ -231,8 +230,7 @@ class MaxLocalAUC(object):
             
         #Compute quantities for last U and V 
         totalTime = time.time() - startTime
-        printStr = "\nTotal iterations: " + str(loopInd)
-        printStr += " time=" + str('%.1f' % totalTime) + " "
+        printStr = "\nFinished, time=" + str('%.1f' % totalTime) + " "
         printStr += self.recordResults(muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, c, trainX)
         logging.debug(printStr)
          
