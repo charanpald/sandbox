@@ -114,7 +114,10 @@ class MCEvaluator(object):
         precisions = MCEvaluatorCython.precisionAtk(indPtr, colInds, orderedItems)
         recalls = MCEvaluatorCython.recallAtk(indPtr, colInds, orderedItems)
         
-        f1s = 2*precisions*recalls/(precisions+recalls)
+        denominator = precisions+recalls
+        denominator += denominator == 0      
+        
+        f1s = 2*precisions*recalls/denominator
         
         if verbose: 
             return f1s, orderedItems

@@ -175,15 +175,31 @@ class  MCEvaluatorTest(unittest.TestCase):
         k = 5
 
         
-        f1s = numpy.zeros(m)
+        
         orderedItems = MCEvaluator.recommendAtk(U*s, V, k)
         precision, scoreInds = MCEvaluator.precisionAtK(X, orderedItems, k, verbose=True)
         recall, scoreInds = MCEvaluator.recallAtK(X, orderedItems, k, verbose=True)
+        f1s = numpy.zeros(m)
         
         for i in range(m): 
             f1s[i] = 2*precision[i]*recall[i]/(precision[i]+recall[i])
         
         orderedItems = MCEvaluator.recommendAtk(U*s, V, n)
+        f1s2, scoreInds = MCEvaluator.f1AtK(X, orderedItems, k, verbose=True)
+        
+        nptst.assert_array_equal(f1s, f1s2)
+        
+        #Test case where we get a zero precision or recall 
+        orderedItems[5, :] = -1
+        precision, scoreInds = MCEvaluator.precisionAtK(X, orderedItems, k, verbose=True)
+        recall, scoreInds = MCEvaluator.recallAtK(X, orderedItems, k, verbose=True)
+        
+        f1s = numpy.zeros(m)
+        
+        for i in range(m): 
+            if precision[i]+recall[i] != 0: 
+                f1s[i] = 2*precision[i]*recall[i]/(precision[i]+recall[i])
+                
         f1s2, scoreInds = MCEvaluator.f1AtK(X, orderedItems, k, verbose=True)
         
         nptst.assert_array_equal(f1s, f1s2)
@@ -197,7 +213,6 @@ class  MCEvaluatorTest(unittest.TestCase):
         
         Z = U.dot(V.T)
 
-        
         localAuc = numpy.zeros(m)
         
         for i in range(m): 
