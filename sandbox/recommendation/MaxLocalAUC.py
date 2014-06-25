@@ -143,10 +143,8 @@ class MaxLocalAUC(object):
         testMeasuresRow.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, c, allArray=(allIndPtr, allColInds)))
         testMeasuresRow.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
         testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, trainX)
-        precisionArray, orderedItems = MCEvaluator.precisionAtK((testIndPtr, testColInds), testOrderedItems, self.z, verbose=True)
-        testMeasuresRow.append(precisionArray[rowSamples].mean())   
-        recallArray, orderedItems = MCEvaluator.recallAtK((testIndPtr, testColInds), testOrderedItems, self.z, verbose=True)
-        testMeasuresRow.append(recallArray[rowSamples].mean())  
+        f1Array, orderedItems = MCEvaluator.f1AtK((testIndPtr, testColInds), testOrderedItems, self.z, verbose=True)
+        testMeasuresRow.append(f1Array[rowSamples].mean())   
         mrr = MCEvaluatorCython.reciprocalRankAtk(testIndPtr, testColInds, testOrderedItems)
         testMeasuresRow.append(mrr[rowSamples].mean())
         testMeasures.append(testMeasuresRow)
@@ -157,9 +155,8 @@ class MaxLocalAUC(object):
         printStr += " LAUC~" + str('%.4f' % trainMeasures[-1][1]) 
         printStr += " validation: obj~" + str('%.4f' % testMeasuresRow[0])
         printStr += " LAUC~" + str('%.4f' % testMeasuresRow[1])
-        printStr += " p@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[2])
-        printStr += " r@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[3])
-        printStr += " mrr@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[4])
+        printStr += " f1@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[2])
+        printStr += " mrr@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[3])
         printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(muU))
         printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(muV))
         
@@ -197,7 +194,7 @@ class MaxLocalAUC(object):
         muV = V.copy()
         
         #Store best results 
-        bestPrecision = 0 
+        bestF1 = 0 
         bestU = 0 
         bestV = 0
         
@@ -238,8 +235,8 @@ class MaxLocalAUC(object):
                     
                 logging.debug(printStr) 
                                 
-                if testMeasures[-1][2] >= bestPrecision: 
-                    bestPrecision = testMeasures[-1][2]
+                if testMeasures[-1][2] >= bestF1: 
+                    bestF1 = testMeasures[-1][2]
                     bestU = muU 
                     bestV = muV 
                 
