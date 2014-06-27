@@ -368,7 +368,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             vals = Z[i, omegai]
             
             sortedVals = numpy.flipud(numpy.sort(vals))
-            ri = sortedVals[min(maxLocalAuc.z, sortedVals.shape[0])-1]
+            ri = sortedVals[min(maxLocalAuc.recommendSize, sortedVals.shape[0])-1]
             probs = numpy.zeros(omegai.shape[0])
             probs[vals >= ri] = 1
             probs /= probs.sum()
