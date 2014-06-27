@@ -52,7 +52,7 @@ def learnPredictMSE(args):
         
     return errors 
 
-def learnPredictPrecision(args): 
+def learnPredictF1(args): 
     """
     A function to train on a training set and test on a test set, for a number 
     of values of rho. 
@@ -74,7 +74,7 @@ def learnPredictPrecision(args):
     ZIter = learner.learnModel(trainXIter, iter(rhos))
     p = learner.validationSize 
     
-    precisions = numpy.zeros(rhos.shape[0])
+    f1s = numpy.zeros(rhos.shape[0])
     
     for j, Z in enumerate(ZIter): 
         U, s, V = Z
@@ -83,11 +83,11 @@ def learnPredictPrecision(args):
         V = numpy.ascontiguousarray(V)
         
         testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, p, trainX)
-        precisions[j] = MCEvaluator.precisionAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.validationSize) 
-        logging.debug("Precision@" + str(learner.validationSize) +  ": " + str('%.4f' % precisions[j]) + " " + str(learner))
+        f1s[j] = MCEvaluator.f1AtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.recommendSize) 
+        logging.debug("F1@" + str(learner.recommendSize) +  ": " + str('%.4f' % f1s[j]) + " " + str(learner))
         gc.collect()
         
-    return precisions 
+    return f1s 
 
 class IterativeSoftImpute(AbstractMatrixCompleter):
     """
@@ -137,6 +137,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         self.numProcesses = multiprocessing.cpu_count()
         self.metric = "mse"
         self.validationSize = 3
+        self.recommendSize = 10
 
     def learnModel(self, XIterator, rhos=None):
         """
@@ -368,8 +369,10 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         
         if self.metric == "mse": 
             metricFuction = learnPredictMSE
-        elif self.metric == "precision": 
-            metricFuction = learnPredictPrecision
+        elif self.metric == "f1": 
+            metricFuction = learnPredictF1
+        else: 
+            raise ValueError("Unknown metric: " + self.metric)
             
         for i, (trainInds, testInds) in enumerate(cvInds):
             Util.printIteration(i, 1, len(cvInds), "Fold: ")
@@ -378,7 +381,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
 
             assert trainX.nnz == trainInds.shape[0]
             assert testX.nnz == testInds.shape[0]
-            nptst.assert_array_almost_equal((testX+trainX).data, X.data)
+            #nptst.assert_array_almost_equal((testX+trainX).data, X.data)
 
             paramList = []
         
@@ -409,7 +412,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         if self.metric == "mse": 
             self.setRho(rhos[numpy.unravel_index(numpy.argmin(meanMetrics), meanMetrics.shape)[0]]) 
             self.setK(ks[numpy.unravel_index(numpy.argmin(meanMetrics), meanMetrics.shape)[1]])
-        elif self.metric == "precision":
+        elif self.metric == "f1":
             self.setRho(rhos[numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)[0]]) 
             self.setK(ks[numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)[1]])
             
@@ -433,8 +436,8 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         
         if self.metric == "mse": 
             metricFuction = learnPredictMSE
-        elif self.metric == "precision": 
-            metricFuction = learnPredictPrecision
+        elif self.metric == "f1": 
+            metricFuction = learnPredictF1
             
         for i, (trainX, testX) in enumerate(trainTestXs):
             Util.printIteration(i, 1, len(cvInds), "Fold: ")
@@ -470,7 +473,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         if self.metric == "mse": 
             self.setRho(rhos[numpy.unravel_index(numpy.argmin(meanMetrics), meanMetrics.shape)[0]]) 
             self.setK(ks[numpy.unravel_index(numpy.argmin(meanMetrics), meanMetrics.shape)[1]])
-        elif self.metric == "precision":
+        elif self.metric == "f1":
             self.setRho(rhos[numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)[0]]) 
             self.setK(ks[numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)[1]])
             
@@ -529,14 +532,16 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         Return a new copied version of this object.
         """
         iterativeSoftImpute = IterativeSoftImpute(rho=self.rho, eps=self.eps, k=self.k, svdAlg=self.svdAlg, updateAlg=self.updateAlg, logStep=self.logStep, kmax=self.kmax, postProcess=self.postProcess, weighted=self.weighted, p=self.p, q=self.q)
-
+        iterativeSoftImpute.recommendSize = self.recommendSize 
+        iterativeSoftImpute.maxIterations = self.maxIterations 
+        iterativeSoftImpute.validationSize = self.validationSize
         return iterativeSoftImpute
 
     def __str__(self): 
         outputStr = self.name() + ":" 
         outputStr += " rho=" + str(self.rho)+" eps="+str(self.eps)+" k="+str(self.k) + " svdAlg="+str(self.svdAlg) + " kmax="+str(self.kmax)
         outputStr += " postProcess=" + str(self.postProcess) + " weighted="+str(self.weighted) + " p="+str(self.p) + " q="+str(self.q)
-        outputStr += " maxIterations=" + str(self.maxIterations)
+        outputStr += " maxIterations=" + str(self.maxIterations) + " recommendSize=" + str(self.maxIterations) + " validationSize=" + str(self.validationSize) 
         return outputStr
 
     def name(self):

@@ -15,6 +15,7 @@ from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute
 from sandbox.recommendation.WeightedMf import WeightedMf
 from sandbox.recommendation.RecommenderUtils import computeTestPrecision, computeTestF1
 from sandbox.misc.RandomisedSVD import RandomisedSVD
+from sandbox.recommendation.AbstractRecommender import AbstractRecommender
 
 def computeObjective(args): 
     """
@@ -36,7 +37,7 @@ def computeTestAuc(args):
         
     return muAuc
          
-class MaxLocalAUC(object): 
+class MaxLocalAUC(AbstractRecommender): 
     def __init__(self, k, w, alpha=0.05, eps=10**-6, lmbda=0.001, stochastic=False, numProcesses=None): 
         """
         Create an object for  maximising the local AUC with a penalty term using the matrix
@@ -54,16 +55,12 @@ class MaxLocalAUC(object):
         
         :stochastic: Whether to use stochastic gradient descent or gradient descent 
         """
+        super(MaxLocalAUC, self).__init__(numProcesses)
         self.k = k 
         self.w = w
         self.eps = eps 
         self.stochastic = stochastic
 
-        if numProcesses == None: 
-            self.numProcesses = multiprocessing.cpu_count()
-
-        self.chunkSize = 1        
-        
         self.rate = "constant"
         self.alpha = alpha #Initial learning rate 
         self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
@@ -83,12 +80,8 @@ class MaxLocalAUC(object):
         self.initialAlg = "rand"
         #Possible choices are uniform, top, rank 
         self.sampling = "uniform"
-        #The number of items to use to compute precision, sample for probabilities etc.         
-        self.recommendSize = 10
         
         #Model selection parameters 
-        self.folds = 2 
-        self.validationSize = 3
         self.validationUsers = 0.1
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = numpy.linspace(0.5, 2.0, 7)
@@ -503,14 +496,16 @@ class MaxLocalAUC(object):
         outputStr = "MaxLocalAUC: k=" + str(self.k) + " eps=" + str(self.eps) 
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) 
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
-        outputStr += " w=" + str(self.w) + " rho=" + str(self.rho) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
-        outputStr += " lmbda=" + str(self.lmbda) +  " numProcesses=" + str(self.numProcesses) + " validationSize=" + str(self.validationSize)
-        outputStr += " sampling=" + str(self.sampling) + " recommendSize=" + str(self.recommendSize) + " recordStep=" + str(self.recordStep)
+        outputStr += " w=" + str(self.w) + " rho=" + str(self.rho) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) 
+        outputStr += " lmbda=" + str(self.lmbda) + " sampling=" + str(self.sampling) + " recordStep=" + str(self.recordStep)
+        outputStr += super(MaxLocalAUC, self).__str__()
         
         return outputStr 
 
     def copy(self): 
+        
         maxLocalAuc = MaxLocalAUC(k=self.k, w=self.w, lmbda=self.lmbda)
+        self.copyParams(maxLocalAuc)
         maxLocalAuc.eps = self.eps 
         maxLocalAuc.stochastic = self.stochastic
         maxLocalAuc.rho = self.rho 
@@ -527,13 +522,11 @@ class MaxLocalAUC(object):
         maxLocalAuc.maxIterations = self.maxIterations
         maxLocalAuc.initialAlg = self.initialAlg
         maxLocalAuc.sampling = self.sampling
-        maxLocalAuc.recommendSize = self.recommendSize
+
         maxLocalAuc.itemExp = self.itemExp
         
         maxLocalAuc.ks = self.ks
         maxLocalAuc.lmbdas = self.lmbdas
-        maxLocalAuc.folds = self.folds
-        maxLocalAuc.validationSize = self.validationSize
         
         return maxLocalAuc
         

@@ -35,6 +35,21 @@ class CLiMFTest(unittest.TestCase):
         
         #Bit weird that all rows are the same 
         print(Z)
+        
+    def testModelSelect(self): 
+        m = 50 
+        n = 20 
+        k = 5
+        u = 0.1 
+        w = 1-u
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, w)
+        
+        lmbda = 0.1 
+        gamma = 0.01
+        learner = CLiMF(k, lmbda, gamma)
+        learner.max_iters = 10
+        
+        learner.modelSelect(X)
 
     
 if __name__ == "__main__":

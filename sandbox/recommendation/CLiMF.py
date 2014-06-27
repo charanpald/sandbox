@@ -8,14 +8,15 @@ import random
 import sppy
 import logging
 import multiprocessing
+import itertools
 from sandbox.util.MCEvaluator import MCEvaluator 
 from sandbox.util.PathDefaults import PathDefaults
 from sandbox.util.Sampling import Sampling
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.MCEvaluator import  MCEvaluator
-from sandbox.recommendation.RecommenderUtils import computeTestPrecision
+from sandbox.recommendation.RecommenderUtils import computeTestF1
+from sandbox.recommendation.AbstractRecommender import AbstractRecommender
 
-import itertools
 
 try:
     from climf import _make_dataset
@@ -28,12 +29,13 @@ except:
         raise NameError("climf is not installed, so 'safe_climf_fast' is not defined")
         
         
-class CLiMF(object): 
+class CLiMF(AbstractRecommender): 
     """
     An interface to use CLiMF recommender system. 
     """
     
-    def __init__(self, k, lmbda, gamma): 
+    def __init__(self, k, lmbda, gamma, numProcesses=None): 
+        super(CLiMF, self).__init__(numProcesses)
         self.k = k 
         self.lmbda = lmbda
         self.gamma = gamma
@@ -41,15 +43,9 @@ class CLiMF(object):
         self.max_iters = 25
         
         #Model selection parameters 
-        self.folds = 5 
-        self.validationSize = 3
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 2.0**-numpy.arange(1, 20, 4)
         self.gammas = 2.0**-numpy.arange(1, 20, 4)
-        self.numRecordAucSamples = 500
-        self.w = 0.1
-        self.numProcesses = multiprocessing.cpu_count()
-        self.chunkSize = 1
         self.verbose=1
         
     def initUV(self, X, k=None):
@@ -110,9 +106,9 @@ class CLiMF(object):
             
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-            resultsIterator = pool.imap(computeTestPrecision, paramList, self.chunkSize)
+            resultsIterator = pool.imap(computeTestF1, paramList, self.chunkSize)
         else: 
-            resultsIterator = itertools.imap(computeTestPrecision, paramList)
+            resultsIterator = itertools.imap(computeTestF1, paramList)
         
         for i_k in range(len(self.ks)):
             for i_lmbda in range(len(self.lmbdas)):
@@ -143,6 +139,7 @@ class CLiMF(object):
             
     def copy(self): 
         learner = CLiMF(self.k, self.lmbda, self.gamma)
+        self.copyParams(learner)
         learner.max_iters = self.max_iters
         learner.verbose = self.verbose
         
@@ -153,6 +150,7 @@ class CLiMF(object):
         outputStr += " lambda=" + str(self.lmbda)
         outputStr += " gamma=" + str(self.gamma)
         outputStr += " max iters=" + str(self.max_iters)
+        outputStr += super(CLiMF, self).__str__()
         
         return outputStr         
 

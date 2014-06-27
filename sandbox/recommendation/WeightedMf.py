@@ -8,33 +8,29 @@ from sandbox.util.Sampling import Sampling
 from sandbox.util.Util import Util 
 from mrec.mf.wrmf import WRMFRecommender
 from sandbox.util.MCEvaluator import MCEvaluator 
+from sandbox.recommendation.AbstractRecommender import AbstractRecommender
 
 
-class WeightedMf(object): 
+class WeightedMf(AbstractRecommender): 
     """
     A wrapper for the mrec class WRMFRecommender. 
     """
     
-    def __init__(self, k, alpha=1, lmbda=0.015, numIterations=20, w=0.9): 
+    def __init__(self, k, alpha=1, lmbda=0.015, maxIterations=20, w=0.9, numProcesses=None):
+        super(WeightedMf, self).__init__(numProcesses)
         self.k = k 
         self.alpha = alpha
         #lmbda doesn't seem to make much difference at all 
         self.lmbda = lmbda 
-        self.numIterations = numIterations 
+        self.maxIterations = maxIterations 
         
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = numpy.flipud(numpy.logspace(-3, -1, 11)*2) 
-        
-        self.folds = 3
-        self.validationSize = 3
-        self.w = w
-        self.numRecordAucSamples = 500
-        self.numProcesses = multiprocessing.cpu_count()
-        self.chunkSize = 1
+    
         
     def learnModel(self, X): 
         
-        learner = WRMFRecommender(self.k, self.alpha, self.lmbda, self.numIterations)
+        learner = WRMFRecommender(self.k, self.alpha, self.lmbda, self.maxIterations)
         
         learner.fit(X)
         self.U = learner.U 
@@ -96,17 +92,16 @@ class WeightedMf(object):
         return meanTestPrecisions, stdTestPrecisions
     
     def copy(self): 
-        learner = WeightedMf(self.k, self.alpha, self.lmbda, self.numIterations)
+        learner = WeightedMf(self.k, self.alpha, self.lmbda, self.maxIterations)
+        self.copyParams(learner)
         learner.ks = self.ks
         learner.lmbdas = self.lmbdas
-        learner.w = self.w
-        learner.folds = self.folds 
-        learner.numRecordAucSamples = self.numRecordAucSamples
-        
+
         return learner 
 
     def __str__(self): 
         outputStr = "WeightedMf: lmbda=" + str(self.lmbda) + " k=" + str(self.k) + " alpha=" + str(self.alpha)
-        outputStr += " numRecordAucSamples=" + str(self.numRecordAucSamples) + " numIterations=" + str(self.numIterations)
+        outputStr += " maxIterations=" + str(self.maxIterations)
+        outputStr += super(WeightedMf, self).__str__()
         
         return outputStr         

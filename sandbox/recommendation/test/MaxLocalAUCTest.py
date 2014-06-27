@@ -272,7 +272,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc.modelSelect(X)
             
 
-    @unittest.skip("")
+    #@unittest.skip("")
     def testLearningRateSelect(self): 
         m = 10 
         n = 20 

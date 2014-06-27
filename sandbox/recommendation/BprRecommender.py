@@ -9,17 +9,18 @@ from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.Sampling import Sampling
 from bpr import BPRArgs, BPR, UniformPairWithoutReplacement 
 from sandbox.recommendation.RecommenderUtils import computeTestPrecision, computeTestF1
+from sandbox.recommendation.AbstractRecommender import AbstractRecommender
 
-
-class BprRecommender(object): 
+class BprRecommender(AbstractRecommender): 
     """
     An interface to the BPR recommender system. 
     """
     
-    def __init__(self, k, lmbdaUser=0.1, lmbdaPos=0.1, lmbdaNeg=0.1, biasReg=0.1, gamma=0.1): 
+    def __init__(self, k, lmbdaUser=0.1, lmbdaPos=0.1, lmbdaNeg=0.1, biasReg=0.1, gamma=0.1, numProcesses=None): 
         """
         k is the number of factors, lambda is the regularistion and gamma is the learning rate 
         """
+        super(BprRecommender, self).__init__(numProcesses)
         self.k = k 
         self.lmbdaUser = lmbdaUser
         self.lmbdaPos = lmbdaPos
@@ -30,9 +31,6 @@ class BprRecommender(object):
         self.maxIterations = 25
         
         #Model selection parameters 
-        self.folds = 5 
-        self.validationSize = 3
-        self.recommendSize = 10
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdaUsers = 2.0**-numpy.arange(1, 20, 4)
         #self.lmbdaPoses = 2.0**-numpy.arange(1, 20, 4)
@@ -40,10 +38,6 @@ class BprRecommender(object):
         self.lmbdaItems = 2.0**-numpy.arange(1, 20, 4)
         self.gammas = 2.0**-numpy.arange(1, 20, 4)
         
-        self.numProcesses = multiprocessing.cpu_count()
-        self.chunkSize = 1
-        
-
     def learnModel(self, X, U=None, V=None):
         args = BPRArgs()
         args.learning_rate = self.gamma
@@ -123,9 +117,8 @@ class BprRecommender(object):
         
     def copy(self): 
         learner = BprRecommender(self.k, self.lmbdaUser, self.lmbdaPos, self.lmbdaNeg, self.biasReg, self.gamma)
-        learner.maxIterations = self.maxIterations
-        learner.validationSize = self.validationSize
-        
+        self.copyParams(learner)
+        learner.maxIterations = self.maxIterations 
         
         return learner 
 
@@ -137,7 +130,6 @@ class BprRecommender(object):
         outputStr += " biasReg=" + str(self.biasReg)
         outputStr += " gamma=" + str(self.gamma)
         outputStr += " maxIterations=" + str(self.maxIterations)
-        outputStr += " recommendSize=" + str(self.recommendSize)
-        outputStr += " validationSize=" + str(self.validationSize)
+        outputStr += super(BprRecommender, self).__str__()
         
         return outputStr   
