@@ -438,6 +438,8 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
             metricFuction = learnPredictMSE
         elif self.metric == "f1": 
             metricFuction = learnPredictF1
+        else: 
+            raise ValueError("Unknown metric: " + self.metric)
             
         for i, (trainX, testX) in enumerate(trainTestXs):
             Util.printIteration(i, 1, len(cvInds), "Fold: ")
