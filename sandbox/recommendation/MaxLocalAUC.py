@@ -13,6 +13,7 @@ from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
 from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
 from sandbox.recommendation.WeightedMf import WeightedMf
+from sandbox.recommendation.RecommenderUtils import computeTestPrecision, computeTestF1
 from sandbox.misc.RandomisedSVD import RandomisedSVD
 
 def computeObjective(args): 
@@ -34,44 +35,7 @@ def computeTestAuc(args):
     logging.debug("Weighted local AUC: " + str('%.4f' % muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
         
     return muAuc
-    
-def computeTestPrecision(args): 
-    trainX, testX, U, V, maxLocalAuc = args 
-    
-    #logging.debug("About to learn")
-    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.learnModel(trainX, verbose=True)
-    testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, maxLocalAuc.z, trainX)
-    precision = MCEvaluator.precisionAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, maxLocalAuc.z)
-
-    logging.debug("Precision@" + str(maxLocalAuc.z) + ": " + str('%.4f' % precision) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
-        
-    return precision
-    
-def computeTestRecall(args): 
-    trainX, testX, U, V, maxLocalAuc = args 
-    
-    #logging.debug("About to learn")
-    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.learnModel(trainX, verbose=True)
-    testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, maxLocalAuc.z, trainX)
-    recall = MCEvaluator.recallAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, maxLocalAuc.z)
-
-    logging.debug("Recall@" + str(maxLocalAuc.z) + ": " + str('%.4f' % recall) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
-        
-    return recall    
-   
-def computeTestF1(args): 
-    trainX, testX, U, V, maxLocalAuc = args 
-    
-    #logging.debug("About to learn")
-    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.learnModel(trainX, verbose=True)
-    testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, maxLocalAuc.z, trainX)
-    f1 = MCEvaluator.f1AtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, maxLocalAuc.z)
-
-    logging.debug("F1@" + str(maxLocalAuc.z) + ": " + str('%.4f' % f1) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
-        
-    return f1    
-   
-      
+         
 class MaxLocalAUC(object): 
     def __init__(self, k, w, alpha=0.05, eps=10**-6, lmbda=0.001, stochastic=False, numProcesses=None): 
         """
@@ -120,7 +84,7 @@ class MaxLocalAUC(object):
         #Possible choices are uniform, top, rank 
         self.sampling = "uniform"
         #The number of items to use to compute precision, sample for probabilities etc.         
-        self.z = 10
+        self.recommendSize = 10
         
         #Model selection parameters 
         self.folds = 2 
@@ -143,8 +107,8 @@ class MaxLocalAUC(object):
         testMeasuresRow = []
         testMeasuresRow.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, c, allArray=(allIndPtr, allColInds)))
         testMeasuresRow.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
-        testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.z, trainX)
-        f1Array, orderedItems = MCEvaluator.f1AtK((testIndPtr, testColInds), testOrderedItems, self.z, verbose=True)
+        testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.recommendSize, trainX)
+        f1Array, orderedItems = MCEvaluator.f1AtK((testIndPtr, testColInds), testOrderedItems, self.recommendSize, verbose=True)
         testMeasuresRow.append(f1Array[rowSamples].mean())   
         mrr = MCEvaluatorCython.reciprocalRankAtk(testIndPtr, testColInds, testOrderedItems)
         testMeasuresRow.append(mrr[rowSamples].mean())
@@ -156,8 +120,8 @@ class MaxLocalAUC(object):
         printStr += " LAUC~" + str('%.4f' % trainMeasures[-1][1]) 
         printStr += " validation: obj~" + str('%.4f' % testMeasuresRow[0])
         printStr += " LAUC~" + str('%.4f' % testMeasuresRow[1])
-        printStr += " f1@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[2])
-        printStr += " mrr@" + str(self.z) + "=" + str('%.4f' % testMeasuresRow[3])
+        printStr += " f1@" + str(self.recommendSize) + "=" + str('%.4f' % testMeasuresRow[2])
+        printStr += " mrr@" + str(self.recommendSize) + "=" + str('%.4f' % testMeasuresRow[3])
         printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(muU))
         printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(muV))
         
@@ -366,7 +330,7 @@ class MaxLocalAUC(object):
         for i in range(m):
             omegai = colInds[indPtr[i]:indPtr[i+1]]
             uiVOmegai = U[i, :].T.dot(V[omegai, :].T)
-            ri = numpy.sort(uiVOmegai)[-min(self.z, uiVOmegai.shape[0])]
+            ri = numpy.sort(uiVOmegai)[-min(self.recommendSize, uiVOmegai.shape[0])]
             colIndsCumProbs[indPtr[i]:indPtr[i+1]] = numpy.array(uiVOmegai >= ri, numpy.float)
             colIndsCumProbs[indPtr[i]:indPtr[i+1]] /= colIndsCumProbs[indPtr[i]:indPtr[i+1]].sum()
             colIndsCumProbs[indPtr[i]:indPtr[i+1]]  = numpy.cumsum(colIndsCumProbs[indPtr[i]:indPtr[i+1]])
@@ -541,7 +505,7 @@ class MaxLocalAUC(object):
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rho=" + str(self.rho) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " folds=" + str(self.folds)
         outputStr += " lmbda=" + str(self.lmbda) +  " numProcesses=" + str(self.numProcesses) + " validationSize=" + str(self.validationSize)
-        outputStr += " sampling=" + str(self.sampling) + " z=" + str(self.z) + " recordStep=" + str(self.recordStep)
+        outputStr += " sampling=" + str(self.sampling) + " recommendSize=" + str(self.recommendSize) + " recordStep=" + str(self.recordStep)
         
         return outputStr 
 
@@ -563,7 +527,8 @@ class MaxLocalAUC(object):
         maxLocalAuc.maxIterations = self.maxIterations
         maxLocalAuc.initialAlg = self.initialAlg
         maxLocalAuc.sampling = self.sampling
-        maxLocalAuc.z = self.z
+        maxLocalAuc.recommendSize = self.recommendSize
+        maxLocalAuc.itemExp = self.itemExp
         
         maxLocalAuc.ks = self.ks
         maxLocalAuc.lmbdas = self.lmbdas
