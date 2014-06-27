@@ -69,7 +69,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.normalise = True
         self.lmbda = lmbda 
         self.rho = 1.00 #Penalise low rank elements 
-        self.itemExp = 0.5
+        self.itemExp = 0.0
         
         self.recordStep = 10
         self.numRowSamples = 100
@@ -172,6 +172,7 @@ class MaxLocalAUC(AbstractRecommender):
         #A more popular item has a lower weight 
         c = (1/(X.sum(0)+1))**self.itemExp
         c = c/c.mean()
+        #print(c)
         #print(numpy.min(c), numpy.max(c))
         #c = numpy.ones(n)
         #print(c)
@@ -427,7 +428,7 @@ class MaxLocalAUC(AbstractRecommender):
                         maxLocalAuc.lmbda = lmbda
                         maxLocalAuc.rho = rho 
                     
-                        paramList.append((trainX, testX, U.copy(), V.copy(), maxLocalAuc))
+                        paramList.append((trainX, testX, maxLocalAuc))
             
         logging.debug("Set parameters")
         if self.metric == "auc":
@@ -446,7 +447,7 @@ class MaxLocalAUC(AbstractRecommender):
             resultsIterator = pool.imap(evaluationMethod, paramList, self.chunkSize)
         else: 
             import itertools
-            resultsIterator = itertools.imap(computeTestAuc, paramList)
+            resultsIterator = itertools.imap(evaluationMethod, paramList)
         
         for i, k in enumerate(self.ks):
             for icv in range(len(trainTestXs)): 
@@ -500,6 +501,10 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += " lmbda=" + str(self.lmbda) + " sampling=" + str(self.sampling) + " recordStep=" + str(self.recordStep)
         outputStr += super(MaxLocalAUC, self).__str__()
         
+        return outputStr 
+
+    def modelParamsStr(self): 
+        outputStr = "lmbda=" + str(self.lmbda) + " k=" + str(self.lmbda) + " rho=" + str(self.rho)
         return outputStr 
 
     def copy(self): 

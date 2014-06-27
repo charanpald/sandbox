@@ -33,6 +33,12 @@ def computeTestF1(args):
     
     testOrderedItems = MCEvaluatorCython.recommendAtk(learner.U, learner.V, learner.recommendSize, trainX)
     f1 = MCEvaluator.f1AtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.recommendSize) 
-    logging.debug("F1@" + str(learner.recommendSize) +  ": " + str('%.4f' % f1) + " " + str(learner))
+    
+    try: 
+        learnerStr = learner.modelParamsStr()
+    except: 
+        learnerStr = str(learner) 
+        
+    logging.debug("F1@" + str(learner.recommendSize) +  ": " + str('%.4f' % f1) + " " + learnerStr)
         
     return f1
