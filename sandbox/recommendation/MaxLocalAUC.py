@@ -108,6 +108,7 @@ class MaxLocalAUC(object):
         self.normalise = True
         self.lmbda = lmbda 
         self.rho = 1.00 #Penalise low rank elements 
+        self.itemExp = 0.5
         
         self.recordStep = 10
         self.numRowSamples = 100
@@ -212,10 +213,10 @@ class MaxLocalAUC(object):
         self.wv = 1 - X.sum(1)/float(n)
         
         #A more popular item has a lower weight 
-        #c = (1/(X.sum(0)+1))**0.5
-        #c = c/c.mean()
+        c = (1/(X.sum(0)+1))**self.itemExp
+        c = c/c.mean()
         #print(numpy.min(c), numpy.max(c))
-        c = numpy.ones(n)
+        #c = numpy.ones(n)
         #print(c)
     
         while loopInd < self.maxIterations:           
