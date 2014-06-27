@@ -3,16 +3,12 @@ Wrapper to use gamboviol implementation of BPR.
 """
 
 import numpy 
-import sppy
 import logging
 import multiprocessing
 from sandbox.util.MCEvaluator import MCEvaluator 
-from sandbox.util.PathDefaults import PathDefaults
 from sandbox.util.Sampling import Sampling
-from sandbox.util.SparseUtils import SparseUtils
-from sandbox.util.MCEvaluatorCython import MCEvaluatorCython
 from bpr import BPRArgs, BPR, UniformPairWithoutReplacement 
-from sandbox.recommendation.RecommenderUtils import computeTestPrecision
+from sandbox.recommendation.RecommenderUtils import computeTestPrecision, computeTestF1
 
 
 class BprRecommender(object): 
@@ -20,7 +16,7 @@ class BprRecommender(object):
     An interface to the BPR recommender system. 
     """
     
-    def __init__(self, k, lmbdaUser=0.1, lmbdaPos=0.1, lmbdaNeg=0.1, biasReg=0.1, gamma=0.1, w=0.9): 
+    def __init__(self, k, lmbdaUser=0.1, lmbdaPos=0.1, lmbdaNeg=0.1, biasReg=0.1, gamma=0.1): 
         """
         k is the number of factors, lambda is the regularistion and gamma is the learning rate 
         """
@@ -36,15 +32,13 @@ class BprRecommender(object):
         #Model selection parameters 
         self.folds = 5 
         self.validationSize = 3
+        self.recommendSize = 10
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdaUsers = 2.0**-numpy.arange(1, 20, 4)
         #self.lmbdaPoses = 2.0**-numpy.arange(1, 20, 4)
         #self.lmbdaNegs = 2.0**-numpy.arange(1, 20, 4)
         self.lmbdaItems = 2.0**-numpy.arange(1, 20, 4)
         self.gammas = 2.0**-numpy.arange(1, 20, 4)
-        
-        self.numRecordAucSamples = 500
-        self.w = w
         
         self.numProcesses = multiprocessing.cpu_count()
         self.chunkSize = 1
@@ -95,10 +89,10 @@ class BprRecommender(object):
             
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-            resultsIterator = pool.imap(computeTestPrecision, paramList, self.chunkSize)
+            resultsIterator = pool.imap(computeTestF1, paramList, self.chunkSize)
         else: 
             import itertools
-            resultsIterator = itertools.imap(computeTestPrecision, paramList)
+            resultsIterator = itertools.imap(computeTestF1, paramList)
         
         for i, k in enumerate(self.ks): 
             for j, lmbdaUser in enumerate(self.lmbdaUsers): 
@@ -128,7 +122,7 @@ class BprRecommender(object):
         return meanTestLocalAucs, stdTestLocalAucs
         
     def copy(self): 
-        learner = BprRecommender(self.k, self.lmbdaUser, self.lmbdaPos, self.lmbdaNeg, self.biasReg, self.gamma, self.w)
+        learner = BprRecommender(self.k, self.lmbdaUser, self.lmbdaPos, self.lmbdaNeg, self.biasReg, self.gamma)
         learner.maxIterations = self.maxIterations
         learner.validationSize = self.validationSize
         
@@ -143,5 +137,7 @@ class BprRecommender(object):
         outputStr += " biasReg=" + str(self.biasReg)
         outputStr += " gamma=" + str(self.gamma)
         outputStr += " maxIterations=" + str(self.maxIterations)
+        outputStr += " recommendSize=" + str(self.recommendSize)
+        outputStr += " validationSize=" + str(self.validationSize)
         
         return outputStr   

@@ -13,13 +13,26 @@ def computeTestPrecision(args):
     parallel model selection. 
     """
     trainX, testX, learner = args 
-    p = learner.validationSize 
         
     learner.learnModel(trainX)
     
-    testOrderedItems = MCEvaluatorCython.recommendAtk(learner.U, learner.V, p, trainX)
-    precision = MCEvaluator.precisionAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.validationSize) 
-    logging.debug("Precision@" + str(learner.validationSize) +  ": " + str('%.4f' % precision) + " " + str(learner))
+    testOrderedItems = MCEvaluatorCython.recommendAtk(learner.U, learner.V, learner.recommendSize, trainX)
+    precision = MCEvaluator.precisionAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.recommendSize) 
+    logging.debug("Precision@" + str(learner.recommendSize) +  ": " + str('%.4f' % precision) + " " + str(learner))
         
     return precision
     
+def computeTestF1(args): 
+    """
+    A simple function for outputing F1 for a learner in conjunction e.g. with 
+    parallel model selection. 
+    """
+    trainX, testX, learner = args 
+        
+    learner.learnModel(trainX)
+    
+    testOrderedItems = MCEvaluatorCython.recommendAtk(learner.U, learner.V, learner.recommendSize, trainX)
+    f1 = MCEvaluator.f1AtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.recommendSize) 
+    logging.debug("F1@" + str(learner.recommendSize) +  ": " + str('%.4f' % f1) + " " + str(learner))
+        
+    return f1
