@@ -25,9 +25,9 @@ class AbstractRecommender(object):
         return learner 
         
     def __str__(self): 
-        outputStr = " recommendSize=" + str(self.recommendSize) + " validationSize=" + str(self.recommendSize) 
-        outputStr += " folds=" + str(self.recommendSize) + " numProcesses=" + str(self.recommendSize)
-        outputStr += " chunkSize=" + str(self.recommendSize)
+        outputStr = " recommendSize=" + str(self.recommendSize) + " validationSize=" + str(self.validationSize) 
+        outputStr += " folds=" + str(self.folds) + " numProcesses=" + str(self.numProcesses)
+        outputStr += " chunkSize=" + str(self.chunkSize)
 
         
         return outputStr 
