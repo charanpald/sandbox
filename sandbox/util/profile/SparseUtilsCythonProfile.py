@@ -54,8 +54,18 @@ class SparseUtilsCythonProfile(object):
                 
         
         ProfileUtils.profile('run()', globals(), locals())
+    
+    def profileGenerateSparseBinaryMatrixPL(self): 
+        m = 500 
+        n = 200 
+        k = 10
+        density = 0.2
+        numpy.random.seed(21)
+        #X = SparseUtils.generateSparseBinaryMatrixPL((m,n), k, density=density, csarray=True)   
         
+        ProfileUtils.profile('SparseUtilsCython.generateSparseBinaryMatrixPL((m,n), k, density=density, csarray=True)', globals(), locals()) 
+    
 profiler = SparseUtilsCythonProfile()
 #profiler.profilePartialReconstructValsPQ()
 #profiler.profilePartialReconstructValsPQ2() #About 10x faster 
-profiler.computeRProfile()
+profiler.profileGenerateSparseBinaryMatrixPL()

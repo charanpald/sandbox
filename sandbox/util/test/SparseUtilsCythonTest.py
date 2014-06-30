@@ -221,5 +221,20 @@ class SparseUtilsCythonTest(unittest.TestCase):
             
             nptst.assert_array_almost_equal(X.sum(1), numpy.zeros(m))
 
+    def testGenerateSparseBinaryMatrixPL(self):
+        m = 200 
+        n = 100 
+        k = 3
+        density = 0.2
+        numpy.random.seed(21)
+        X, U, V = SparseUtilsCython.generateSparseBinaryMatrixPL((m,n), k, density=density, csarray=True)       
+
+        #Just check that the distributions are roughtly power law 
+        print(numpy.histogram(X.sum(0)))        
+        print(numpy.histogram(X.sum(1)))  
+        
+        self.assertAlmostEqual(X.nnz/float(m*n), density, 2)
+        self.assertEquals(X.shape, (m, n))
+
 if __name__ == '__main__':
     unittest.main()

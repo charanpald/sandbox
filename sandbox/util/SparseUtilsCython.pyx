@@ -1,10 +1,14 @@
 # cython: profile=True
+#cython: boundscheck=False
+#cython: wraparound=False
+#cython: nonecheck=False
 from cython.operator cimport dereference as deref, preincrement as inc 
 import cython
 import struct
 import numpy 
 cimport numpy
 import scipy.sparse 
+from sandbox.util.Util import Util
 from sandbox.util.CythonUtils cimport uniformChoice
 numpy.import_array()
 
@@ -138,3 +142,56 @@ class SparseUtilsCython(object):
             X[rowInds[i], colInds[i]] = X[rowInds[i], colInds[i]] - mu[rowInds[i]] 
         
         return X
+        
+    @staticmethod
+    def generateSparseBinaryMatrixPL(shape, unsigned int p, double density=0.2, bint csarray=False):
+        """
+        Create an underlying matrix Z = UsV.T of rank p. Assign ratings to users and items 
+        based on the power law until we have numInds indices. 
+        """
+        cdef unsigned int m, n, i, j
+        cdef double sigma  
+        cdef numpy.ndarray[int, ndim=1, mode="c"] userSums
+        cdef numpy.ndarray[int, ndim=1, mode="c"] itemSums
+        cdef numpy.ndarray[double, ndim=2, mode="c"] R
+        cdef numpy.ndarray[double, ndim=2, mode="c"] U
+        cdef numpy.ndarray[double, ndim=2, mode="c"] V
+        cdef numpy.ndarray[double, ndim=2, mode="c"] Z
+        
+        m, n = shape
+        p = numpy.min([n, m, p])
+
+        R = numpy.random.rand(m, p)
+        U, R = numpy.linalg.qr(R)
+
+        R = numpy.random.rand(n, p)
+        V, R = numpy.linalg.qr(R)
+        
+        Z = U.dot(V.T)
+        sigma = numpy.mean(Z)
+        
+        if csarray:
+            import sppy
+            X = sppy.csarray(shape, storagetype="row")
+        else:
+            X = scipy.sparse.csr_matrix(shape)        
+        
+        userSums = numpy.array(X.sum(1)+1, numpy.int32)
+        itemSums = numpy.array(X.sum(0)+1, numpy.int32)
+        
+        while X.nnz/float(m*n) < density:
+            #userProbs = userSums/userSums.sum()
+            #i = numpy.random.choice(m, p=userProbs, replace=True)    
+            i = Util.randomChoice(userSums)
+            
+            #itemProbs = itemSums/itemSums.sum()
+            #j = numpy.random.choice(n, p=itemProbs, replace=True)  
+            j = Util.randomChoice(itemSums)
+            
+            if Z[i, j] >= sigma and X[i, j] == 0: 
+                X[i, j] = 1
+                userSums[i] += 1 
+                itemSums[j] += 1
+            
+
+        return X, U, V 
