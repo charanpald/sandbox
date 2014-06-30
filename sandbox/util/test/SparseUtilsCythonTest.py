@@ -225,7 +225,7 @@ class SparseUtilsCythonTest(unittest.TestCase):
         m = 200 
         n = 100 
         k = 3
-        density = 0.2
+        density = 0.1
         numpy.random.seed(21)
         X, U, V = SparseUtilsCython.generateSparseBinaryMatrixPL((m,n), k, density=density, csarray=True)       
 
