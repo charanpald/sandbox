@@ -144,15 +144,15 @@ class SparseUtilsCython(object):
         return X
         
     @staticmethod
-    def generateSparseBinaryMatrixPL(shape, unsigned int p, double density=0.2, bint csarray=False):
+    def generateSparseBinaryMatrixPL(shape, unsigned int p, double density=0.2, double alpha=1, bint csarray=False):
         """
         Create an underlying matrix Z = UsV.T of rank p. Assign ratings to users and items 
         based on the power law until we have numInds indices. 
         """
         cdef unsigned int m, n, i, j
         cdef double sigma  
-        cdef numpy.ndarray[int, ndim=1, mode="c"] userSums
-        cdef numpy.ndarray[int, ndim=1, mode="c"] itemSums
+        cdef numpy.ndarray[double, ndim=1, mode="c"] userProbs
+        cdef numpy.ndarray[double, ndim=1, mode="c"] itemProbs
         cdef numpy.ndarray[double, ndim=2, mode="c"] R
         cdef numpy.ndarray[double, ndim=2, mode="c"] U
         cdef numpy.ndarray[double, ndim=2, mode="c"] V
@@ -176,22 +176,23 @@ class SparseUtilsCython(object):
         else:
             X = scipy.sparse.csr_matrix(shape)        
         
-        userSums = numpy.array(X.sum(1)+1, numpy.int32)
-        itemSums = numpy.array(X.sum(0)+1, numpy.int32)
+        userProbs = Util.powerLawProbs(alpha, zeroVal=0.5, maxInt=m)
+        itemProbs = Util.powerLawProbs(alpha, zeroVal=0.5, maxInt=n)
+        
+        numpy.random.shuffle(userProbs)
+        numpy.random.shuffle(itemProbs)
         
         while X.nnz/float(m*n) < density:
             #userProbs = userSums/userSums.sum()
             #i = numpy.random.choice(m, p=userProbs, replace=True)    
-            i = Util.randomChoice(userSums)
+            i = Util.randomChoice(userProbs)
             
             #itemProbs = itemSums/itemSums.sum()
             #j = numpy.random.choice(n, p=itemProbs, replace=True)  
-            j = Util.randomChoice(itemSums)
+            j = Util.randomChoice(itemProbs)
             
-            if Z[i, j] >= sigma and X[i, j] == 0: 
+            if Z[i, j] >= sigma: 
                 X[i, j] = 1
-                userSums[i] += 1 
-                itemSums[j] += 1
-            
+                
 
         return X, U, V 
