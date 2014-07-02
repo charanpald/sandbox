@@ -110,12 +110,12 @@ class MCEvaluator(object):
         
         orderedItems = orderedItems[:, 0:k]
         indPtr, colInds = positiveArray
-        recalls = MCEvaluatorCython.stratifiedRecallAtk(indPtr, colInds, orderedItems, itemCounts, beta)
+        recalls, denominators = MCEvaluatorCython.stratifiedRecallAtk(indPtr, colInds, orderedItems, itemCounts, beta)
         
         if verbose: 
             return recalls, orderedItems
         else: 
-            return recalls.mean()
+            return numpy.average(recalls, weights=denominators)
        
     @staticmethod       
     def f1AtK(positiveArray, orderedItems, k, verbose=False): 

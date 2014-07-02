@@ -112,7 +112,7 @@ class  MCEvaluatorCythonTest(unittest.TestCase):
         orderedItems = numpy.array(orderedItems, numpy.int32)        
         beta = 0.5
         
-        recalls = MCEvaluatorCython.stratifiedRecallAtk(indPtr, colInds, orderedItems, itemCounts, beta)
+        recalls, denominators = MCEvaluatorCython.stratifiedRecallAtk(indPtr, colInds, orderedItems, itemCounts, beta)
         
         
         recalls2 = numpy.zeros(m)        
@@ -138,7 +138,7 @@ class  MCEvaluatorCythonTest(unittest.TestCase):
                 
         #Now try to match with normal recall 
         itemCounts = numpy.ones(n, numpy.int32)
-        recalls = MCEvaluatorCython.stratifiedRecallAtk(indPtr, colInds, orderedItems, itemCounts, beta)
+        recalls, denominators = MCEvaluatorCython.stratifiedRecallAtk(indPtr, colInds, orderedItems, itemCounts, beta)
         recalls2 = MCEvaluatorCython.recallAtk(indPtr, colInds, orderedItems)
         
         nptst.assert_array_equal(recalls, recalls2)

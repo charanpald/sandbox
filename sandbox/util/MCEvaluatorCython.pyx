@@ -91,10 +91,11 @@ class MCEvaluatorCython(object):
         Accuracy, 2011. 
         """
         cdef unsigned int i, j
-        cdef double numerator, denominator
+        cdef double numerator
         cdef unsigned int k = indices.shape[1]
         cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] recalls = numpy.zeros(indices.shape[0], numpy.float)
+        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] denominators = numpy.zeros(indices.shape[0], numpy.float)
         
         for i in range(indices.shape[0]):
             omegai = colInds[indPtr[i]:indPtr[i+1]]
@@ -106,12 +107,12 @@ class MCEvaluatorCython(object):
                     numerator += 1/itemCounts[indices[i,j]]**beta
                     
             for j in omegai:
-                denominator +=  1/itemCounts[j]**beta                   
+                denominators[i] +=  1/itemCounts[j]**beta                   
                     
-            if denominator != 0: 
-                recalls[i] = numerator/denominator
+            if denominators[i] != 0: 
+                recalls[i] = numerator/denominators[i]
         
-        return recalls  
+        return recalls, denominators  
 
     @staticmethod
     def reciprocalRankAtk(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=2] indices): 
