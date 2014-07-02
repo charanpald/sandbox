@@ -7,6 +7,7 @@ import numpy.testing as nptst
 from sandbox.util.MCEvaluatorCython import MCEvaluatorCython
 from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.SparseUtils import SparseUtils
+from sandbox.util.SparseUtilsCython import SparseUtilsCython
 from sandbox.util.Util import Util 
 
 class  MCEvaluatorCythonTest(unittest.TestCase):
@@ -92,6 +93,56 @@ class  MCEvaluatorCythonTest(unittest.TestCase):
         
         rrs = MCEvaluatorCython.reciprocalRankAtk(indPtr, colInds, orderedItems)
         nptst.assert_array_equal(rrs, numpy.ones(m)*0.5)     
+            
+    def testStratifiedRecallAtk(self): 
+        m = 20 
+        n = 50 
+        r = 3     
+        alpha = 1
+        
+        X, U, V = SparseUtilsCython.generateSparseBinaryMatrixPL((m,n), r, density=0.2, alpha=alpha, csarray=True)
+        
+        itemCounts = numpy.array(X.sum(0)+1, numpy.int32) 
+        
+        (indPtr, colInds) = X.nonzeroRowsPtr()
+        
+        k = 5
+        orderedItems = numpy.random.randint(0, n, m*k)
+        orderedItems = numpy.reshape(orderedItems, (m, k))
+        orderedItems = numpy.array(orderedItems, numpy.int32)        
+        beta = 0.5
+        
+        recalls = MCEvaluatorCython.stratifiedRecallAtk(indPtr, colInds, orderedItems, itemCounts, beta)
+        
+        
+        recalls2 = numpy.zeros(m)        
+            
+        #Now compute recalls from scratch 
+        for i in range(m):
+            omegai = colInds[indPtr[i]:indPtr[i+1]]            
+            
+            numerator = 0 
+            for j in range(k):
+                if orderedItems[i, j] in omegai: 
+                    numerator += 1/itemCounts[orderedItems[i, j]]**beta
+            
+            denominator = 0
+
+            for j in omegai: 
+                denominator += 1/itemCounts[j]**beta
+                
+            recalls2[i] = numerator/denominator
+            
+        nptst.assert_array_equal(recalls, recalls2)
+                                
+                
+        #Now try to match with normal recall 
+        itemCounts = numpy.ones(n, numpy.int32)
+        recalls = MCEvaluatorCython.stratifiedRecallAtk(indPtr, colInds, orderedItems, itemCounts, beta)
+        recalls2 = MCEvaluatorCython.recallAtk(indPtr, colInds, orderedItems)
+        
+        nptst.assert_array_equal(recalls, recalls2)
+                    
             
 if __name__ == '__main__':
     unittest.main()

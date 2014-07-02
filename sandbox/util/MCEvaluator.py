@@ -94,7 +94,29 @@ class MCEvaluator(object):
             return recalls, orderedItems
         else: 
             return recalls.mean()
-            
+     
+    @staticmethod 
+    def stratifiedRecallAtK(positiveArray, orderedItems, k, itemCounts, beta=0.5, verbose=False): 
+        """
+        Compute the average recall@k score for each row of the predicted matrix UV.T 
+        using real values in positiveArray. positiveArray is a tuple (indPtr, colInds)
+        
+        :param orderedItems: The ordered items for each user (users are rows, items are cols)  
+        
+        :param verbose: If true return recall and first k recommendation for each row, otherwise just precisions
+        """
+        if type(positiveArray) != tuple: 
+            positiveArray = SparseUtils.getOmegaListPtr(positiveArray)        
+        
+        orderedItems = orderedItems[:, 0:k]
+        indPtr, colInds = positiveArray
+        recalls = MCEvaluatorCython.stratifiedRecallAtk(indPtr, colInds, orderedItems, itemCounts, beta)
+        
+        if verbose: 
+            return recalls, orderedItems
+        else: 
+            return recalls.mean()
+       
     @staticmethod       
     def f1AtK(positiveArray, orderedItems, k, verbose=False): 
         """

@@ -64,7 +64,7 @@ class MCEvaluatorCython(object):
     def recallAtk(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=2] indices): 
         """
         Take a list of nonzero indices, and also a list of predicted indices and compute 
-        the precision. 
+        the recall. 
         """
         cdef unsigned int i, j
         cdef double count
@@ -80,6 +80,36 @@ class MCEvaluatorCython(object):
                     count += 1
             if omegai.shape[0] != 0: 
                 recalls[i] = count/omegai.shape[0]
+        
+        return recalls  
+
+    @staticmethod 
+    def stratifiedRecallAtk(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=2] indices, numpy.ndarray[int, ndim=1] itemCounts, double beta): 
+        """
+        Take a list of nonzero indices, and also a list of predicted indices and compute 
+        the stratified recall as given in Steck, Item Popularity and Recommendation 
+        Accuracy, 2011. 
+        """
+        cdef unsigned int i, j
+        cdef double numerator, denominator
+        cdef unsigned int k = indices.shape[1]
+        cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
+        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] recalls = numpy.zeros(indices.shape[0], numpy.float)
+        
+        for i in range(indices.shape[0]):
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            numerator = 0 
+            denominator = 0
+            
+            for j in range(k): 
+                if indices[i, j] in omegai: 
+                    numerator += 1/itemCounts[indices[i,j]]**beta
+                    
+            for j in omegai:
+                denominator +=  1/itemCounts[j]**beta                   
+                    
+            if denominator != 0: 
+                recalls[i] = numerator/denominator
         
         return recalls  
 
