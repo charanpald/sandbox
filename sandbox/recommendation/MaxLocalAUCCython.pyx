@@ -256,6 +256,8 @@ def derivativeVi(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int,
                 
         deltaTheta += deltaBeta * gi[i]
     
+    deltaTheta /= gi.sum()    
+    
     #Make gradient unit norm 
     normTheta = numpy.linalg.norm(deltaTheta)
     if normTheta != 0 and normalise: 
@@ -350,6 +352,8 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
                 deltaBeta = scale(U, i, betaScale/(normGp*normGq), k)  
                 
         deltaTheta += deltaBeta  * gi[i]
+        
+    deltaTheta /= gi[rowInds].sum()
     
     #Make gradient unit norm 
     normTheta = numpy.linalg.norm(deltaTheta)
