@@ -141,11 +141,14 @@ cdef inline numpy.ndarray[int, ndim=1, mode="c"] uniformChoice(numpy.ndarray[int
     cdef double p 
     cdef unsigned int i, j
     
-    for j in range(numSamples):
-        i = numpy.random.randint(0, inds.shape[0])
-        sampleArray[j] = inds[i]
-    
-    return sampleArray
+    if inds.shape[0] == 0: 
+        return numpy.array([], numpy.int32)
+    else: 
+        for j in range(numSamples):
+            i = numpy.random.randint(0, inds.shape[0])
+            sampleArray[j] = inds[i]
+        
+        return sampleArray
 
 def choicePy(inds, numSamples, probs): 
     return choice(inds, numSamples, probs)
