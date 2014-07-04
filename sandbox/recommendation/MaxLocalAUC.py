@@ -92,13 +92,13 @@ class MaxLocalAUC(AbstractRecommender):
         self.t0s = 10**-numpy.arange(2, 5, 0.5)
         self.alphas = 2.0**-numpy.arange(-1, 3, 0.5)
     
-    def recordResults(self, muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, c, trainX): 
+    def recordResults(self, muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX): 
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
-        objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, c, full=True)
+        objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=True)
         trainMeasures.append([objArr.mean(), MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r)]) 
         
         testMeasuresRow = []
-        testMeasuresRow.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, c, allArray=(allIndPtr, allColInds)))
+        testMeasuresRow.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, gi, gp, gq, allArray=(allIndPtr, allColInds)))
         testMeasuresRow.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
         testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.recommendSize, trainX)
         f1Array, orderedItems = MCEvaluator.f1AtK((testIndPtr, testColInds), testOrderedItems, self.recommendSize, verbose=True)
@@ -170,12 +170,9 @@ class MaxLocalAUC(AbstractRecommender):
         self.wv = 1 - X.sum(1)/float(n)
         
         #A more popular item has a lower weight 
-        c = (1/(X.sum(0)+1))**self.itemExp
-        c = c/c.mean()
-        #print(c)
-        #print(numpy.min(c), numpy.max(c))
-        #c = numpy.ones(n)
-        #print(c)
+        gi = numpy.ones(m)/float(m)
+        gp = numpy.ones(n)/float(n)
+        gq = numpy.ones(n)/float(n)
     
         while loopInd < self.maxIterations:           
             if self.rate == "constant": 
@@ -187,7 +184,7 @@ class MaxLocalAUC(AbstractRecommender):
             
             if loopInd % self.recordStep == 0: 
    
-                printStr = self.recordResults(muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, c, trainX)
+                printStr = self.recordResults(muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)
                                
                 if loopInd != 0: 
                     print("")  
@@ -201,7 +198,7 @@ class MaxLocalAUC(AbstractRecommender):
                 
             U  = numpy.ascontiguousarray(U)
             
-            self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, c, gradientInd, sigma)                       
+            self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, gradientInd, sigma)                       
                 
             loopInd += 1
             
@@ -213,12 +210,14 @@ class MaxLocalAUC(AbstractRecommender):
         #Compute quantities for last U and V 
         totalTime = time.time() - startTime
         printStr = "\nFinished, time=" + str('%.1f' % totalTime) + " "
-        printStr += self.recordResults(muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, c, trainX)
+        printStr += self.recordResults(muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)
         logging.debug(printStr)
          
         self.U = bestU 
         self.V = bestV
-        self.c = c
+        self.gi = gi
+        self.gp = gp
+        self.gq = gq
          
         if verbose:     
             return self.U, self.V, numpy.array(trainMeasures), numpy.array(testMeasures), loopInd, totalTime
@@ -264,7 +263,7 @@ class MaxLocalAUC(AbstractRecommender):
         
         return U, V
         
-    def updateUV(self, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, c, ind, sigma): 
+    def updateUV(self, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, ind, sigma): 
         """
         Find the derivative with respect to V or part of it. 
         """
@@ -286,7 +285,7 @@ class MaxLocalAUC(AbstractRecommender):
             else: 
                 raise ValueError("Unknown sampling scheme: " + self.sampling)
             
-            updateUVApprox(indPtr, colInds, U, V, muU, muV, colIndsCumProbs, permutedRowInds, permutedColInds, c, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
+            updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
 
     def derivativeUi(self, indPtr, colInds, U, V, r, c, i): 
         """
@@ -474,7 +473,7 @@ class MaxLocalAUC(AbstractRecommender):
          
         return meanTestMetrics, stdTestMetrics
   
-    def objectiveApprox(self, positiveArray, U, V, r, c, allArray=None, full=False): 
+    def objectiveApprox(self, positiveArray, U, V, r, gi, gp, gq, allArray=None, full=False): 
         """
         Compute the estimated local AUC for the score functions UV^T relative to X with 
         quantile w. The AUC is computed using positiveArray which is a tuple (indPtr, colInds)
@@ -488,10 +487,10 @@ class MaxLocalAUC(AbstractRecommender):
         V = numpy.ascontiguousarray(V)        
         
         if allArray == None: 
-            return objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, r, c, self.numRecordAucSamples, self.rho, full=full)         
+            return objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, r, gi, gp, gq, self.numRecordAucSamples, self.rho, full=full)         
         else:
             allIndPtr, allColInds = allArray
-            return objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, r, c, self.numRecordAucSamples, self.rho, full=full)
+            return objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, r, gi, gp, gq, self.numRecordAucSamples, self.rho, full=full)
   
     def __str__(self): 
         outputStr = "MaxLocalAUC: k=" + str(self.k) + " eps=" + str(self.eps) 

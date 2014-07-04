@@ -8,7 +8,6 @@ import unittest
 import logging
 import numpy.linalg 
 import numpy.testing as nptst 
-import sklearn.metrics 
 
 class MaxLocalAUCTest(unittest.TestCase):
     def setUp(self):

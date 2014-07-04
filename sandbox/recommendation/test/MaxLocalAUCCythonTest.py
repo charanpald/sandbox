@@ -128,7 +128,7 @@ class MaxLocalAUCTest(unittest.TestCase):
                                 
             nptst.assert_almost_equal(deltaU, deltaU2, 3)
        
-    #@unittest.skip("")
+    @unittest.skip("")
     def testDerivativeUiApprox(self): 
         """
         We'll test the case in which we apprormate using a large number of samples 
@@ -365,7 +365,7 @@ class MaxLocalAUCTest(unittest.TestCase):
   
 
       
-    @unittest.skip("")
+    #@unittest.skip("")
     def testDerivativeViApprox(self): 
         """
         We'll test the case in which we apprormate using a large number of samples 
@@ -386,13 +386,8 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
         r = numpy.random.rand(m)
-        colIndsProbs = numpy.ones(colInds.shape[0])
 
-        
-        for i in range(m): 
-            colIndsProbs[indPtr[i]:indPtr[i+1]] /= colIndsProbs[indPtr[i]:indPtr[i+1]].sum()
-            colIndsProbs[indPtr[i]:indPtr[i+1]] = numpy.cumsum(colIndsProbs[indPtr[i]:indPtr[i+1]])
-        
+
         U = numpy.random.rand(X.shape[0], k)
         V = numpy.random.rand(X.shape[1], k)
         
