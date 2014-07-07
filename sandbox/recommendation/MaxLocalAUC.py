@@ -500,7 +500,7 @@ class MaxLocalAUC(AbstractRecommender):
         return outputStr 
 
     def modelParamsStr(self): 
-        outputStr = "lmbda=" + str(self.lmbda) + " k=" + str(self.lmbda) + " rho=" + str(self.rho)
+        outputStr = "lmbda=" + str(self.lmbda) + " k=" + str(self.k) + " rho=" + str(self.rho)
         return outputStr 
 
     def copy(self): 
