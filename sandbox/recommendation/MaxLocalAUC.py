@@ -174,7 +174,7 @@ class MaxLocalAUC(AbstractRecommender):
         gp = numpy.ones(n)/float(n)
         gq = numpy.ones(n)/float(n)
         
-        gp = (float(n)/X.sum(1))**self.itemExp 
+        gp = (float(n)/(X.sum(1)+1))**self.itemExp 
         gp /= gp.sum() 
         gq = 1 - gp
         gq /= gq.sum()
