@@ -69,7 +69,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.normalise = True
         self.lmbda = lmbda 
         self.rho = 1.00 #Penalise low rank elements 
-        self.itemExp = 0.0
+        self.itemExp = 0.0 #Sample from power law between 0 and 1 
         
         self.recordStep = 10
         self.numRowSamples = 100
@@ -169,10 +169,15 @@ class MaxLocalAUC(AbstractRecommender):
         startTime = time.time()
         self.wv = 1 - X.sum(1)/float(n)
         
-        #A more popular item has a lower weight 
+        #uniform weights 
         gi = numpy.ones(m)/float(m)
         gp = numpy.ones(n)/float(n)
         gq = numpy.ones(n)/float(n)
+        
+        gp = (float(n)/X.sum(1))**self.itemExp 
+        gp /= gp.sum() 
+        gq = 1 - gp
+        gq /= gq.sum()
     
         while loopInd < self.maxIterations:           
             if self.rate == "constant": 
