@@ -276,14 +276,6 @@ class MaxLocalAUC(AbstractRecommender):
             muU[:] = U[:] 
             muV[:] = V[:]
         else: 
-            if self.sampling == "uniform": 
-                colIndsCumProbs = self.omegaProbsUniform(indPtr, colInds, muU, muV)
-            elif self.sampling == "top": 
-                colIndsCumProbs = self.omegaProbsTopZ(indPtr, colInds, muU, muV)
-            elif self.sampling == "rank": 
-                colIndsCumProbs = self.omegaProbsRank(indPtr, colInds, muU, muV)
-            else: 
-                raise ValueError("Unknown sampling scheme: " + self.sampling)
             
             updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
 
