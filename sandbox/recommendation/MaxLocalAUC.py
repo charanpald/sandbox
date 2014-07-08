@@ -167,17 +167,32 @@ class MaxLocalAUC(AbstractRecommender):
         permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
         
         startTime = time.time()
-        self.wv = 1 - X.sum(1)/float(n)
+        #self.wv = 1 - X.sum(1)/float(n)
         
         #uniform weights 
         gi = numpy.ones(m)/float(m)
-        gp = numpy.ones(n)/float(n)
-        gq = numpy.ones(n)/float(n)
+        #gp = numpy.ones(n)/float(n)
+        #gq = numpy.ones(n)/float(n)
         
-        gp = (float(n)/(X.sum(1)+1))**self.itemExp 
-        gp /= gp.sum() 
+        itemProbs = (X.sum(0)+1)/float(n)
+        gp = itemProbs**self.itemExp 
+        gp /= gp.sum()
+        #gq = numpy.ones(n)
         gq = 1 - gp
         gq /= gq.sum()
+        
+        
+        #Make user weights sum of gp[i] for all i 
+        """
+        gi = numpy.zeros(m)
+        for i in range(m): 
+            omegai = allColInds[allIndPtr[i]:allIndPtr[i+1]]
+            
+            for j in omegai:
+                gi[i] += gp[j]
+                
+        gi /= gi.sum()
+        """ 
     
         while loopInd < self.maxIterations:           
             if self.rate == "constant": 
