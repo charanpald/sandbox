@@ -69,7 +69,8 @@ class MaxLocalAUC(AbstractRecommender):
         self.normalise = True
         self.lmbda = lmbda 
         self.rho = 1.00 #Penalise low rank elements 
-        self.itemExp = 0.0 #Sample from power law between 0 and 1 
+        self.itemExpP = 0.0 #Sample from power law between 0 and 1 
+        self.itemExpQ = 0.0        
         
         self.recordStep = 10
         self.numRowSamples = 100
@@ -175,10 +176,10 @@ class MaxLocalAUC(AbstractRecommender):
         #gq = numpy.ones(n)/float(n)
         
         itemProbs = (X.sum(0)+1)/float(n)
-        gp = itemProbs**self.itemExp 
+        gp = itemProbs**self.itemExpP 
         gp /= gp.sum()
         #gq = numpy.ones(n)
-        gq = 1 - gp
+        gq = (1-itemProbs)**self.itemExpQ 
         gq /= gq.sum()
         
         
@@ -505,12 +506,15 @@ class MaxLocalAUC(AbstractRecommender):
             return objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, r, gi, gp, gq, self.numRecordAucSamples, self.rho, full=full)
   
     def __str__(self): 
+        print("calling str")
         outputStr = "MaxLocalAUC: k=" + str(self.k) + " eps=" + str(self.eps) 
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) 
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rho=" + str(self.rho) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) 
         outputStr += " lmbda=" + str(self.lmbda) + " sampling=" + str(self.sampling) + " recordStep=" + str(self.recordStep)
+        outputStr += " itemExpP=" + str(self.itemExpP) + " itemExpQ=" + str(self.itemExpQ)
         outputStr += super(MaxLocalAUC, self).__str__()
+        
         
         return outputStr 
 
@@ -539,7 +543,8 @@ class MaxLocalAUC(AbstractRecommender):
         maxLocalAuc.initialAlg = self.initialAlg
         maxLocalAuc.sampling = self.sampling
 
-        maxLocalAuc.itemExp = self.itemExp
+        maxLocalAuc.itemExpP = self.itemExpP
+        maxLocalAuc.itemExpQ = self.itemExpQ
         
         maxLocalAuc.ks = self.ks
         maxLocalAuc.lmbdas = self.lmbdas
