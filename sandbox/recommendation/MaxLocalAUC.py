@@ -69,8 +69,8 @@ class MaxLocalAUC(AbstractRecommender):
         self.normalise = True
         self.lmbda = lmbda 
         self.rho = 1.00 #Penalise low rank elements 
-        self.itemExpP = 0.0 #Sample from power law between 0 and 1 
-        self.itemExpQ = 1.0        
+        self.itemExpP = 0.5 #Sample from power law between 0 and 1 
+        self.itemExpQ = 0.5        
         
         self.recordStep = 10
         self.numRowSamples = 100
