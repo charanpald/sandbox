@@ -364,7 +364,7 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]    
     cdef unsigned int k = U.shape[1] 
-    cdef unsigned int i, j, s, ind2
+    cdef unsigned int i, j, s
     cdef unsigned int startAverage = 10, printStep = 1000
     cdef double normUi, beta=0.1, gqSum = gq.sum()
     cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(k)
@@ -376,13 +376,9 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
             print(str(s) + " ", end="")
             
         r = SparseUtilsCython.computeR(U, V, w, numAucSamples)
-            
-        i = permutedRowInds[(ind + s) % m]
+        i = permutedRowInds[s]
         dUi = derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, numRowSamples, numAucSamples, rho, normalise)
         
-        j = permutedColInds[(ind + s) % n]
-        dVj = derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, gqSum, j, numRowSamples, numAucSamples, rho, normalise)
-
         plusEquals(U, i, -sigma*dUi, k)
         
         normUi = numpy.linalg.norm(U[i,:])
@@ -390,22 +386,30 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
         if normUi != 0: 
             U[i,:] = scale(U, i, 1/normUi, k)             
         
-        plusEquals(V, j, -sigma*dVj, k)
-        
-        normVj = numpy.linalg.norm(V[j,:])        
-        if normVj >= lmbda: 
-            V[j,:] = scale(V, j, lmbda/normVj, k)                  
-                
-        ind2 = ind/m
-        
-        if ind2 > startAverage: 
-            muU[i, :] = muU[i, :]*ind2/float(ind2+1) + U[i, :]/float(ind2+1)
-            muV[j, :] = muV[j, :]*ind2/float(ind2+1) + V[j, :]/float(ind2+1)
+        if ind > startAverage: 
+            muU[i, :] = muU[i, :]*ind/float(ind+1) + U[i, :]/float(ind+1)
         else: 
             muU[i, :] = U[i, :]
-            muV[j, :] = V[j, :]
-                 
+            
+    for s in range(n): 
+        if s % printStep == 0: 
+            print(str(s) + " ", end="")
+            
+        r = SparseUtilsCython.computeR(U, V, w, numAucSamples)        
+        j = permutedColInds[s]
+        dVj = derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, gqSum, j, numRowSamples, numAucSamples, rho, normalise)
         
+        plusEquals(V, j, -sigma*dVj, k)
+        normVj = numpy.linalg.norm(V[j,:])  
+        
+        if normVj >= lmbda: 
+            V[j,:] = scale(V, j, lmbda/normVj, k)        
+        
+        if ind > startAverage: 
+            muV[j, :] = muV[j, :]*ind/float(ind+1) + V[j, :]/float(ind+1)
+        else: 
+            muV[j, :] = V[j, :]
+           
 def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,   numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int numAucSamples, double rho, bint full=False):         
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]

@@ -220,7 +220,7 @@ class MaxLocalAUC(AbstractRecommender):
                 
             U  = numpy.ascontiguousarray(U)
             
-            self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, gradientInd, sigma)                       
+            self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, loopInd, sigma)                       
                 
             loopInd += 1
             
