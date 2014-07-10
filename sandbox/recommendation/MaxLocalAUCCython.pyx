@@ -364,19 +364,19 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]    
     cdef unsigned int k = U.shape[1] 
-    cdef unsigned int i, j, s
+    cdef unsigned int i, j, s, p = max(m, n)
     cdef unsigned int startAverage = 10, printStep = 1000
     cdef double normUi, beta=0.1, gqSum = gq.sum()
     cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(k)
     cdef numpy.ndarray[double, ndim=1, mode="c"] dVj = numpy.zeros(k)
     cdef numpy.ndarray[double, ndim=1, mode="c"] r 
 
-    for s in range(m):
+    for s in range(p):
         if s % printStep == 0: 
             print(str(s) + " ", end="")
             
         r = SparseUtilsCython.computeR(U, V, w, numAucSamples)
-        i = permutedRowInds[s]
+        i = permutedRowInds[s % m]
         dUi = derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, numRowSamples, numAucSamples, rho, normalise)
         
         plusEquals(U, i, -sigma*dUi, k)
@@ -391,12 +391,9 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
         else: 
             muU[i, :] = U[i, :]
             
-    for s in range(n): 
-        if s % printStep == 0: 
-            print(str(s) + " ", end="")
-            
+        #Now update V
         r = SparseUtilsCython.computeR(U, V, w, numAucSamples)        
-        j = permutedColInds[s]
+        j = permutedColInds[s % n]
         dVj = derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, gqSum, j, numRowSamples, numAucSamples, rho, normalise)
         
         plusEquals(V, j, -sigma*dVj, k)
