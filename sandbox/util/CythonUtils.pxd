@@ -9,3 +9,4 @@ cdef numpy.ndarray[double, ndim = 1, mode="c"] plusEquals(numpy.ndarray[double, 
 cdef unsigned int inverseChoice(numpy.ndarray[int, ndim=1, mode="c"] v, unsigned int n)
 cdef numpy.ndarray[int, ndim=1, mode="c"] choice(numpy.ndarray[int, ndim=1, mode="c"] inds, unsigned int numSamples, numpy.ndarray[double, ndim=1, mode="c"] cumProbs)
 cdef numpy.ndarray[int, ndim=1, mode="c"] uniformChoice(numpy.ndarray[int, ndim=1, mode="c"] inds, unsigned int numSamples)
+cdef double partialSum(numpy.ndarray[double, ndim=1, mode="c"] v, numpy.ndarray[int, ndim=1, mode="c"] inds)

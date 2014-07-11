@@ -152,3 +152,15 @@ cdef inline numpy.ndarray[int, ndim=1, mode="c"] uniformChoice(numpy.ndarray[int
 
 def choicePy(inds, numSamples, probs): 
     return choice(inds, numSamples, probs)
+    
+cdef inline double partialSum(numpy.ndarray[double, ndim=1, mode="c"] v, numpy.ndarray[int, ndim=1, mode="c"] inds):
+    """
+    Given a vector v, find the sum of the elements given by indices inds. 
+    """
+    cdef double total 
+    cdef unsigned int i
+    
+    for i in inds:
+        total += v[i]
+    
+    return total
