@@ -183,6 +183,7 @@ class MaxLocalAUC(AbstractRecommender):
         #gq = (itemProbs)**self.itemExpQ
         gq /= gq.sum()
         
+        normGp, normGq = self.computeNormGpq(indPtr, colInds, gp, gq, m)
         
         #Make user weights sum of gp[i] for all i 
         """
@@ -220,14 +221,9 @@ class MaxLocalAUC(AbstractRecommender):
                 
             U  = numpy.ascontiguousarray(U)
             
-            self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, loopInd, sigma)                       
+            self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, loopInd, sigma)                       
                 
             loopInd += 1
-            
-            if self.stochastic: 
-                gradientInd = loopInd*m                
-            else: 
-                gradientInd = loopInd
             
         #Compute quantities for last U and V 
         totalTime = time.time() - startTime
@@ -285,7 +281,7 @@ class MaxLocalAUC(AbstractRecommender):
         
         return U, V
         
-    def updateUV(self, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, ind, sigma): 
+    def updateUV(self, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, sigma): 
         """
         Find the derivative with respect to V or part of it. 
         """
@@ -299,8 +295,21 @@ class MaxLocalAUC(AbstractRecommender):
             muV[:] = V[:]
         else: 
             
-            updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
+            updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
 
+    def computeNormGpq(self, indPtr, colInds, gp, gq, m):
+        
+        normGp = numpy.zeros(m)
+        normGq = numpy.zeros(m) 
+        gqSum = gq.sum()
+        
+        for i in range(m):
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            normGp[i] = gp[omegai].sum()
+            normGq[i] = gqSum - gq[omegai].sum()
+            
+        return normGp, normGq
+        
     def derivativeUi(self, indPtr, colInds, U, V, r, c, i): 
         """
         delta phi/delta u_i
