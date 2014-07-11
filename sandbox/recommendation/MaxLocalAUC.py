@@ -38,7 +38,7 @@ def computeTestAuc(args):
     return muAuc
          
 class MaxLocalAUC(AbstractRecommender): 
-    def __init__(self, k, w, alpha=0.05, eps=10**-6, lmbda=0.001, stochastic=False, numProcesses=None): 
+    def __init__(self, k, w, alpha=0.05, eps=10**-6, lmbdaU=1, lmbdaV=1, stochastic=False, numProcesses=None): 
         """
         Create an object for  maximising the local AUC with a penalty term using the matrix
         decomposition UV.T 
@@ -67,7 +67,8 @@ class MaxLocalAUC(AbstractRecommender):
         self.beta = 0.75
         
         self.normalise = True
-        self.lmbda = lmbda 
+        self.lmbdaU = lmbdaU 
+        self.lmbdaV = lmbdaV 
         self.rho = 1.00 #Penalise low rank elements 
         self.itemExpP = 0.5 #Sample from power law between 0 and 1 
         self.itemExpQ = 0.5        
@@ -161,7 +162,6 @@ class MaxLocalAUC(AbstractRecommender):
         testMeasures = []        
     
         loopInd = 0
-        gradientInd = 0
         
         #Set up order of indices for stochastic methods 
         permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
@@ -295,7 +295,7 @@ class MaxLocalAUC(AbstractRecommender):
             muV[:] = V[:]
         else: 
             
-            updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbda, self.rho, self.normalise)
+            updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbdaU, self.lmbdaV, self.rho, self.normalise)
 
     def computeNormGpq(self, indPtr, colInds, gp, gq, m):
         
@@ -520,7 +520,7 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) 
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rho=" + str(self.rho) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) 
-        outputStr += " lmbda=" + str(self.lmbda) + " sampling=" + str(self.sampling) + " recordStep=" + str(self.recordStep)
+        outputStr += " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " sampling=" + str(self.sampling) + " recordStep=" + str(self.recordStep)
         outputStr += " itemExpP=" + str(self.itemExpP) + " itemExpQ=" + str(self.itemExpQ)
         outputStr += super(MaxLocalAUC, self).__str__()
         
@@ -528,12 +528,12 @@ class MaxLocalAUC(AbstractRecommender):
         return outputStr 
 
     def modelParamsStr(self): 
-        outputStr = "lmbda=" + str(self.lmbda) + " k=" + str(self.k) + " rho=" + str(self.rho)
+        outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " k=" + str(self.k) + " rho=" + str(self.rho)
         return outputStr 
 
     def copy(self): 
         
-        maxLocalAuc = MaxLocalAUC(k=self.k, w=self.w, lmbda=self.lmbda)
+        maxLocalAuc = MaxLocalAUC(k=self.k, w=self.w, lmbdaU=self.lmbdaU, lmbdaV=self.lmbdaV)
         self.copyParams(maxLocalAuc)
         maxLocalAuc.eps = self.eps 
         maxLocalAuc.stochastic = self.stochastic
