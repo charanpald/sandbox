@@ -494,7 +494,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.lmbdaV = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
         self.rho = self.rhos[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[2]]
 
-        logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda) + " rho=" + str(self.rho) +  " max=" + str(numpy.max(meanTestMetrics)))
+        logging.debug("Model parameters: k=" + str(self.k) + " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " rho=" + str(self.rho) +  " max=" + str(numpy.max(meanTestMetrics)))
          
         return meanTestMetrics, stdTestMetrics
   
