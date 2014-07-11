@@ -7,7 +7,7 @@ import cython
 from cython.parallel import parallel, prange
 cimport numpy
 import numpy
-from sandbox.util.CythonUtils cimport dot, scale, choice, inverseChoice, uniformChoice, plusEquals
+from sandbox.util.CythonUtils cimport dot, scale, choice, inverseChoice, uniformChoice, plusEquals, partialSum
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
 
 
@@ -134,7 +134,7 @@ def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
     cdef unsigned int p, q, ind, j, s
     cdef unsigned int k = U.shape[1]
     cdef double uivp, ri, uivq, gamma, kappa, hGamma, hKappa
-    cdef double normDeltaTheta, vqScale, vpScale, normGp=0, normGpq=0
+    cdef double normDeltaTheta, vqScale, vpScale, normGp=0, normGpq=0, tanhHKappa
     cdef unsigned int m = U.shape[0], n = V.shape[0], numOmegai, numOmegaBari
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
@@ -164,10 +164,10 @@ def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
             
             zeta = gp[p]*gq[q]
             normGpq += zeta
+            tanhHKappa = tanh(hKappa) 
             
             if hGamma > 0 and hKappa > 0:   
-                #print(gp[p], p, gq[q], q)
-                deltaTheta += zeta * ((V[q, :] - V[p, :])*hGamma*tanh(hKappa) - (rho/2)* V[p, :]*hGamma**2*(1 - tanh(hKappa)**2))      
+                deltaTheta += zeta * ((V[q, :] - V[p, :])*hGamma*tanhHKappa - (rho/2)* V[p, :]*hGamma**2*(1 - tanhHKappa**2))      
                 
         #if normGp*normGq != 0: 
         deltaTheta *= gi[i]/normGpq
@@ -316,16 +316,17 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
             uivp = dot(U, i, V, p, k)
             nu = 1 - uivp
             hKappa = max(0, 1 - rho*(uivp - ri))
+            zeta = tanh(hKappa)
             normGp = gp[omegai].sum()
+            #normGp = partialSum(gp, omegai)
 
             for s in range(numAucSamples): 
                 q = inverseChoice(omegai, n)
-                uivq = dot(U, i, V, q, k)
-                #gamma = uivp - uivq
-                
-                hGamma = max(0, 1 - (uivp - uivq)) 
+                uivq = dot(U, i, V, q, k)                
+                hGamma = max(0, nu+uivq) 
                 normGq += gq[q]
-                betaScale += gp[p] * gq[q] * (hGamma*tanh(hKappa) + (rho/2)*hGamma**2 * (1- tanh(hKappa)**2))  
+                
+                betaScale += gp[p] * gq[q] * (hGamma*zeta + (rho/2)*hGamma**2 * (1 - zeta**2))  
                              
             if normGp*normGq != 0:
                 deltaBeta = scale(U, i, -betaScale/(normGp*normGq), k)
@@ -336,15 +337,15 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
             nuPrime = 1 + ri*rho
             omegaiSample = uniformChoice(omegai, numAucSamples)
             normGq = gqSum - gq[omegai].sum()
+            #normGq = gqSum - partialSum(gq, omegai)
 
             for p in omegaiSample: 
                 uivp = dot(U, i, V, p, k)
-                #gamma = uivp - uivq
                 hGamma = max(0, nu - uivp) 
                 hKappa = max(0, nuPrime - rho*uivp)
                 normGp += gp[p]
                 
-                betaScale += gp[p] * gq[q] *hGamma*tanh(hKappa)
+                betaScale += gp[p] * gq[q]*hGamma*tanh(hKappa)
             
             if normGp*normGq != 0:
                 deltaBeta = scale(U, i, betaScale/(normGp*normGq), k)  
@@ -364,7 +365,7 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]    
     cdef unsigned int k = U.shape[1] 
-    cdef unsigned int i, j, s, p = max(m, n)
+    cdef unsigned int i, j, s, p = colInds.shape[0]/numAucSamples
     cdef unsigned int startAverage = 10, printStep = 1000
     cdef double normUi, beta=0.1, gqSum = gq.sum()
     cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(k)
@@ -392,7 +393,7 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
             muU[i, :] = U[i, :]
             
         #Now update V
-        r = SparseUtilsCython.computeR(U, V, w, numAucSamples)        
+        #r = SparseUtilsCython.computeR(U, V, w, numAucSamples)        
         j = permutedColInds[s % n]
         dVj = derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, gqSum, j, numRowSamples, numAucSamples, rho, normalise)
         
