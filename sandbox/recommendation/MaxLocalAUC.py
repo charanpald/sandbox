@@ -272,8 +272,8 @@ class MaxLocalAUC(AbstractRecommender):
             raise ValueError("Unknown initialisation: " + str(self.initialAlg))  
          
         U = numpy.ascontiguousarray(U)
-        maxNorm = numpy.sqrt(numpy.max(numpy.sum(U**2, 1)))
-        U = U/maxNorm  
+        #maxNorm = numpy.sqrt(numpy.max(numpy.sum(U**2, 1)))
+        #U = U/maxNorm  
         
         V = numpy.ascontiguousarray(V) 
         #maxNorm = numpy.sqrt(numpy.max(numpy.sum(V**2, 1)))
