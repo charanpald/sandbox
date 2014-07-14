@@ -41,13 +41,13 @@ class WeightedMf(AbstractRecommender):
     def predict(self, maxItems): 
         return MCEvaluator.recommendAtk(self.U, self.U, maxItems)
         
-    def modelSelect(self, X): 
+    def modelSelect(self, X, colProbs=None): 
         """
         Perform model selection on X and return the best parameters. 
         """
         m, n = X.shape
         #cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
-        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize)
+        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
         testPrecisions = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection")

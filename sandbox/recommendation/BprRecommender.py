@@ -58,12 +58,12 @@ class BprRecommender(AbstractRecommender):
     def predict(self, maxItems): 
         return MCEvaluator.recommendAtk(self.U, self.V, maxItems)
         
-    def modelSelect(self, X): 
+    def modelSelect(self, X, colProbs=None): 
         """
         Perform model selection on X and return the best parameters. 
         """
         m, n = X.shape
-        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, csarray=False)
+        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, csarray=False, colProbs=colProbs)
         testAucs = numpy.zeros((self.ks.shape[0], self.lmbdaUsers.shape[0], self.lmbdaItems.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection with test leave out per row of " + str(self.validationSize))

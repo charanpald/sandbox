@@ -427,12 +427,12 @@ class MaxLocalAUC(AbstractRecommender):
         
         return objectives
         
-    def modelSelect(self, X): 
+    def modelSelect(self, X, colProbs=None): 
         """
         Perform model selection on X and return the best parameters. 
         """
         m, n = X.shape
-        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize)
+        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
         testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], self.rhos.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection with test leave out per row of " + str(self.validationSize))

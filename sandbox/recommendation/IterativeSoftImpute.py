@@ -420,7 +420,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
 
         return meanMetrics, stdMetrics
 
-    def modelSelect2(self, X, rhos, ks, cvInds):
+    def modelSelect2(self, X, rhos, ks, cvInds, colProbs=None):
         """
         Pick a value of rho based on a single matrix X. We do cross validation
         within, and return the best value of lambda (according to the mean
@@ -431,7 +431,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         if (numpy.flipud(numpy.sort(rhos)) != rhos).all(): 
             raise ValueError("rhos must be in descending order")    
 
-        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, csarray=False, rowMajor=False)
+        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, csarray=False, rowMajor=False, colProbs=colProbs)
         metrics = numpy.zeros((rhos.shape[0], ks.shape[0], len(cvInds)))
         
         if self.metric == "mse": 
