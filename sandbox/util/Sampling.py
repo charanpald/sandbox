@@ -191,12 +191,14 @@ class Sampling(object):
         return indexList 
         
     @staticmethod 
-    def shuffleSplitRows(X, k, testSize, numRows=None, csarray=True, rowMajor=True): 
+    def shuffleSplitRows(X, k, testSize, numRows=None, csarray=True, rowMajor=True, colProbs=None): 
         """
         Take a sparse binary matrix and create k number of train-test splits 
         in which the test split contains at most testSize elements and the train 
         split contains the remaining elements from X for each row. The splits are 
         computed randomly. Returns sppy.csarray objects by default. 
+        
+        :param colProbs: This is the probability of choosing the corresponding column/item. If None, we assume uniform probabilities. 
         """
         import sppy 
         trainTestXList = []
@@ -221,7 +223,12 @@ class Sampling(object):
             for j in range(m):
                 
                 if j in rowSample: 
-                    inds = numpy.random.permutation(omegaList[j].shape[0])
+                    if colProbs == None: 
+                        inds = numpy.random.permutation(omegaList[j].shape[0])
+                    else: 
+                        probs = colProbs[omegaList[j]]
+                        probs /= probs.sum() 
+                        inds = numpy.random.choice(omegaList[j].shape[0], omegaList[j].shape[0], p=probs, replace=False)
                     trainInds = inds[testSize:]
                     testInds = inds[0:testSize]
                 else: 

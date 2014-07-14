@@ -114,7 +114,7 @@ class  SamplingTest(unittest.TestCase):
         k = 5 
         u = 0.5
         w = 1-u
-        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), k, w, csarray=True, verbose=True, indsPerRow=200)
+        X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), k, w, csarray=True, verbose=True, indsPerRow=200)
         
         #print(X.toarray())
         
@@ -179,7 +179,27 @@ class  SamplingTest(unittest.TestCase):
             self.assertEquals(numpy.nonzero(testX.sum(1))[0].shape[0], numRows)
             self.assertEquals(X.nnz, trainX.nnz + testX.nnz)
             self.assertEquals(testX.nnz, testSize*numRows)
-
+            
+        #Make sure column probabilities are correct 
+        w = 0.0            
+        X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), k, w, csarray=True, verbose=True, indsPerRow=200)            
+            
+        testSize = 5
+        k2 = 100
+        colProbs = numpy.arange(0, n, dtype=numpy.float)+1
+        colProbs /= colProbs.sum() 
+        trainTestXs = Sampling.shuffleSplitRows(X, k2, testSize, colProbs=colProbs)
+        
+        colProbs2 = numpy.zeros(n)        
+        
+        for i in range(k2): 
+            trainX = trainTestXs[i][0]
+            testX = trainTestXs[i][1]
+            
+            colProbs2 += testX.sum(0)
+        
+        colProbs2 /= colProbs2.sum() 
+        nptst.assert_array_almost_equal(colProbs, colProbs2, 2)
 
     def testSampleUsers(self): 
         m = 10
@@ -187,7 +207,7 @@ class  SamplingTest(unittest.TestCase):
         r = 5 
         u = 0.3
         w = 1-u
-        X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), r, w, csarray=True, verbose=True, indsPerRow=200)
+        X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), r, w, csarray=True, verbose=True, indsPerRow=200)
 
         k = 50
         X2 = Sampling.sampleUsers(X, k)
@@ -200,7 +220,7 @@ class  SamplingTest(unittest.TestCase):
             n = numpy.random.randint(10, 100)
             k = numpy.random.randint(10, 100)
 
-            X, U, s, V = SparseUtils.generateSparseBinaryMatrix((m,n), r, w, csarray=True, verbose=True, indsPerRow=200)
+            X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), r, w, csarray=True, verbose=True, indsPerRow=200)
 
             X2 = Sampling.sampleUsers(X, k)
             
