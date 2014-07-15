@@ -185,7 +185,7 @@ class  SamplingTest(unittest.TestCase):
         X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), k, w, csarray=True, verbose=True, indsPerRow=200)            
             
         testSize = 5
-        k2 = 100
+        k2 = 500
         colProbs = numpy.arange(0, n, dtype=numpy.float)+1
         colProbs /= colProbs.sum() 
         trainTestXs = Sampling.shuffleSplitRows(X, k2, testSize, colProbs=colProbs)
@@ -200,6 +200,29 @@ class  SamplingTest(unittest.TestCase):
         
         colProbs2 /= colProbs2.sum() 
         nptst.assert_array_almost_equal(colProbs, colProbs2, 2)
+        
+        #Now test when probabilities are uniform 
+        colProbs = numpy.ones(n)/float(n)        
+        trainTestXs = Sampling.shuffleSplitRows(X, k2, testSize, colProbs=colProbs)
+        
+        colProbs = None
+        trainTestXs2 = Sampling.shuffleSplitRows(X, k2, testSize, colProbs=colProbs)
+        
+        colProbs2 = numpy.zeros(n)       
+        colProbs3 = numpy.zeros(n) 
+        
+        for i in range(k2): 
+            trainX = trainTestXs[i][0]
+            testX = trainTestXs[i][1]
+            colProbs2 += testX.sum(0)
+            
+            trainX = trainTestXs2[i][0]
+            testX = trainTestXs2[i][1]
+            colProbs3 += testX.sum(0)
+        
+        colProbs2 /= colProbs2.sum() 
+        colProbs3 /= colProbs3.sum()
+        nptst.assert_array_almost_equal(colProbs2, colProbs3, 2)
 
     def testSampleUsers(self): 
         m = 10
