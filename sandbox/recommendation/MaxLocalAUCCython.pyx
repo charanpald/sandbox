@@ -126,7 +126,7 @@ def updateU(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim
         U[i,:] = scale(U, i, 1/numpy.linalg.norm(U[i,:]), k)   
 
 
-def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V,  numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, double rho, bint normalise):
+def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V,  numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int i, unsigned int numRowSamples, unsigned int numAucSamples, double rho, double lmbda, bint normalise):
     """
     Find an approximation of delta phi/delta u_i using the simple objective without 
     sigmoid functions. 
@@ -171,6 +171,8 @@ def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
                 
         #if normGp*normGq != 0: 
         deltaTheta *= gi[i]/normGpq
+        
+    deltaTheta += lmbda*U[i, :] 
                     
     #Normalise gradient to have unit norm 
     normDeltaTheta = numpy.linalg.norm(deltaTheta)
@@ -255,7 +257,8 @@ def derivativeVi(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int,
                 
         deltaTheta += deltaBeta * gi[i]
     
-    deltaTheta /= gi.sum()    
+    deltaTheta /= gi.sum()
+       
     
     #Make gradient unit norm 
     normTheta = numpy.linalg.norm(deltaTheta)
@@ -284,7 +287,7 @@ def updateV(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim
         if normVj >= lmbda: 
             V[j,:] = scale(V, j, lmbda/normVj, k)               
 
-def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, unsigned int j, unsigned int numRowSamples, unsigned int numAucSamples, double rho, bint normalise): 
+def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, unsigned int j, unsigned int numRowSamples, unsigned int numAucSamples, double rho, double lmbda, bint normalise): 
     """
     delta phi/delta v_i  using the hinge loss. 
     """
@@ -350,6 +353,7 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
         deltaTheta += deltaBeta*gi[i]
         
     deltaTheta /= gi[rowInds].sum()
+    deltaTheta += lmbda*V[j, :] 
     
     #Make gradient unit norm 
     normTheta = numpy.linalg.norm(deltaTheta)
@@ -364,7 +368,7 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
     cdef unsigned int k = U.shape[1] 
     cdef unsigned int i, j, s, p = colInds.shape[0]/numAucSamples
     cdef unsigned int startAverage = 10, printStep = 1000
-    cdef double normUi, beta=0.1
+    cdef double normUi, normVj, maxNorm=100
     cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(k)
     cdef numpy.ndarray[double, ndim=1, mode="c"] dVj = numpy.zeros(k)
     cdef numpy.ndarray[double, ndim=1, mode="c"] r 
@@ -375,14 +379,14 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
             
         r = SparseUtilsCython.computeR(U, V, w, numAucSamples)
         i = permutedRowInds[s % m]
-        dUi = derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, numRowSamples, numAucSamples, rho, normalise)
+        dUi = derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, numRowSamples, numAucSamples, rho, lmbdaU, normalise)
         
         plusEquals(U, i, -sigma*dUi, k)
         
         normUi = numpy.linalg.norm(U[i,:])
         
-        if normUi >= lmbdaU: 
-            U[i,:] = scale(U, i, lmbdaU/normUi, k)             
+        if normUi >= maxNorm: 
+            U[i,:] = scale(U, i, maxNorm/normUi, k)             
         
         if ind > startAverage: 
             muU[i, :] = muU[i, :]*ind/float(ind+1) + U[i, :]/float(ind+1)
@@ -392,13 +396,13 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
         #Now update V
         #r = SparseUtilsCython.computeR(U, V, w, numAucSamples)        
         j = permutedColInds[s % n]
-        dVj = derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, j, numRowSamples, numAucSamples, rho, normalise)
+        dVj = derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, j, numRowSamples, numAucSamples, rho, lmbdaV, normalise)
         
         plusEquals(V, j, -sigma*dVj, k)
         normVj = numpy.linalg.norm(V[j,:])  
         
-        if normVj >= lmbdaV: 
-            V[j,:] = scale(V, j, lmbdaV/normVj, k)        
+        if normVj >= maxNorm: 
+            V[j,:] = scale(V, j, maxNorm/normVj, k)        
         
         if ind > startAverage: 
             muV[j, :] = muV[j, :]*ind/float(ind+1) + V[j, :]/float(ind+1)
