@@ -22,13 +22,15 @@ cdef inline int randint(int i):
     return rand() % i   
 
 
-cdef inline double square(double d):
+@cython.profile(False)
+cdef inline double square(double d): 
     """
     Find the square of the input double. 
     """
     return d*d    
 
 
+@cython.profile(False)
 cdef inline double dot(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, numpy.ndarray[double, ndim = 2, mode="c"] V, unsigned int j, unsigned int k):
     """
     Compute the dot product between U[i, :] and V[j, :]
@@ -56,6 +58,7 @@ cdef inline double normRow(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned
 
     return sqrt(result)
 
+@cython.profile(False)
 cdef inline numpy.ndarray[double, ndim = 1, mode="c"] scale(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, double d, unsigned int k):
     """
     Computes U[i, :] * d where k is U.shape[1]
@@ -66,6 +69,7 @@ cdef inline numpy.ndarray[double, ndim = 1, mode="c"] scale(numpy.ndarray[double
         ui[s] = U[i, s]*d
     return ui
 
+@cython.profile(False)
 cdef inline numpy.ndarray[double, ndim = 1, mode="c"] plusEquals(numpy.ndarray[double, ndim = 2, mode="c"] U, unsigned int i, numpy.ndarray[double, ndim = 1, mode="c"] d, unsigned int k):
     """
     Computes U[i, :] += d[i] where k is U.shape[1]
@@ -74,6 +78,7 @@ cdef inline numpy.ndarray[double, ndim = 1, mode="c"] plusEquals(numpy.ndarray[d
     for s in range(k):
         U[i, s] = U[i, s] + d[s]
 
+@cython.profile(False)
 cdef inline numpy.ndarray[double, ndim = 1, mode="c"] plusEquals1d(numpy.ndarray[double, ndim = 1, mode="c"] u, numpy.ndarray[double, ndim = 1, mode="c"] d, unsigned int k):
     """
     Computes U[i] += d[i] 
@@ -92,6 +97,7 @@ cdef inline unsigned int getNonZeroRow(X, unsigned int i, unsigned int n):
         q = numpy.random.randint(0, n)
     return q
 
+@cython.profile(False)
 cdef inline unsigned int inverseChoice(numpy.ndarray[int, ndim=1, mode="c"] v, unsigned int n):
     """
     Find a random nonzero element in the range 0:n not in v
@@ -132,6 +138,7 @@ cdef inline numpy.ndarray[int, ndim=1, mode="c"] choice(numpy.ndarray[int, ndim=
     
     return sampleArray
 
+@cython.profile(False)
 cdef inline numpy.ndarray[int, ndim=1, mode="c"] uniformChoice(numpy.ndarray[int, ndim=1, mode="c"] inds, unsigned int numSamples):
     """
     Given a list of numbers in inds, pick numSample elements uniformly randomly.

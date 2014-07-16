@@ -42,7 +42,7 @@ class SparseUtilsCythonProfile(object):
 
 
     def computeRProfile(self): 
-        X, U, V = DatasetUtils.syntheticDataset1(n=20000)
+        X, U, V = DatasetUtils.syntheticDataset1(m=1000, n=20000)
         
         w = 0.9 
         indsPerRow = 50        
@@ -68,4 +68,4 @@ class SparseUtilsCythonProfile(object):
 profiler = SparseUtilsCythonProfile()
 #profiler.profilePartialReconstructValsPQ()
 #profiler.profilePartialReconstructValsPQ2() #About 10x faster 
-profiler.profileGenerateSparseBinaryMatrixPL()
+profiler.computeRProfile()

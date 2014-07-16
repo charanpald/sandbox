@@ -128,7 +128,7 @@ class MaxLocalAUCTest(unittest.TestCase):
                                 
             nptst.assert_almost_equal(deltaU, deltaU2, 3)
        
-    @unittest.skip("")
+    #@unittest.skip("")
     def testDerivativeUiApprox(self): 
         """
         We'll test the case in which we apprormate using a large number of samples 
@@ -181,7 +181,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             du1 = numpy.zeros(k)
             for j in range(numRuns): 
-                du1 += derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, False)
+                du1 += derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, maxLocalAuc.lmbda, False)
             du1 /= numRuns
             du2 = derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.rho, False) 
             #print(du1, du2)
@@ -196,7 +196,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             du1 = numpy.zeros(k)
             for j in range(numRuns): 
-                du1 += derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, False)
+                du1 += derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, maxLocalAuc.lmbda, False)
             du1 /= numRuns
             du2 = derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.rho, False)   
             
@@ -212,13 +212,13 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             du1 = numpy.zeros(k)
             for j in range(numRuns): 
-                du1 += derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, False)
+                du1 += derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, maxLocalAuc.lmbda, False)
             du1 /= numRuns
             du2 = derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.rho, False)   
             nptst.assert_array_almost_equal(du1, du2, 2)
             print(du1, du2)
             
-        maxLocalAuc.lmbda = 0.5 
+        #maxLocalAuc.lmbda = 0.5 
         
         for i in numpy.random.permutation(m)[0:numTests]:  
             U = numpy.random.rand(X.shape[0], k)
@@ -226,7 +226,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             du1 = numpy.zeros(k)
             for j in range(numRuns): 
-                du1 += derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, False)
+                du1 += derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, maxLocalAuc.lmbda, False)
             du1 /= numRuns
             du2 = derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.rho, False)   
             nptst.assert_array_almost_equal(du1, du2, 2)
@@ -241,7 +241,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             du1 = numpy.zeros(k)
             for j in range(numRuns): 
-                du1 += derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, False)
+                du1 += derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, maxLocalAuc.lmbda, False)
             du1 /= numRuns
             du2 = derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.rho, False)   
             nptst.assert_array_almost_equal(du1, du2, 2)
@@ -365,7 +365,7 @@ class MaxLocalAUCTest(unittest.TestCase):
   
 
       
-    #@unittest.skip("")
+    @unittest.skip("")
     def testDerivativeViApprox(self): 
         """
         We'll test the case in which we apprormate using a large number of samples 
@@ -409,7 +409,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             V = numpy.random.rand(X.shape[1], k)
             dv1 = numpy.zeros(k)
             for j in range(numRuns): 
-                dv1 += derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples,  maxLocalAuc.rho, False)
+                dv1 += derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples,  maxLocalAuc.rho, maxLocalAuc.lmbda, False)
             dv1 /= numRuns
             dv2 = derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.rho, False)   
             
@@ -439,13 +439,14 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             dv1 = numpy.zeros(k)
             for j in range(numRuns): 
-                dv1 += derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, False)
+                dv1 += derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, maxLocalAuc.lmbda, False)
             dv1 /= numRuns
             dv2 = derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.rho, False)  
             print(dv1, dv2, dv3)
             nptst.assert_array_almost_equal(dv1, dv2, 3)
             
-        maxLocalAuc.lmbda = 0.5 
+        #TODO: Set this to nonzero later 
+        maxLocalAuc.lmbda = 0.0 
         
         for i in numpy.random.permutation(m)[0:numTests]: 
             U = numpy.random.rand(X.shape[0], k)
@@ -453,7 +454,7 @@ class MaxLocalAUCTest(unittest.TestCase):
     
             dv1 = numpy.zeros(k)
             for j in range(numRuns): 
-                dv1 += derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples,  maxLocalAuc.rho, False)
+                dv1 += derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples,  maxLocalAuc.rho, maxLocalAuc.lmbda, False)
             dv1 /= numRuns
             dv2 = derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.rho, False) 
             print(dv1, dv2, dv3)
@@ -468,7 +469,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             dv1 = numpy.zeros(k)
             for j in range(numRuns): 
-                dv1 += derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, False)
+                dv1 += derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples, maxLocalAuc.rho, maxLocalAuc.lmbda, False)
             dv1 /= numRuns
             dv2 = derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.rho, False)  
             print(dv1, dv2, dv3)
@@ -484,7 +485,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             dv1 = numpy.zeros(k)
             for j in range(numRuns): 
-                dv1 += derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples,  maxLocalAuc.rho, False)
+                dv1 += derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, i, maxLocalAuc.numRowSamples, maxLocalAuc.numAucSamples,  maxLocalAuc.rho, maxLocalAuc.lmbda, False)
             dv1 /= numRuns
             dv2 = derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, i, maxLocalAuc.rho, False)   
             print(dv1, dv2, dv3)

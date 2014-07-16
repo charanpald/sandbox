@@ -7,7 +7,7 @@ import cython
 from cython.parallel import parallel, prange
 cimport numpy
 import numpy
-from sandbox.util.CythonUtils cimport dot, scale, choice, inverseChoice, uniformChoice, plusEquals, partialSum
+from sandbox.util.CythonUtils cimport dot, scale, choice, inverseChoice, uniformChoice, plusEquals, partialSum, square
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
 
 
@@ -134,7 +134,7 @@ def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
     cdef unsigned int p, q, ind, j, s
     cdef unsigned int k = U.shape[1]
     cdef double uivp, ri, uivq, gamma, kappa, hGamma, hKappa
-    cdef double normDeltaTheta, vqScale, vpScale, normGp=0, normGpq=0, tanhHKappa
+    cdef double normDeltaTheta, vqScale, vpScale, normGp=0, normGpq=0, tanhHKappa, rhoOver2 = rho/2
     cdef unsigned int m = U.shape[0], n = V.shape[0], numOmegai, numOmegaBari
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
@@ -164,15 +164,18 @@ def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
             
             zeta = gp[p]*gq[q]
             normGpq += zeta
-            tanhHKappa = tanh(hKappa) 
+            tanhHKappa = tanh(hKappa)           
             
-            if hGamma > 0 and hKappa > 0:   
-                deltaTheta += zeta * ((V[q, :] - V[p, :])*hGamma*tanhHKappa - (rho/2)* V[p, :]*hGamma**2*(1 - tanhHKappa**2))      
+            if hGamma > 0 and hKappa > 0: 
+                vqScale = zeta*hGamma*tanhHKappa
+                vpScale = -vqScale - zeta*rhoOver2*square(hGamma)*(1 - square(tanhHKappa))
+                
+                deltaTheta += scale(V, p, vpScale, k) + scale(V, q, vqScale, k)    
                 
         #if normGp*normGq != 0: 
         deltaTheta *= gi[i]/normGpq
         
-    deltaTheta += lmbda*U[i, :] 
+    deltaTheta += scale(U, i, lmbda, k)
                     
     #Normalise gradient to have unit norm 
     normDeltaTheta = numpy.linalg.norm(deltaTheta)
@@ -297,12 +300,14 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]
     cdef unsigned int s = 0
-    cdef double uivp, uivq,  betaScale, normTheta, gamma, kappa, nu, nuPrime, hGamma, hKappa, zeta, ri, normBeta, normGqi, normGpi
+    cdef double uivp, uivq,  betaScale, normTheta, gamma, kappa, nu, nuPrime, hGamma, hKappa, zeta, ri, normBeta, normGqi, normGpi, rhoOver2
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
     cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] rowInds = numpy.random.permutation(m)[0:numRowSamples]
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
+    
+    rhoOver2 = rho/2    
     
     for i in rowInds: 
         omegai = colInds[indPtr[i]:indPtr[i+1]]
@@ -328,7 +333,7 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
                 hGamma = max(0, nu+uivq) 
                 normGqi += gq[q]
                 
-                betaScale += gp[p] * gq[q] * (hGamma*zeta + (rho/2)*hGamma**2 * (1 - zeta**2))  
+                betaScale += gp[p] * gq[q] * (hGamma*zeta + rhoOver2*square(hGamma) * (1 - square(zeta)))  
                              
             if normGp[i]*normGqi != 0:
                 deltaBeta = scale(U, i, -betaScale/(normGp[i]*normGqi), k)
@@ -353,7 +358,7 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
         deltaTheta += deltaBeta*gi[i]
         
     deltaTheta /= gi[rowInds].sum()
-    deltaTheta += lmbda*V[j, :] 
+    deltaTheta += scale(V, j, lmbda, k)
     
     #Make gradient unit norm 
     normTheta = numpy.linalg.norm(deltaTheta)
