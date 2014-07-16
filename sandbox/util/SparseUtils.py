@@ -660,4 +660,30 @@ class SparseUtils(object):
         indPtr, colInds = X.nonzeroRowsPtr()
         return indPtr, colInds
         
+    @staticmethod 
+    def sparseMatrix(vals, rowInds, colInds, shape, mattype, storagetype="col"): 
+        """
+        Create a sparse matrix of the given mattype with X[rowInds, colInds] = vals. The 
+        choices for type are "csarray" and "scipy"
+        """
+        import sppy        
+        
+        if mattype == "csarray":     
+            rowInds = numpy.array(rowInds, numpy.int32)    
+            colInds = numpy.array(colInds, numpy.int32)
+            
+            X = sppy.csarray(shape,  dtype=vals.dtype, storagetype=storagetype)
+            X.put(vals, rowInds, colInds, True)
+        elif mattype == "scipy": 
+            if storagetype=="row": 
+                X = scipy.sparse.csr_matrix((vals, (rowInds, colInds)), shape=shape)
+            elif storagetype=="col": 
+                X = scipy.sparse.csc_matrix((vals, (rowInds, colInds)), shape=shape)
+            else: 
+                raise ValueError("Unknown storagetype: " + storagetype)
+        else: 
+            raise ValueError("Unknown mattype: " + mattype)
+                
+        return X         
+        
     kmaxMultiplier = 15

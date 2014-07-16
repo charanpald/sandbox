@@ -695,5 +695,42 @@ class SparseUtilsCythonTest(unittest.TestCase):
         for i in range(m): 
             omegai = colInds[indPtr[i]:indPtr[i+1]]
    
+    def testSparseMatrix(self): 
+        m = 10
+        n = 15
+        
+        A = numpy.random.rand(m, n)
+        rowInds, colInds = A.nonzero()
+        vals = A[rowInds, colInds]
+        
+
+        
+        X = SparseUtils.sparseMatrix(vals, rowInds, colInds, A.shape, "scipy", storagetype="col")
+        self.assertTrue(X.dtype==A.dtype)
+        self.assertTrue(X.shape==A.shape)
+        self.assertTrue(type(X)== scipy.sparse.csc_matrix)
+        nptst.assert_array_equal(X.toarray(), A)
+        
+        X = SparseUtils.sparseMatrix(vals, rowInds, colInds, A.shape, "scipy", storagetype="row")
+        self.assertTrue(X.dtype==A.dtype)
+        self.assertTrue(X.shape==A.shape)
+        self.assertTrue(type(X)== scipy.sparse.csr_matrix)
+        nptst.assert_array_equal(X.toarray(), A)
+       
+        X = SparseUtils.sparseMatrix(vals, rowInds, colInds, A.shape, "csarray", storagetype="col")
+        self.assertTrue(X.dtype==A.dtype)
+        self.assertTrue(X.shape==A.shape)
+        self.assertTrue(type(X)== sppy.csarray)
+        self.assertTrue(X.storagetype=="col")
+        nptst.assert_array_equal(X.toarray(), A)
+        
+        X = SparseUtils.sparseMatrix(vals, rowInds, colInds, A.shape, "csarray", storagetype="row")
+        self.assertTrue(X.dtype==A.dtype)
+        self.assertTrue(X.shape==A.shape)
+        self.assertTrue(type(X)== sppy.csarray)
+        self.assertTrue(X.storagetype=="row")
+        nptst.assert_array_equal(X.toarray(), A)       
+       
+   
 if __name__ == '__main__':
     unittest.main()

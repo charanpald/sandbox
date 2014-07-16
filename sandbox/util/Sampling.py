@@ -200,7 +200,16 @@ class Sampling(object):
         
         :param colProbs: This is the probability of choosing the corresponding column/item. If None, we assume uniform probabilities. 
         """
-        import sppy 
+        if csarray: 
+            mattype = "csarray"
+        else: 
+            mattype = "scipy" 
+            
+        if rowMajor: 
+            storagetype = "row" 
+        else: 
+            storagetype = "col"
+        
         trainTestXList = []
         omegaList = SparseUtils.getOmegaList(X)
         m, n = X.shape
@@ -249,25 +258,9 @@ class Sampling(object):
             testRowInds = testRowInds[0:testInd]   
             testColInds = testColInds[0:testInd]
             
-            if csarray: 
-                if rowMajor: 
-                    stype = "row" 
-                else: 
-                    stype = "col"
-                
-                trainX = sppy.csarray(X.shape,  dtype=numpy.int, storagetype=stype)
-                trainX.put(numpy.ones(trainRowInds.shape[0], numpy.int), trainRowInds, trainColInds, True)
-                
-                testX = sppy.csarray(X.shape,  dtype=numpy.int, storagetype=stype)
-                testX.put(numpy.ones(testRowInds.shape[0], numpy.int), testRowInds, testColInds, True)
-            else: 
-                if rowMajor: 
-                    trainX = scipy.sparse.csr_matrix((numpy.ones(trainRowInds.shape[0], numpy.int), (trainRowInds, trainColInds)), shape=X.shape)
-                    testX = scipy.sparse.csr_matrix((numpy.ones(testRowInds.shape[0], numpy.int), (testRowInds, testColInds)), shape=X.shape)
-                else: 
-                    trainX = scipy.sparse.csc_matrix((numpy.ones(trainRowInds.shape[0], numpy.int), (trainRowInds, trainColInds)), shape=X.shape)
-                    testX = scipy.sparse.csc_matrix((numpy.ones(testRowInds.shape[0], numpy.int), (testRowInds, testColInds)), shape=X.shape)
-                    
+            trainX = SparseUtils.sparseMatrix(numpy.ones(trainRowInds.shape[0], numpy.int), trainRowInds, trainColInds, X.shape, mattype, storagetype)
+            testX = SparseUtils.sparseMatrix(numpy.ones(testRowInds.shape[0], numpy.int), testRowInds, testColInds, X.shape, mattype, storagetype)
+
             if numRows == None: 
                 trainTestXList.append((trainX, testX))
             else: 
@@ -299,5 +292,7 @@ class Sampling(object):
             userInds = numpy.sort(userInds)
             
             return X[userInds, :]
+        
+
         
         
