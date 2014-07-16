@@ -76,7 +76,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.recordStep = 10
         self.numRowSamples = 100
         self.numAucSamples = 10
-        self.numRecordAucSamples = 500
+        self.numRecordAucSamples = 100
         #1 iterations is a complete run over the dataset (i.e. m gradients)
         self.maxIterations = 50
         self.initialAlg = "rand"

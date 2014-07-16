@@ -418,7 +418,7 @@ def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[i
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]
     cdef unsigned int i, j, k, p, q
-    cdef double uivp, uivq, gamma, kappa, ri, partialObj, hGamma, hKappa, normGp, normGq, normGi=0, zeta
+    cdef double uivp, uivq, gamma, kappa, ri, partialObj, hGamma, hKappa, normGp, normGq, normGi=0, zeta, normGpq
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] allOmegai 
     cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
@@ -453,7 +453,7 @@ def objectiveApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[i
             zeta = gp[p]*gq[q]
             normGpq += zeta
             
-            partialObj += zeta * hGamma**2 * tanh(hKappa)
+            partialObj += zeta * square(hGamma) * tanh(hKappa)
         
         if normGpq != 0: 
             objVector[i] = partialObj*gi[i]/normGpq

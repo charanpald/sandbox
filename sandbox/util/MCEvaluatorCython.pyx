@@ -1,4 +1,7 @@
-# cython: profile=True
+#cython: profile=True 
+#cython: boundscheck=False
+#cython: wraparound=False
+#cython: nonecheck=False
 from cython.operator cimport dereference as deref, preincrement as inc 
 import cython
 import struct
