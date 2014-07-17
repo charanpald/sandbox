@@ -38,8 +38,29 @@ class MaxLocalAUCTest(unittest.TestCase):
         #print(U)
         #print(V)
 
+    def testParallelLearnModel(self): 
+        m = 50 
+        n = 20 
+        k = 5 
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True)
 
-    #@unittest.skip("")
+        
+        u = 0.1
+        w = 1-u
+        eps = 0.05
+        maxLocalAuc = MaxLocalAUC(k, w, alpha=5.0, eps=eps, stochastic=True)
+        
+        
+        os.system('taskset -p 0xffffffff %d' % os.getpid())
+        maxLocalAuc.parallelSGD = True
+        U, V = maxLocalAuc.learnModel(X)
+        
+        
+        
+        #U, V = maxLocalAuc.learnModel(X)
+
+
+    @unittest.skip("")
     def testModelSelect(self): 
         m = 10 
         n = 20 
