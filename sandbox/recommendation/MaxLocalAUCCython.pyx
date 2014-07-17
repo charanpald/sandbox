@@ -175,7 +175,7 @@ def derivativeUiApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
         #if normGp*normGq != 0: 
         deltaTheta *= gi[i]/normGpq
         
-    deltaTheta += scale(U, i, lmbda, k)
+    deltaTheta += scale(U, i, lmbda/m, k)
                     
     #Normalise gradient to have unit norm 
     normDeltaTheta = numpy.linalg.norm(deltaTheta)
@@ -358,7 +358,7 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
         deltaTheta += deltaBeta*gi[i]
         
     deltaTheta /= gi[rowInds].sum()
-    deltaTheta += scale(V, j, lmbda, k)
+    deltaTheta += scale(V, j, lmbda/n, k)
     
     #Make gradient unit norm 
     normTheta = numpy.linalg.norm(deltaTheta)
