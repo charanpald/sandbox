@@ -21,22 +21,30 @@ def computeObjective(args):
     """
     Compute the objective for a particular parameter set. Used to set a learning rate. 
     """
-    X, U, V, maxLocalAuc  = args 
-    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.learnModel(X, U=U, V=V, verbose=True)
+    X, U, V, maxLocalAuc = args 
+    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.singleLearnModel(X, U=U, V=V, verbose=True)
     obj = trainMeasures[-1, 0]
     logging.debug("Final objective: " + str(obj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
     return obj
     
 def computeTestAuc(args): 
-    trainX, testX, U, V, maxLocalAuc  = args 
+    trainX, testX, U, V, maxLocalAuc = args 
     
-    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.learnModel(trainX, U=U, V=V, verbose=True)
+    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.singleLearnModel(trainX, U=U, V=V, verbose=True)
     testAucs = testMeasures[:, 1]
     muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
     logging.debug("Weighted local AUC: " + str('%.4f' % muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
         
     return muAuc
-         
+      
+def computeFactors(args): 
+    """
+    Compute the objective for a particular parameter set. Used to set a learning rate. 
+    """
+    X, U, V, maxLocalAuc = args 
+    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.singleLearnModel(X, U=U, V=V, verbose=True)
+    return U, V, trainMeasures, testMeasures, iterations, totalTime      
+      
 class MaxLocalAUC(AbstractRecommender): 
     def __init__(self, k, w, alpha=0.05, eps=10**-6, lmbdaU=1, lmbdaV=1, stochastic=False, numProcesses=None): 
         """
@@ -60,6 +68,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.w = w
         self.eps = eps 
         self.stochastic = stochastic
+        self.parallelSGD = False
 
         self.rate = "constant"
         self.alpha = alpha #Initial learning rate 
@@ -122,7 +131,7 @@ class MaxLocalAUC(AbstractRecommender):
         
         return printStr
     
-    def learnModel(self, X, verbose=False, U=None, V=None): 
+    def singleLearnModel(self, X, verbose=False, U=None, V=None): 
         """
         Max local AUC with Frobenius norm penalty on V. Solve with (stochastic) gradient descent. 
         The input is a sparse array. 
@@ -242,6 +251,52 @@ class MaxLocalAUC(AbstractRecommender):
         else: 
             return self.U, self.V
       
+    def parallelLearnModel(self, X, verbose=False, U=None, V=None): 
+        """
+        Perform model learning in parallel. 
+        """
+        
+        cvInds = Sampling.crossValidation(self.numProcesses, X.nnz)
+        paramList = []
+        
+        for trainInds, testInds in cvInds: 
+            testX = SparseUtils.submatrix(X, testInds)
+            learner = self.copy()
+            
+            paramList.append((testX, U, V, learner))
+        
+        if self.numProcesses != 1: 
+            pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
+            resultsIterator = pool.imap(computeFactors, paramList, self.chunkSize)
+        else: 
+            import itertools
+            resultsIterator = itertools.imap(computeFactors, paramList)
+            
+        self.U = numpy.zeros((X.shape[0], self.k))
+        self.V  = numpy.zeros((X.shape[1], self.k))
+       
+        for k in range(self.numProcesses):
+            tempU, tempV, trainMeasures, testMeasures, iterations, totalTime = resultsIterator.next()
+            self.U += tempU 
+            self.V += tempV 
+            
+        if self.numProcesses != 1: 
+            pool.terminate()
+            
+        self.U  /= self.numProcesses
+        self.V  /= self.numProcesses
+        
+        if verbose:
+            return self.U , self.V, trainMeasures, testMeasures, iterations, totalTime 
+        else: 
+            return self.U , self.V 
+        
+    def learnModel(self, X, verbose=False, U=None, V=None): 
+        if self.parallelSGD: 
+            return self.parallelLearnModel(X, verbose, U, V)
+        else: 
+            return self.singleLearnModel(X, verbose, U, V)
+        
     def predict(self, maxItems): 
         return MCEvaluator.recommendAtk(self.U, self.V, maxItems)
           
