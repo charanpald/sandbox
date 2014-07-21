@@ -28,9 +28,9 @@ def computeObjective(args):
     return obj
     
 def computeTestAuc(args): 
-    trainX, testX, U, V, maxLocalAuc = args 
+    trainX, testX, maxLocalAuc = args 
     
-    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.singleLearnModel(trainX, U=U, V=V, verbose=True)
+    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.singleLearnModel(trainX, verbose=True)
     testAucs = testMeasures[:, 1]
     muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
     logging.debug("Weighted local AUC: " + str('%.4f' % muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
@@ -98,7 +98,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = numpy.linspace(0.5, 2.0, 7)
         self.rhos = numpy.array([0, 0.1, 0.5, 1.0])
-        self.metric = "auc"
+        self.metric = "f1"
 
         #Learning rate selection 
         self.t0s = 10**-numpy.arange(2, 5, 0.5)
