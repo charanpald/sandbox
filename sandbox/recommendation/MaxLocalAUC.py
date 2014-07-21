@@ -260,6 +260,9 @@ class MaxLocalAUC(AbstractRecommender):
         cvInds = Sampling.crossValidation(self.numProcesses, X.nnz)
         paramList = []
         
+        if U==None or V==None:
+            U, V = self.initUV(X)
+        
         for trainInds, testInds in cvInds: 
             testX = SparseUtils.submatrix(X, testInds)
             learner = self.copy()
@@ -284,6 +287,10 @@ class MaxLocalAUC(AbstractRecommender):
         if self.numProcesses != 1: 
             pool.terminate()
             
+            
+        self.gi = numpy.ones(X.shape[0]) 
+        self.gp = numpy.ones(X.shape[1])
+        self.gq = numpy.ones(X.shape[1])           
         self.U  /= self.numProcesses
         self.V  /= self.numProcesses
         
