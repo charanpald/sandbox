@@ -17,7 +17,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         numpy.seterr(all="raise")
         numpy.random.seed(22)
     
-    @unittest.skip("")
+    #@unittest.skip("")
     def testLearnModel(self): 
         m = 50 
         n = 20 
@@ -28,16 +28,22 @@ class MaxLocalAUCTest(unittest.TestCase):
         u = 0.1
         w = 1-u
         eps = 0.05
+        
         maxLocalAuc = MaxLocalAUC(k, w, alpha=5.0, eps=eps)
         
-        U, V = maxLocalAuc.learnModel(X)
+        #U, V = maxLocalAuc.learnModel(X)
         
         
         maxLocalAuc.stochastic = True 
         U, V = maxLocalAuc.learnModel(X)
         #print(U)
         #print(V)
+        
+        maxLocalAuc.itemFactors = True 
+        U, V = maxLocalAuc.learnModel(X)
 
+
+    @unittest.skip("")
     def testParallelLearnModel(self): 
         m = 50 
         n = 20 
@@ -84,7 +90,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc.modelSelect(X)
             
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testLearningRateSelect(self): 
         m = 10 
         n = 20 

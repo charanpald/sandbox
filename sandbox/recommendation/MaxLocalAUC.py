@@ -80,7 +80,8 @@ class MaxLocalAUC(AbstractRecommender):
         self.lmbdaV = lmbdaV 
         self.rho = 1.00 #Penalise low rank elements 
         self.itemExpP = 0.0 #Sample from power law between 0 and 1 
-        self.itemExpQ = 0.5        
+        self.itemExpQ = 0.5     
+        self.itemFactors = False
         
         self.recordStep = 10
         self.numRowSamples = 100
@@ -350,7 +351,7 @@ class MaxLocalAUC(AbstractRecommender):
             muV[:] = V[:]
         else: 
             
-            updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbdaU, self.lmbdaV, self.rho, self.normalise)
+            updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbdaU, self.lmbdaV, self.rho, self.normalise, self.itemFactors)
 
     def computeNormGpq(self, indPtr, colInds, gp, gq, m):
         

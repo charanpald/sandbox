@@ -367,7 +367,26 @@ def derivativeViApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarra
     
     return deltaTheta
 
-def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, unsigned int ind, double sigma, unsigned int numRowSamples, unsigned int numAucSamples, double w, double lmbdaU, double lmbdaV, double rho, bint normalise): 
+def meanPositive(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] V, unsigned int i): 
+    """
+    Compute u_i = 1/omegai \sum_p \in \omegai vp i.e. the mean positive item. 
+    """
+    cdef unsigned int p 
+    cdef unsigned int k = V.shape[1]
+    cdef numpy.ndarray[double, ndim=1, mode="c"] ui = numpy.zeros(k)
+    
+    omegai = colInds[indPtr[i]:indPtr[i+1]]
+    
+    for p in omegai: 
+        ui += V[p, :]
+    
+    if omegai.shape[0] != 0:
+        ui /= omegai.shape[0]
+    
+    return ui
+    
+
+def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, unsigned int ind, double sigma, unsigned int numRowSamples, unsigned int numAucSamples, double w, double lmbdaU, double lmbdaV, double rho, bint normalise, bint itemFactors): 
     cdef unsigned int m = U.shape[0]
     cdef unsigned int n = V.shape[0]    
     cdef unsigned int k = U.shape[1] 
@@ -383,15 +402,18 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
             print(str(s) + " ", end="")
             
         r = SparseUtilsCython.computeR(U, V, w, numAucSamples)
-        i = permutedRowInds[s % m]
-        dUi = derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, numRowSamples, numAucSamples, rho, lmbdaU, normalise)
         
-        plusEquals(U, i, -sigma*dUi, k)
+        i = permutedRowInds[s % m]   
         
-        normUi = numpy.linalg.norm(U[i,:])
-        
-        if normUi >= maxNorm: 
-            U[i,:] = scale(U, i, maxNorm/normUi, k)             
+        if itemFactors: 
+            U[i,:] = meanPositive(indPtr, colInds, V, i)
+        else: 
+            dUi = derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i, numRowSamples, numAucSamples, rho, lmbdaU, normalise)
+            plusEquals(U, i, -sigma*dUi, k)
+            normUi = numpy.linalg.norm(U[i,:])
+            
+            if normUi >= maxNorm: 
+                U[i,:] = scale(U, i, maxNorm/normUi, k)             
         
         if ind > startAverage: 
             muU[i, :] = muU[i, :]*ind/float(ind+1) + U[i, :]/float(ind+1)
@@ -402,7 +424,6 @@ def updateUVApprox(numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[in
         #r = SparseUtilsCython.computeR(U, V, w, numAucSamples)        
         j = permutedColInds[s % n]
         dVj = derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, j, numRowSamples, numAucSamples, rho, lmbdaV, normalise)
-        
         plusEquals(V, j, -sigma*dVj, k)
         normVj = numpy.linalg.norm(V[j,:])  
         
