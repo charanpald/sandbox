@@ -579,7 +579,7 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rho=" + str(self.rho) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) 
         outputStr += " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " sampling=" + str(self.sampling) + " recordStep=" + str(self.recordStep)
-        outputStr += " itemExpP=" + str(self.itemExpP) + " itemExpQ=" + str(self.itemExpQ)
+        outputStr += " itemExpP=" + str(self.itemExpP) + " itemExpQ=" + str(self.itemExpQ) + " itemFactors=" + str(self.itemFactors)
         outputStr += super(MaxLocalAUC, self).__str__()
         
         
@@ -612,6 +612,7 @@ class MaxLocalAUC(AbstractRecommender):
 
         maxLocalAuc.itemExpP = self.itemExpP
         maxLocalAuc.itemExpQ = self.itemExpQ
+        maxLocalAuc.itemFactors = self.itemFactors
         
         maxLocalAuc.ks = self.ks
         maxLocalAuc.lmbdas = self.lmbdas
