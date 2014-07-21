@@ -503,7 +503,7 @@ class MaxLocalAUC(AbstractRecommender):
                     for s, rho in enumerate(self.rhos): 
                         maxLocalAuc = self.copy()
                         maxLocalAuc.k = k    
-                        maxLocalAuc.lmbdaU = lmbda
+                        #maxLocalAuc.lmbdaU = lmbda
                         maxLocalAuc.lmbdaV = lmbda
                         maxLocalAuc.rho = rho 
                     
@@ -546,7 +546,7 @@ class MaxLocalAUC(AbstractRecommender):
         logging.debug("Mean metrics =" + str(meanTestMetrics))
         
         self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[0]]
-        self.lmbdaU = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
+        #self.lmbdaU = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
         self.lmbdaV = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
         self.rho = self.rhos[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[2]]
 
