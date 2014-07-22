@@ -147,6 +147,28 @@ class MCEvaluator(object):
             return f1s.mean()
 
     @staticmethod 
+    def mrrAtK(positiveArray, orderedItems, k, verbose=False): 
+        """
+        Compute the mean reciprocal rank@k score for each row of the predicted matrix UV.T 
+        using real values in positiveArray. positiveArray is a tuple (indPtr, colInds)
+        
+        :param orderedItems: The ordered items for each user (users are rows, items are cols)  
+        
+        :param verbose: If true return mrr and first k recommendation for each row, otherwise just mrr
+        """
+        if type(positiveArray) != tuple: 
+            positiveArray = SparseUtils.getOmegaListPtr(positiveArray)        
+        
+        orderedItems = orderedItems[:, 0:k]
+        indPtr, colInds = positiveArray
+        mrr = MCEvaluatorCython.reciprocalRankAtk(indPtr, colInds, orderedItems)
+        
+        if verbose: 
+            return mrr, orderedItems
+        else: 
+            return mrr.mean()
+
+    @staticmethod 
     def recommendAtk(U, V, k, blockSize=1000, omegaList=None): 
         """
         Compute the matrix Z = U V^T and then find the k largest indices for each row. 

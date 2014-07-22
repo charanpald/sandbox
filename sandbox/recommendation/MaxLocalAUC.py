@@ -13,7 +13,7 @@ from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
 from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
 from sandbox.recommendation.WeightedMf import WeightedMf
-from sandbox.recommendation.RecommenderUtils import computeTestPrecision, computeTestF1
+from sandbox.recommendation.RecommenderUtils import computeTestMRR, computeTestF1
 from sandbox.misc.RandomisedSVD import RandomisedSVD
 from sandbox.recommendation.AbstractRecommender import AbstractRecommender
 
@@ -26,17 +26,7 @@ def computeObjective(args):
     obj = trainMeasures[-1, 0]
     logging.debug("Final objective: " + str(obj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
     return obj
-    
-def computeTestAuc(args): 
-    trainX, testX, maxLocalAuc = args 
-    
-    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.singleLearnModel(trainX, verbose=True)
-    testAucs = testMeasures[:, 1]
-    muAuc = numpy.average(testAucs, weights=numpy.flipud(1/numpy.arange(1, len(testAucs)+1, dtype=numpy.float)))
-    logging.debug("Weighted local AUC: " + str('%.4f' % muAuc) + " with k=" + str(maxLocalAuc.k) + " lmbda=" + str(maxLocalAuc.lmbda) + " rho=" + str(maxLocalAuc.rho))
-        
-    return muAuc
-      
+          
 def computeFactors(args): 
     """
     Compute the objective for a particular parameter set. Used to set a learning rate. 
@@ -99,7 +89,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.lmbdas = 10.0**numpy.arange(-0.5, 1.5, 0.25)
         self.rhos = numpy.array([0, 0.1, 0.5, 1.0])
         self.metric = "f1"
-
+        
         #Learning rate selection 
         self.t0s = 2.0**-numpy.arange(0.0, 5.0)
         self.alphas = 2.0**-numpy.arange(-2.0, 4.0)
@@ -115,7 +105,7 @@ class MaxLocalAUC(AbstractRecommender):
         testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.recommendSize, trainX)
         f1Array, orderedItems = MCEvaluator.f1AtK((testIndPtr, testColInds), testOrderedItems, self.recommendSize, verbose=True)
         testMeasuresRow.append(f1Array[rowSamples].mean())   
-        mrr = MCEvaluatorCython.reciprocalRankAtk(testIndPtr, testColInds, testOrderedItems)
+        mrr, orderedItems = MCEvaluator.mrrAtK((testIndPtr, testColInds), testOrderedItems, self.recommendSize, verbose=True)
         testMeasuresRow.append(mrr[rowSamples].mean())
         testMeasures.append(testMeasuresRow)
            
@@ -157,6 +147,13 @@ class MaxLocalAUC(AbstractRecommender):
 
         if U==None or V==None:
             U, V = self.initUV(trainX)
+            
+        if self.metric == "f1": 
+            metricInd = 2 
+        elif self.metric == "mrr": 
+            metricInd = 3 
+        else: 
+            raise ValueError("Unknown metric: " + self.metric)
         
         sigma = self.alpha
         
@@ -164,7 +161,7 @@ class MaxLocalAUC(AbstractRecommender):
         muV = V.copy()
         
         #Store best results 
-        bestF1 = 0 
+        bestMetric = 0 
         bestU = 0 
         bestV = 0
         
@@ -224,8 +221,8 @@ class MaxLocalAUC(AbstractRecommender):
                     
                 logging.debug(printStr) 
                                 
-                if testMeasures[-1][2] >= bestF1: 
-                    bestF1 = testMeasures[-1][2]
+                if testMeasures[-1][metricInd] >= bestMetric: 
+                    bestMetric = testMeasures[-1][metricInd]
                     bestU = muU 
                     bestV = muV 
                 
@@ -517,12 +514,8 @@ class MaxLocalAUC(AbstractRecommender):
                         paramList.append((trainX, testX, maxLocalAuc))
             
         logging.debug("Set parameters")
-        if self.metric == "auc":
-            evaluationMethod = computeTestAuc
-        elif self.metric == "precision": 
-            evaluationMethod = computeTestPrecision
-        elif self.metric == "recall": 
-            evaluationMethod = computeTestRecall
+        if self.metric == "mrr":
+            evaluationMethod = computeTestMRR
         elif self.metric == "f1": 
             evaluationMethod = computeTestF1
         else: 
@@ -586,7 +579,7 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rho=" + str(self.rho) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) 
         outputStr += " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " sampling=" + str(self.sampling) + " recordStep=" + str(self.recordStep)
-        outputStr += " itemExpP=" + str(self.itemExpP) + " itemExpQ=" + str(self.itemExpQ) + " itemFactors=" + str(self.itemFactors)
+        outputStr += " itemExpP=" + str(self.itemExpP) + " itemExpQ=" + str(self.itemExpQ) + " itemFactors=" + str(self.itemFactors) + " metric=" + str(self.metric)
         outputStr += super(MaxLocalAUC, self).__str__()
         
         
@@ -616,6 +609,7 @@ class MaxLocalAUC(AbstractRecommender):
         maxLocalAuc.maxIterations = self.maxIterations
         maxLocalAuc.initialAlg = self.initialAlg
         maxLocalAuc.sampling = self.sampling
+        maxLocalAuc.metric = self.metric
 
         maxLocalAuc.itemExpP = self.itemExpP
         maxLocalAuc.itemExpQ = self.itemExpQ
