@@ -8,7 +8,7 @@ import multiprocessing
 from sandbox.util.MCEvaluator import MCEvaluator 
 from sandbox.util.Sampling import Sampling
 from bpr import BPRArgs, BPR, UniformPairWithoutReplacement 
-from sandbox.recommendation.RecommenderUtils import computeTestPrecision, computeTestF1
+from sandbox.recommendation.RecommenderUtils import computeTestMRR, computeTestF1
 from sandbox.recommendation.AbstractRecommender import AbstractRecommender
 
 class BprRecommender(AbstractRecommender): 
