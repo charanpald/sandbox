@@ -96,13 +96,13 @@ class MaxLocalAUC(AbstractRecommender):
         #Model selection parameters 
         self.validationUsers = 0.1
         self.ks = 2**numpy.arange(3, 8)
-        self.lmbdas = numpy.linspace(0.5, 2.0, 7)
+        self.lmbdas = 10.0**numpy.arange(-0.5, 1.5, 0.25)
         self.rhos = numpy.array([0, 0.1, 0.5, 1.0])
         self.metric = "f1"
 
         #Learning rate selection 
-        self.t0s = 10**-numpy.arange(2, 5, 0.5)
-        self.alphas = 2.0**-numpy.arange(-1, 3, 0.5)
+        self.t0s = 2.0**-numpy.arange(0.0, 5.0)
+        self.alphas = 2.0**-numpy.arange(-2.0, 4.0)
     
     def recordResults(self, muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX): 
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
