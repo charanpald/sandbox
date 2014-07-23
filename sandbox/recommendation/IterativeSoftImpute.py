@@ -52,7 +52,7 @@ def learnPredictMSE(args):
         
     return errors 
 
-def learnPredictF1(args): 
+def learnPredictMRR(args): 
     """
     A function to train on a training set and test on a test set, for a number 
     of values of rho. 
@@ -83,8 +83,8 @@ def learnPredictF1(args):
         V = numpy.ascontiguousarray(V)
         
         testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, p, trainX)
-        f1s[j] = MCEvaluator.f1AtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.recommendSize) 
-        logging.debug("F1@" + str(learner.recommendSize) +  ": " + str('%.4f' % f1s[j]) + " " + str(learner))
+        f1s[j] = MCEvaluator.mrrAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.recommendSize) 
+        logging.debug("MRR@" + str(learner.recommendSize) +  ": " + str('%.4f' % f1s[j]) + " " + str(learner))
         gc.collect()
         
     return f1s 
@@ -436,8 +436,8 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         
         if self.metric == "mse": 
             metricFuction = learnPredictMSE
-        elif self.metric == "f1": 
-            metricFuction = learnPredictF1
+        elif self.metric == "mrr": 
+            metricFuction = learnPredictMRR
         else: 
             raise ValueError("Unknown metric: " + self.metric)
             

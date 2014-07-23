@@ -3,7 +3,7 @@ import numpy
 import logging
 import multiprocessing 
 from sandbox.util.SparseUtils import SparseUtils
-from sandbox.recommendation.RecommenderUtils import computeTestF1
+from sandbox.recommendation.RecommenderUtils import computeTestMRR
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.Util import Util 
 from mrec.mf.wrmf import WRMFRecommender
@@ -64,10 +64,10 @@ class WeightedMf(AbstractRecommender):
             
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-            resultsIterator = pool.imap(computeTestF1, paramList, self.chunkSize)
+            resultsIterator = pool.imap(computeTestMRR, paramList, self.chunkSize)
         else: 
             import itertools
-            resultsIterator = itertools.imap(computeTestF1, paramList)
+            resultsIterator = itertools.imap(computeTestMRR, paramList)
         
         for i, k in enumerate(self.ks):
             for j, lmbda in enumerate(self.lmbdas):
