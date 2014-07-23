@@ -382,56 +382,6 @@ class MaxLocalAUC(AbstractRecommender):
         """
         return derivativeVi(X, U, V, omegaList, i, r, c, self.rho, self.normalise)           
 
-    def omegaProbsUniform(self, indPtr, colInds, U, V): 
-        """
-        All positive items have the same probability. 
-        """
-        colIndsCumProbs = numpy.ones(colInds.shape[0])
-        m = U.shape[0]
-        
-        for i in range(m):
-            colIndsCumProbs[indPtr[i]:indPtr[i+1]] /= colIndsCumProbs[indPtr[i]:indPtr[i+1]].sum()
-            colIndsCumProbs[indPtr[i]:indPtr[i+1]]  = numpy.cumsum(colIndsCumProbs[indPtr[i]:indPtr[i+1]])
-            
-        return colIndsCumProbs
-
-    def omegaProbsTopZ(self, indPtr, colInds, U, V): 
-        """
-        For the set of positive items in each row, select the largest z and give 
-        them equal probability, and the remaining items zero probability. 
-        """
-        colIndsCumProbs = numpy.zeros(colInds.shape[0])
-        m = U.shape[0]
-        
-        for i in range(m):
-            omegai = colInds[indPtr[i]:indPtr[i+1]]
-            uiVOmegai = U[i, :].T.dot(V[omegai, :].T)
-            ri = numpy.sort(uiVOmegai)[-min(self.recommendSize, uiVOmegai.shape[0])]
-            colIndsCumProbs[indPtr[i]:indPtr[i+1]] = numpy.array(uiVOmegai >= ri, numpy.float)
-            colIndsCumProbs[indPtr[i]:indPtr[i+1]] /= colIndsCumProbs[indPtr[i]:indPtr[i+1]].sum()
-            colIndsCumProbs[indPtr[i]:indPtr[i+1]]  = numpy.cumsum(colIndsCumProbs[indPtr[i]:indPtr[i+1]])
-            
-        return colIndsCumProbs
-            
-    def omegaProbsRank(self, indPtr, colInds, U, V): 
-        """
-        Take the positive values in each row and sort them according to their 
-        values in U.V^T then give p(j) = ind(j)+1 where ind(j) is the index of the 
-        jth item. 
-        """
-        colIndsCumProbs = numpy.zeros(colInds.shape[0])
-        m = U.shape[0]
-        
-        for i in range(m):
-            omegai = colInds[indPtr[i]:indPtr[i+1]]
-            uiVOmegai = U[i, :].T.dot(V[omegai, :].T)
-            inds = numpy.argsort(numpy.argsort((uiVOmegai)))+1
-            colIndsCumProbs[indPtr[i]:indPtr[i+1]] = inds/float(inds.sum())
-            colIndsCumProbs[indPtr[i]:indPtr[i+1]]  = numpy.cumsum(colIndsCumProbs[indPtr[i]:indPtr[i+1]])
-            
-        return colIndsCumProbs
-
-
     def learningRateSelect(self, X): 
         """
         Let's set the initial learning rate. 
