@@ -59,6 +59,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.eps = eps 
         self.stochastic = stochastic
         self.parallelSGD = False
+        self.startAverage = 20
 
         self.rate = "constant"
         self.alpha = alpha #Initial learning rate 
@@ -355,7 +356,7 @@ class MaxLocalAUC(AbstractRecommender):
             muV[:] = V[:]
         else: 
             
-            updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbdaU, self.lmbdaV, self.rho, self.normalise, self.itemFactors)
+            updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbdaU, self.lmbdaV, self.rho, self.startAverage, self.normalise, self.itemFactors)
 
     def computeNormGpq(self, indPtr, colInds, gp, gq, m):
         
