@@ -72,7 +72,6 @@ def learnPredictMRR(args):
     trainXIter = iter(trainXIter)
 
     ZIter = learner.learnModel(trainXIter, iter(rhos))
-    p = learner.validationSize 
     
     f1s = numpy.zeros(rhos.shape[0])
     
@@ -82,7 +81,7 @@ def learnPredictMRR(args):
         U = numpy.ascontiguousarray(U)
         V = numpy.ascontiguousarray(V)
         
-        testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, p, trainX)
+        testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, learner.recommendSize, trainX)
         f1s[j] = MCEvaluator.mrrAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.recommendSize) 
         logging.debug("MRR@" + str(learner.recommendSize) +  ": " + str('%.4f' % f1s[j]) + " " + str(learner))
         gc.collect()

@@ -13,7 +13,6 @@ from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.PathDefaults import PathDefaults
 from sandbox.util.Sampling import Sampling
 from sandbox.util.SparseUtils import SparseUtils
-from sandbox.util.MCEvaluator import  MCEvaluator
 from sandbox.recommendation.RecommenderUtils import computeTestF1
 from sandbox.recommendation.AbstractRecommender import AbstractRecommender
 
@@ -83,7 +82,7 @@ class CLiMF(AbstractRecommender):
         datas = []
         for (trainX, testX) in trainTestXs:
             testOmegaList = SparseUtils.getOmegaList(testX)
-            testX = trainX+testX
+            #testX = trainX+testX
             datas.append((trainX, testX, testOmegaList))
         testAucs = numpy.zeros((len(self.ks), len(self.lmbdas), len(self.gammas), len(trainTestXs)))
         
