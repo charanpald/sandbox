@@ -369,7 +369,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         if self.metric == "mse": 
             metricFuction = learnPredictMSE
         elif self.metric == "f1": 
-            metricFuction = learnPredictF1
+            metricFuction = learnPredictMRR
         else: 
             raise ValueError("Unknown metric: " + self.metric)
             
@@ -542,7 +542,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         outputStr = self.name() + ":" 
         outputStr += " rho=" + str(self.rho)+" eps="+str(self.eps)+" k="+str(self.k) + " svdAlg="+str(self.svdAlg) + " kmax="+str(self.kmax)
         outputStr += " postProcess=" + str(self.postProcess) + " weighted="+str(self.weighted) + " p="+str(self.p) + " q="+str(self.q)
-        outputStr += " maxIterations=" + str(self.maxIterations) + " recommendSize=" + str(self.maxIterations) + " validationSize=" + str(self.validationSize) 
+        outputStr += " maxIterations=" + str(self.maxIterations) + " recommendSize=" + str(self.recommendSize) + " validationSize=" + str(self.validationSize) 
         return outputStr
 
     def name(self):
