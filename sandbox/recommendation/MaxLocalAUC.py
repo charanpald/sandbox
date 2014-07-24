@@ -525,7 +525,7 @@ class MaxLocalAUC(AbstractRecommender):
             return objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, r, gi, gp, gq, self.numRecordAucSamples, self.rho, full=full)
   
     def __str__(self): 
-        outputStr = "MaxLocalAUC: k=" + str(self.k) + " eps=" + str(self.eps) 
+        outputStr = "MaxLocalAUC: k=" + str(self.k) + " eps=" + str(self.eps) + " startAverage=" + str(self.startAverage) 
         outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) 
         outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
         outputStr += " w=" + str(self.w) + " rho=" + str(self.rho) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) 
@@ -568,6 +568,7 @@ class MaxLocalAUC(AbstractRecommender):
         
         maxLocalAuc.ks = self.ks
         maxLocalAuc.lmbdas = self.lmbdas
+        maxLocalAuc.startAverage = self.startAverage
         
         return maxLocalAuc
         
