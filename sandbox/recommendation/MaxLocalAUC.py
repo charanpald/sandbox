@@ -59,7 +59,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.eps = eps 
         self.stochastic = stochastic
         self.parallelSGD = False
-        self.startAverage = 20
+        self.startAverage = 30
 
         self.rate = "constant"
         self.alpha = alpha #Initial learning rate 
