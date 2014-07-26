@@ -70,7 +70,7 @@ def updateUVBlock(sharedArgs, methodArgs):
         colIsFree[colInd] = True
         
         iterationsPerBlock[rowInd, colInd] += 1
-        #print(iterationsPerBlock)
+        print(iterationsPerBlock)
 
         
         lock.release()
@@ -589,14 +589,31 @@ class MaxLocalAUC(AbstractRecommender):
             return objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, r, gi, gp, gq, self.numRecordAucSamples, self.rho, full=full)
   
     def __str__(self): 
-        outputStr = "MaxLocalAUC: k=" + str(self.k) + " eps=" + str(self.eps) + " startAverage=" + str(self.startAverage) 
-        outputStr += " stochastic=" + str(self.stochastic) + " numRowSamples=" + str(self.numRowSamples) 
-        outputStr += " numAucSamples=" + str(self.numAucSamples) + " maxIterations=" + str(self.maxIterations) + " initialAlg=" + self.initialAlg
-        outputStr += " w=" + str(self.w) + " rho=" + str(self.rho) + " rate=" + str(self.rate) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) 
-        outputStr += " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " sampling=" + str(self.sampling) + " recordStep=" + str(self.recordStep)
-        outputStr += " itemExpP=" + str(self.itemExpP) + " itemExpQ=" + str(self.itemExpQ) + " itemFactors=" + str(self.itemFactors) + " metric=" + str(self.metric)
+        outputStr = "MaxLocalAUC: k=" + str(self.k) 
+        outputStr += " alpha=" + str(self.alpha) 
+        outputStr += " beta=" + str(self.beta)
+        outputStr += " eps=" + str(self.eps) 
+        outputStr += " initialAlg=" + self.initialAlg
+        outputStr += " itemExpP=" + str(self.itemExpP) 
+        outputStr += " itemExpQ=" + str(self.itemExpQ) 
+        outputStr += " itemFactors=" + str(self.itemFactors) 
+        outputStr += " lmbdaU=" + str(self.lmbdaU) 
+        outputStr += " lmbdaV=" + str(self.lmbdaV) 
+        outputStr += " maxIterations=" + str(self.maxIterations)
+        outputStr += " metric=" + str(self.metric)
+        outputStr += " numAucSamples=" + str(self.numAucSamples) 
+        outputStr += " numRecordAucSamples=" + str(self.numRecordAucSamples)
+        outputStr += " numRowSamples=" + str(self.numRowSamples) 
+        outputStr += " rate=" + str(self.rate) 
+        outputStr += " recordStep=" + str(self.recordStep)
+        outputStr += " rho=" + str(self.rho) 
+        outputStr += " sampling=" + str(self.sampling)
+        outputStr += " startAverage=" + str(self.startAverage) 
+        outputStr += " stochastic=" + str(self.stochastic)
+        outputStr += " t0=" + str(self.t0) 
+        outputStr += " validationUsers=" + str(self.validationUsers)
+        outputStr += " w=" + str(self.w) 
         outputStr += super(MaxLocalAUC, self).__str__()
-        
         
         return outputStr 
 
@@ -605,34 +622,33 @@ class MaxLocalAUC(AbstractRecommender):
         return outputStr 
 
     def copy(self): 
-        
         maxLocalAuc = MaxLocalAUC(k=self.k, w=self.w, lmbdaU=self.lmbdaU, lmbdaV=self.lmbdaV)
         self.copyParams(maxLocalAuc)
-        maxLocalAuc.eps = self.eps 
-        maxLocalAuc.stochastic = self.stochastic
-        maxLocalAuc.rho = self.rho 
-     
-        maxLocalAuc.rate = self.rate
-        maxLocalAuc.alpha = self.alpha
-        maxLocalAuc.t0 = self.t0
-        maxLocalAuc.beta = self.beta
-        
-        maxLocalAuc.recordStep = self.recordStep
-        maxLocalAuc.numRowSamples = self.numRowSamples
-        maxLocalAuc.numAucSamples = self.numAucSamples
-        maxLocalAuc.numRecordAucSamples = self.numRecordAucSamples
-        maxLocalAuc.maxIterations = self.maxIterations
-        maxLocalAuc.initialAlg = self.initialAlg
-        maxLocalAuc.sampling = self.sampling
-        maxLocalAuc.metric = self.metric
 
+        maxLocalAuc.alpha = self.alpha
+        maxLocalAuc.beta = self.beta
+        maxLocalAuc.eps = self.eps 
+        maxLocalAuc.initialAlg = self.initialAlg
         maxLocalAuc.itemExpP = self.itemExpP
         maxLocalAuc.itemExpQ = self.itemExpQ
         maxLocalAuc.itemFactors = self.itemFactors
-        
         maxLocalAuc.ks = self.ks
         maxLocalAuc.lmbdas = self.lmbdas
+        maxLocalAuc.lmbdaU = self.lmbdaU
+        maxLocalAuc.lmbdaV = self.lmbdaV
+        maxLocalAuc.maxIterations = self.maxIterations
+        maxLocalAuc.metric = self.metric
+        maxLocalAuc.numAucSamples = self.numAucSamples
+        maxLocalAuc.numRecordAucSamples = self.numRecordAucSamples
+        maxLocalAuc.numRowSamples = self.numRowSamples
+        maxLocalAuc.rate = self.rate
+        maxLocalAuc.recordStep = self.recordStep
+        maxLocalAuc.rho = self.rho 
+        maxLocalAuc.sampling = self.sampling
         maxLocalAuc.startAverage = self.startAverage
+        maxLocalAuc.stochastic = self.stochastic
+        maxLocalAuc.t0 = self.t0
+        maxLocalAuc.validationUsers = self.validationUsers
         
         return maxLocalAuc
         
