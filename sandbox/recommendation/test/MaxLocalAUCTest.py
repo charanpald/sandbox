@@ -42,10 +42,13 @@ class MaxLocalAUCTest(unittest.TestCase):
     #@unittest.skip("")
     def testParallelLearnModel(self): 
         numpy.random.seed(21)
-        m = 50 
-        n = 20 
+        m = 500 
+        n = 200 
         k = 5 
         X = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True)
+        
+        from wallhack.rankingexp.DatasetUtils import DatasetUtils
+        X, U, V = DatasetUtils.syntheticDataset1()
 
         
         u = 0.1
@@ -57,10 +60,11 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc.rate = "optimal"
         maxLocalAuc.t0 = 2.0
         maxLocalAuc.validationUsers = 0.0
+        maxLocalAuc.numProcesses = 1
         
         os.system('taskset -p 0xffffffff %d' % os.getpid())
-        maxLocalAuc.parallelSGD = True
-        U, V = maxLocalAuc.learnModel(X)
+        print(X.nnz/maxLocalAuc.numAucSamples)
+        U, V = maxLocalAuc.parallelLearnModel(X)
         
         
         
