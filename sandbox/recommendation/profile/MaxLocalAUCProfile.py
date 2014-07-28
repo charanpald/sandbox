@@ -1,6 +1,7 @@
 import numpy
 import logging
 import sys
+import os
 from sandbox.util.ProfileUtils import ProfileUtils
 from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC
 from sandbox.util.SparseUtils import SparseUtils
@@ -21,26 +22,32 @@ class MaxLocalAUCProfile(object):
         self.k = 8 
         self.X = SparseUtils.generateSparseBinaryMatrix((m, n), self.k, csarray=True)
         
+        os.system('taskset -p 0xffffffff %d' % os.getpid())
+        
         
     def profileLearnModel(self):
         #Profile full gradient descent 
+        X, U, V = DatasetUtils.syntheticDataset1(u=0.001, m=10000, n=2000)
+    
         u = 0.2
         w = 1-u
         eps = 10**-6
         alpha = 0.5
-        maxLocalAuc = MaxLocalAUC(self.k, w, alpha=alpha, eps=eps, stochastic=False)
-        maxLocalAuc.maxIterations = 10
-        maxLocalAuc.initialAlg = "svd"
+        maxLocalAuc = MaxLocalAUC(self.k, w, alpha=alpha, eps=eps, stochastic=True)
+        maxLocalAuc.maxIterations = 1
+        maxLocalAuc.initialAlg = "rand"
         maxLocalAuc.rate = "optimal"
+        maxLocalAuc.parallelSGD = True
+        #maxLocalAuc.numProcesses = 1
         print(maxLocalAuc)
                 
-        ProfileUtils.profile('maxLocalAuc.learnModel(self.X)', globals(), locals())
+        ProfileUtils.profile('maxLocalAuc.learnModel(X)', globals(), locals())
 
     def profileLearnModel2(self):
         #Profile stochastic case 
-        X = DatasetUtils.flixster()
+        #X = DatasetUtils.flixster()
         #X = Sampling.sampleUsers(X, 1000)
-        #X, U, V = DatasetUtils.syntheticDataset1(u=0.001, m=10000, n=100000)
+        X, U, V = DatasetUtils.syntheticDataset1(u=0.001, m=10000, n=1000)
     
         rho = 0.00
         u = 0.2
@@ -56,6 +63,7 @@ class MaxLocalAUCProfile(object):
         maxLocalAuc.recordStep = 10
         maxLocalAuc.initialAlg = "rand"
         maxLocalAuc.rate = "optimal"
+        #maxLocalAuc.parallelSGD = True
                 
         trainTestX = Sampling.shuffleSplitRows(X, maxLocalAuc.folds, 5)
         trainX, testX = trainTestX[0]
@@ -107,7 +115,7 @@ class MaxLocalAUCProfile(object):
         ProfileUtils.profile('run()', globals(), locals())
 
 profiler = MaxLocalAUCProfile()
-#profiler.profileLearnModel()  
-profiler.profileLearnModel2()
+profiler.profileLearnModel()  
+#profiler.profileLearnModel2()
 #profiler.profileLocalAucApprox()
 #profiler.profileRandomChoice()
