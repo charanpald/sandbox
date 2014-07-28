@@ -27,14 +27,15 @@ class MaxLocalAUCProfile(object):
         
     def profileLearnModel(self):
         #Profile full gradient descent 
-        X, U, V = DatasetUtils.syntheticDataset1(u=0.001, m=10000, n=2000)
+        #X, U, V = DatasetUtils.syntheticDataset1(u=0.001, m=10000, n=2000)
+        X, U, V = DatasetUtils.syntheticDataset1()
     
         u = 0.2
         w = 1-u
         eps = 10**-6
         alpha = 0.5
         maxLocalAuc = MaxLocalAUC(self.k, w, alpha=alpha, eps=eps, stochastic=True)
-        maxLocalAuc.maxIterations = 1
+        maxLocalAuc.maxIterations = 50
         maxLocalAuc.initialAlg = "rand"
         maxLocalAuc.rate = "optimal"
         maxLocalAuc.parallelSGD = True
