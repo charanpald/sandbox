@@ -4,6 +4,7 @@ import logging
 import multiprocessing 
 import sppy 
 import time
+import sharedmem 
 import scipy.sparse
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
@@ -31,13 +32,11 @@ def updateUVBlock(sharedArgs, methodArgs):
     """
     Compute the objective for a particular parameter set. Used to set a learning rate. 
     """
-    rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, lock = sharedArgs
+    rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, nextPrint, lock = sharedArgs
     learner, rowBlockSize, colBlockSize, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq= methodArgs
 
     while (iterationsPerBlock < learner.maxIterations).any(): 
-        #r = SparseUtilsCython.computeR(muU, muV, learner.w, learner.numRecordAucSamples)
-        #objArr = learner.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=True)  
-        #auc = MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, learner.w, learner.numRecordAucSamples, r)
+
                
         #Find free block 
         lock.acquire()
@@ -53,7 +52,7 @@ def updateUVBlock(sharedArgs, methodArgs):
                 break
         
         blockRowInds = permutedRowInds[rowInd*rowBlockSize:(rowInd+1)*rowBlockSize]
-        blockColInds = permutedColInds[rowInd*colBlockSize:(rowInd+1)*colBlockSize]
+        blockColInds = permutedColInds[colInd*colBlockSize:(colInd+1)*colBlockSize]
   
         lock.release()
     
@@ -68,11 +67,20 @@ def updateUVBlock(sharedArgs, methodArgs):
         lock.acquire()
         rowIsFree[rowInd] = True 
         colIsFree[colInd] = True
-        
         iterationsPerBlock[rowInd, colInd] += 1
-        print(iterationsPerBlock)
-
-        
+        if iterationsPerBlock.mean() >= nextPrint.value: 
+            nextPrint.value += 1
+            r = SparseUtilsCython.computeR(muU, muV, learner.w, learner.numRecordAucSamples)
+            obj = learner.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=False)  
+            auc = MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, learner.w, learner.numRecordAucSamples, r)
+            
+            printStr = "iter " + str(iterationsPerBlock.mean()) + ":"
+            printStr += " sigma=" + str('%.4f' % sigma)
+            printStr += " train: obj~" + str('%.4f' % obj) 
+            printStr += " LAUC~" + str('%.4f' % auc)
+            print("")
+            logging.debug(printStr)
+            
         lock.release()
       
 class MaxLocalAUC(AbstractRecommender): 
@@ -310,10 +318,26 @@ class MaxLocalAUC(AbstractRecommender):
         normGp, normGq = self.computeNormGpq(indPtr, colInds, gp, gq, m)
         
         #Some shared variables
-        rowIsFree = numpy.ones(numBlocks, dtype=numpy.bool)
-        colIsFree = numpy.ones(numBlocks, dtype=numpy.bool)
-        iterationsPerBlock = numpy.zeros((numBlocks, numBlocks))
-        gradientsPerBlock = numpy.zeros((numBlocks, numBlocks))
+        rowIsFree = sharedmem.ones(numBlocks, dtype=numpy.bool)
+        colIsFree = sharedmem.ones(numBlocks, dtype=numpy.bool)
+        #iterationsPerBlock = numpy.zeros((numBlocks, numBlocks))
+        iterationsPerBlock = sharedmem.zeros((numBlocks, numBlocks))
+        gradientsPerBlock = sharedmem.zeros((numBlocks, numBlocks))
+        nextPrint = multiprocessing.Value('i', 0)
+        
+        #Create shared factors 
+        U2 = sharedmem.zeros((m, self.k))
+        V2 = sharedmem.zeros((n, self.k))
+        muU2 = sharedmem.zeros((m, self.k))
+        muV2 = sharedmem.zeros((n, self.k))
+        
+        U2[:] = U[:]
+        V2[:] = V[:]
+        muU2[:] = muU[:]
+        muV2[:] = muV[:]
+        
+        del U, V, muU, muV
+        
         
         rowBlockSize = numpy.ceil(m/numBlocks)
         colBlockSize = numpy.ceil(n/numBlocks)
@@ -334,23 +358,18 @@ class MaxLocalAUC(AbstractRecommender):
         
         for i in range(self.numProcesses):
             learner = self.copy()
-            sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, lock 
-            methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq
-            #
+            sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, nextPrint, lock 
+            methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, U2, V2, muU2, muV2, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq
+
             process = multiprocessing.Process(target=updateUVBlock, args=(sharedArgs, methodArgs))
             process.start()
             processList.append(process)
         
         for process in processList: 
             process.join()
-        
-        #learner = self.copy()
-        #sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, lock 
-        #methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq        
-        #updateUVBlock(sharedArgs, methodArgs)
-                
-        self.U = muU 
-        self.V = muV
+                   
+        self.U = muU2 
+        self.V = muV2
         self.gi = gi
         self.gp = gp
         self.gq = gq
