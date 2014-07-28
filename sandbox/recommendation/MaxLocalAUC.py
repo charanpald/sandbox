@@ -35,9 +35,9 @@ def updateUVBlock(sharedArgs, methodArgs):
     learner, rowBlockSize, colBlockSize, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq= methodArgs
 
     while (iterationsPerBlock < learner.maxIterations).any(): 
-        r = SparseUtilsCython.computeR(muU, muV, learner.w, learner.numRecordAucSamples)
-        objArr = learner.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=True)  
-        auc = MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, learner.w, learner.numRecordAucSamples, r)
+        #r = SparseUtilsCython.computeR(muU, muV, learner.w, learner.numRecordAucSamples)
+        #objArr = learner.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=True)  
+        #auc = MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, learner.w, learner.numRecordAucSamples, r)
                
         #Find free block 
         lock.acquire()
@@ -61,7 +61,7 @@ def updateUVBlock(sharedArgs, methodArgs):
         loopInd = iterationsPerBlock[rowInd, colInd]
         sigma = learner.getSigma(loopInd)
         numIterations = gradientsPerBlock[rowInd, colInd]
-        print(sigma, objArr.sum(), auc, numpy.linalg.norm(U), numpy.linalg.norm(V)) 
+        #print(sigma, objArr.sum(), auc, numpy.linalg.norm(U), numpy.linalg.norm(V), numIterations) 
         learner.updateUV(indPtr, colInds, U, V, muU, muV, blockRowInds, blockColInds, gi, gp, gq, normGp, normGq, loopInd, sigma, numIterations)
 
 
@@ -298,8 +298,6 @@ class MaxLocalAUC(AbstractRecommender):
         #Set up order of indices for stochastic methods 
         permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
         permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
-        
-        startTime = time.time()
 
         #uniform weights 
         gi = numpy.ones(m)/float(m)
@@ -327,8 +325,10 @@ class MaxLocalAUC(AbstractRecommender):
                 
                 block = X[blockRowInds, :][:, blockColInds]
                 gradientsPerBlock[i,j] = max(numpy.ceil(float(block.nnz)/self.numAucSamples), 1)
+                
+        assert gradientsPerBlock.sum() >= X.nnz/self.numAucSamples
         
-        lock = multiprocessing.Lock()
+        lock = multiprocessing.Lock()        
         
         processList = []        
         
@@ -336,14 +336,19 @@ class MaxLocalAUC(AbstractRecommender):
             learner = self.copy()
             sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, lock 
             methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq
-            #updateUVBlock(sharedArgs, methodArgs)
+            #
             process = multiprocessing.Process(target=updateUVBlock, args=(sharedArgs, methodArgs))
             process.start()
             processList.append(process)
         
         for process in processList: 
             process.join()
-
+        
+        #learner = self.copy()
+        #sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, lock 
+        #methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq        
+        #updateUVBlock(sharedArgs, methodArgs)
+                
         self.U = muU 
         self.V = muV
         self.gi = gi
@@ -559,6 +564,7 @@ class MaxLocalAUC(AbstractRecommender):
         logging.debug("lmbdas=" + str(self.lmbdas)) 
         logging.debug("rhos=" + str(self.rhos)) 
         logging.debug("Mean metrics =" + str(meanTestMetrics))
+        logging.debug("Std metrics =" + str(stdTestMetrics))
         
         self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[0]]
         #self.lmbdaU = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
