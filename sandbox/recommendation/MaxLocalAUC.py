@@ -36,8 +36,6 @@ def updateUVBlock(sharedArgs, methodArgs):
     learner, rowBlockSize, colBlockSize, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq= methodArgs
 
     while (iterationsPerBlock < learner.maxIterations).any(): 
-
-               
         #Find free block 
         lock.acquire()
         inds = numpy.argsort(numpy.ravel(iterationsPerBlock))
@@ -60,16 +58,14 @@ def updateUVBlock(sharedArgs, methodArgs):
         loopInd = iterationsPerBlock[rowInd, colInd]
         sigma = learner.getSigma(loopInd)
         numIterations = gradientsPerBlock[rowInd, colInd]
-        #print(sigma, objArr.sum(), auc, numpy.linalg.norm(U), numpy.linalg.norm(V), numIterations) 
         learner.updateUV(indPtr, colInds, U, V, muU, muV, blockRowInds, blockColInds, gi, gp, gq, normGp, normGq, loopInd, sigma, numIterations)
-
 
         lock.acquire()
         rowIsFree[rowInd] = True 
         colIsFree[colInd] = True
         iterationsPerBlock[rowInd, colInd] += 1
         if iterationsPerBlock.mean() >= nextPrint.value: 
-            nextPrint.value += 1
+            nextPrint.value += learner.recordStep
             r = SparseUtilsCython.computeR(muU, muV, learner.w, learner.numRecordAucSamples)
             obj = learner.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=False)  
             auc = MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, learner.w, learner.numRecordAucSamples, r)
@@ -283,7 +279,7 @@ class MaxLocalAUC(AbstractRecommender):
       
     def parallelLearnModel(self, X, verbose=False, U=None, V=None): 
         """
-        Max local AUC with Frobenius norm penalty on V. Solve with (stochastic) gradient descent. 
+        Max local AUC with Frobenius norm penalty on V. Solve with parallel (stochastic) gradient descent. 
         The input is a sparse array. 
         """
         #Convert to a csarray for faster access 
@@ -320,7 +316,6 @@ class MaxLocalAUC(AbstractRecommender):
         #Some shared variables
         rowIsFree = sharedmem.ones(numBlocks, dtype=numpy.bool)
         colIsFree = sharedmem.ones(numBlocks, dtype=numpy.bool)
-        #iterationsPerBlock = numpy.zeros((numBlocks, numBlocks))
         iterationsPerBlock = sharedmem.zeros((numBlocks, numBlocks))
         gradientsPerBlock = sharedmem.zeros((numBlocks, numBlocks))
         nextPrint = multiprocessing.Value('i', 0)
@@ -338,7 +333,6 @@ class MaxLocalAUC(AbstractRecommender):
         
         del U, V, muU, muV
         
-        
         rowBlockSize = numpy.ceil(m/numBlocks)
         colBlockSize = numpy.ceil(n/numBlocks)
         
@@ -353,7 +347,7 @@ class MaxLocalAUC(AbstractRecommender):
         assert gradientsPerBlock.sum() >= X.nnz/self.numAucSamples
         
         lock = multiprocessing.Lock()        
-        
+        startTime = time.time()
         processList = []        
         
         for i in range(self.numProcesses):
@@ -367,14 +361,20 @@ class MaxLocalAUC(AbstractRecommender):
         
         for process in processList: 
             process.join()
+            
+        totalTime = time.time() - startTime
                    
         self.U = muU2 
         self.V = muV2
         self.gi = gi
         self.gp = gp
         self.gq = gq
-         
-        return self.U, self.V
+        
+        #Verbose output doesn't include recorded measures as that would be complicated 
+        if verbose: 
+            return self.U, self.V, iterationsPerBlock.mean(), totalTime
+        else: 
+            return self.U, self.V
         
     def learnModel(self, X, verbose=False, U=None, V=None): 
         if self.parallelSGD: 
