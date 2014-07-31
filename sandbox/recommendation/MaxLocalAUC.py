@@ -80,7 +80,7 @@ def updateUVBlock(sharedArgs, methodArgs):
         lock.release()
       
 class MaxLocalAUC(AbstractRecommender): 
-    def __init__(self, k, w, alpha=0.05, eps=10**-6, lmbdaU=1, lmbdaV=1, stochastic=False, numProcesses=None): 
+    def __init__(self, k, w, alpha=0.05, eps=10**-6, lmbdaU=0, lmbdaV=1, stochastic=False, numProcesses=None): 
         """
         Create an object for  maximising the local AUC with a penalty term using the matrix
         decomposition UV.T 
@@ -425,7 +425,7 @@ class MaxLocalAUC(AbstractRecommender):
         if self.rate == "constant": 
             sigma = self.alpha 
         elif self.rate == "optimal":
-            sigma = self.alpha/((1 + self.alpha*self.lmbdaV*ind)**self.beta)
+            sigma = self.alpha/((1 + self.alpha*self.t0*ind**self.beta))
         else: 
             raise ValueError("Invalid rate: " + self.rate)
             
@@ -477,9 +477,10 @@ class MaxLocalAUC(AbstractRecommender):
         """        
         m, n = X.shape
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
-        objectives = numpy.zeros(self.alphas.shape[0])
+        objectives = numpy.zeros((self.t0s.shape[0], self.alphas.shape[0]))
         
         paramList = []   
+        logging.debug("t0s=" + str(self.t0s))
         logging.debug("alphas=" + str(self.alphas))
         logging.debug(self)
         
@@ -488,10 +489,12 @@ class MaxLocalAUC(AbstractRecommender):
         for k in range(numInitalUVs):
             U, V = self.initUV(X)
                         
-            for i, alpha in enumerate(self.alphas): 
-                maxLocalAuc = self.copy()
-                maxLocalAuc.alpha = alpha 
-                paramList.append((X, U, V, maxLocalAuc))
+            for i, t0 in enumerate(self.t0s): 
+                for j, alpha in enumerate(self.alphas): 
+                    maxLocalAuc = self.copy()
+                    maxLocalAuc.t0 = t0
+                    maxLocalAuc.alpha = alpha 
+                    paramList.append((X, U, V, maxLocalAuc))
                     
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
@@ -501,20 +504,24 @@ class MaxLocalAUC(AbstractRecommender):
             resultsIterator = itertools.imap(computeObjective, paramList)
         
         for k in range(numInitalUVs):
-            for i, alpha in enumerate(self.alphas):  
-                objectives[i] += resultsIterator.next()
+            for i, t0 in enumerate(self.t0s): 
+                for j, alpha in enumerate(self.alphas):  
+                    objectives[i, j] += resultsIterator.next()
             
         if self.numProcesses != 1: 
             pool.terminate()
             
         objectives /= float(numInitalUVs)   
+        logging.debug("t0s=" + str(self.t0s))
         logging.debug("alphas=" + str(self.alphas))
         logging.debug(objectives)
         
-        alpha = self.alphas[numpy.argmin(objectives)]
+        t0 = self.t0s[numpy.unravel_index(numpy.argmin(objectives), objectives.shape)[0]]
+        alpha = self.alphas[numpy.unravel_index(numpy.argmin(objectives), objectives.shape)[1]]
         
-        logging.debug("Learning rate parameters: alpha=" + str(alpha))
+        logging.debug("Learning rate parameters: t0=" + str(t0) + " alpha=" + str(alpha))
         
+        self.t0 = t0 
         self.alpha = alpha 
         
         return objectives
