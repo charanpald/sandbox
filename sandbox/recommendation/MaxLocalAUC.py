@@ -253,7 +253,8 @@ class MaxLocalAUC(AbstractRecommender):
         if self.rate == "constant": 
             sigma = self.alpha 
         elif self.rate == "optimal":
-            t0 = self.lmbdaV           
+            #t0 = self.lmbdaV  
+            t0 = self.t0
             
             sigma = self.alpha/((1 + self.alpha*t0*ind)**self.beta)
         else: 
