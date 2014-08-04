@@ -8,7 +8,7 @@ import sharedmem
 import scipy.sparse
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
-from sandbox.recommendation.MaxLocalAUCCython import derivativeUi, derivativeVi, updateUVApprox, objectiveApprox, updateV, updateU
+from sandbox.recommendation.MaxLocalAUCCython import MaxLocalAUCCython
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.MCEvaluator import MCEvaluator 
 from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
@@ -112,42 +112,38 @@ class MaxLocalAUC(AbstractRecommender):
         :stochastic: Whether to use stochastic gradient descent or gradient descent 
         """
         super(MaxLocalAUC, self).__init__(numProcesses)
-        self.k = k 
-        self.w = w
-        self.eps = eps 
-        self.stochastic = stochastic
-        self.parallelSGD = False
-        self.startAverage = 30
-
-        self.rate = "constant"
-        self.alpha = alpha #Initial learning rate 
-        self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
-        self.beta = 0.75
         
-        self.normalise = True
-        self.lmbdaU = lmbdaU 
-        self.lmbdaV = lmbdaV 
-        self.rho = 1.00 #Penalise low rank elements 
+        
+        self.alpha = alpha #Initial learning rate 
+        self.beta = 0.75
+        self.eps = eps 
+        self.initialAlg = "rand"
         self.itemExpP = 0.0 #Sample from power law between 0 and 1 
         self.itemExpQ = 0.5     
         self.itemFactors = False
-        
-        self.recordStep = 10
-        self.numRowSamples = 30
+        self.k = k 
+        self.lmbdaU = lmbdaU 
+        self.lmbdaV = lmbdaV 
+        self.maxIterations = 50
+        self.metric = "f1"
+        self.normalise = True
         self.numAucSamples = 10
         self.numRecordAucSamples = 100
-        #1 iterations is a complete run over the dataset (i.e. m gradients)
-        self.maxIterations = 50
-        self.initialAlg = "rand"
-        #Possible choices are uniform, top, rank 
-        self.sampling = "uniform"
-        
-        #Model selection parameters 
+        self.numRowSamples = 30
+        self.parallelSGD = False
+        self.rate = "constant"
+        self.recordStep = 10
+        self.rho = 0.5 #Penalise low rank elements 
+        self.startAverage = 30
+        self.stochastic = stochastic
+        self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
         self.validationUsers = 0.1
+        self.w = w
+               
+        #Model selection parameters 
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 10.0**numpy.arange(-0.5, 1.5, 0.25)
         self.rhos = numpy.array([0, 0.1, 0.5, 1.0])
-        self.metric = "f1"
         
         #Learning rate selection 
         self.t0s = 2.0**-numpy.arange(0.0, 5.0)
@@ -172,7 +168,6 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += " rate=" + str(self.rate) 
         outputStr += " recordStep=" + str(self.recordStep)
         outputStr += " rho=" + str(self.rho) 
-        outputStr += " sampling=" + str(self.sampling)
         outputStr += " startAverage=" + str(self.startAverage) 
         outputStr += " stochastic=" + str(self.stochastic)
         outputStr += " t0=" + str(self.t0) 
@@ -181,6 +176,8 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += super(MaxLocalAUC, self).__str__()
         
         return outputStr     
+    
+
     
     def computeGipq(self, X): 
         m, n = X.shape 
@@ -229,26 +226,16 @@ class MaxLocalAUC(AbstractRecommender):
         maxLocalAuc.rate = self.rate
         maxLocalAuc.recordStep = self.recordStep
         maxLocalAuc.rho = self.rho 
-        maxLocalAuc.sampling = self.sampling
         maxLocalAuc.startAverage = self.startAverage
         maxLocalAuc.stochastic = self.stochastic
         maxLocalAuc.t0 = self.t0
         maxLocalAuc.validationUsers = self.validationUsers
+                    
+        maxLocalAuc.updateLearner()
         
         return maxLocalAuc    
         
-    def derivativeUi(self, indPtr, colInds, U, V, r, c, i): 
-        """
-        delta phi/delta u_i
-        """
-        return derivativeUi(indPtr, colInds, U, V, r, c, i, self.rho, self.normalise)
-        
-    def derivativeVi(self, X, U, V, omegaList, i, r, c): 
-        """
-        delta phi/delta v_i
-        """
-        return derivativeVi(X, U, V, omegaList, i, r, c, self.rho, self.normalise)        
-    
+         
     def getSigma(self, ind): 
         if self.rate == "constant": 
             sigma = self.alpha 
@@ -440,17 +427,16 @@ class MaxLocalAUC(AbstractRecommender):
         assuming allArray is None. If allArray is not None then positive items are chosen 
         from positiveArray and negative ones are chosen to complement allArray.
         """
-        from sandbox.recommendation.MaxLocalAUCCython import objectiveApprox
         
         indPtr, colInds = positiveArray
         U = numpy.ascontiguousarray(U)
         V = numpy.ascontiguousarray(V)        
         
         if allArray == None: 
-            return objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, r, gi, gp, gq, self.numRecordAucSamples, self.rho, full=full)         
+            return self.learnerCython.objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, r, gi, gp, gq, full=full)         
         else:
             allIndPtr, allColInds = allArray
-            return objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, r, gi, gp, gq, self.numRecordAucSamples, self.rho, full=full)
+            return self.learnerCython.objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, r, gi, gp, gq, full=full)
      
 
     def parallelLearnModel(self, X, verbose=False, U=None, V=None): 
@@ -692,19 +678,22 @@ class MaxLocalAUC(AbstractRecommender):
         if verbose:     
             return self.U, self.V, numpy.array(trainMeasures), numpy.array(testMeasures), loopInd, totalTime
         else: 
-            return self.U, self.V
+            return self.U, self.V    
+    
     
     def updateUV(self, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, sigma, numIterations): 
         """
         Find the derivative with respect to V or part of it. 
         """
+        learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
+        
         if not self.stochastic:               
             r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)  
             #r = SparseUtilsCython.computeR2(U, V, self.wv, self.numRecordAucSamples)
-            updateU(indPtr, colInds, U, V, r, sigma, self.rho, self.normalise)
-            updateV(indPtr, colInds, U, V, r, sigma, self.lmbda, self.rho, self.normalise)
+            learnerCython.updateU(indPtr, colInds, U, V, r, gi, gp, gq, sigma)
+            learnerCython.updateV(indPtr, colInds, U, V, r, gi, gp, gq, sigma)
             
             muU[:] = U[:] 
             muV[:] = V[:]
         else: 
-            updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, sigma, self.numRowSamples, self.numAucSamples, self.w, self.lmbdaU, self.lmbdaV, self.rho, self.startAverage, numIterations, self.normalise, self.itemFactors)
+            learnerCython.updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, numIterations, sigma)

@@ -1,7 +1,6 @@
 import os
 import sys
 from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC 
-from sandbox.recommendation.MaxLocalAUCCython import objectiveApprox, objective
 from sandbox.util.SparseUtils import SparseUtils
 import numpy
 import unittest
@@ -28,8 +27,8 @@ class MaxLocalAUCTest(unittest.TestCase):
         w = 1-u
         eps = 0.05
         
-        maxLocalAuc = MaxLocalAUC(k, w, alpha=5.0, eps=eps)
-        #U, V = maxLocalAuc.learnModel(X)
+        maxLocalAuc = MaxLocalAUC(k, w, alpha=5.0, eps=eps, stochastic=False)
+        U, V = maxLocalAuc.learnModel(X)
         
         maxLocalAuc.stochastic = True 
         U, V = maxLocalAuc.learnModel(X)
@@ -39,7 +38,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         U, V = maxLocalAuc.learnModel(X)
 
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testParallelLearnModel(self): 
         numpy.random.seed(21)
         m = 500 
@@ -87,7 +86,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         k = 5
         maxLocalAuc = MaxLocalAUC(k, w, eps=eps, stochastic=True)
         maxLocalAuc.maxIterations = 5
-        maxLocalAuc.numProcesses = 1
+        #maxLocalAuc.numProcesses = 1
         maxLocalAuc.recordStep = 1
         maxLocalAuc.validationSize = 3
         maxLocalAuc.metric = "f1"
@@ -126,9 +125,6 @@ class MaxLocalAUCTest(unittest.TestCase):
         k = 10 
         maxLocalAuc = MaxLocalAUC(k, u, alpha=5.0, eps=eps)
         maxLocalAuc.copy()
-
-
-        
 
 
 if __name__ == "__main__":
