@@ -230,9 +230,7 @@ class MaxLocalAUC(AbstractRecommender):
         maxLocalAuc.stochastic = self.stochastic
         maxLocalAuc.t0 = self.t0
         maxLocalAuc.validationUsers = self.validationUsers
-                    
-        maxLocalAuc.updateLearner()
-        
+                            
         return maxLocalAuc    
         
          
@@ -468,6 +466,8 @@ class MaxLocalAUC(AbstractRecommender):
         gi, gp, gq = self.computeGipq(X)
         normGp, normGq = self.computeNormGpq(indPtr, colInds, gp, gq, m)
         
+        self.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
+        
         #Some shared variables
         rowIsFree = sharedmem.ones(numBlocks, dtype=numpy.bool)
         colIsFree = sharedmem.ones(numBlocks, dtype=numpy.bool)
@@ -507,6 +507,7 @@ class MaxLocalAUC(AbstractRecommender):
         if self.numProcesses != 1: 
             for i in range(self.numProcesses):
                 learner = self.copy()
+                learner.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
                 sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, nextPrint, U2, V2, muU2, muV2, lock 
                 methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, i
     
@@ -632,6 +633,8 @@ class MaxLocalAUC(AbstractRecommender):
         loopInd = 0
         numIterations = trainX.nnz/self.numAucSamples
         
+        self.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
+        
         #Set up order of indices for stochastic methods 
         permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
         permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
@@ -685,15 +688,13 @@ class MaxLocalAUC(AbstractRecommender):
         """
         Find the derivative with respect to V or part of it. 
         """
-        learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
-        
         if not self.stochastic:               
             r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)  
             #r = SparseUtilsCython.computeR2(U, V, self.wv, self.numRecordAucSamples)
-            learnerCython.updateU(indPtr, colInds, U, V, r, gi, gp, gq, sigma)
-            learnerCython.updateV(indPtr, colInds, U, V, r, gi, gp, gq, sigma)
+            self.learnerCython.updateU(indPtr, colInds, U, V, r, gi, gp, gq, sigma)
+            self.learnerCython.updateV(indPtr, colInds, U, V, r, gi, gp, gq, sigma)
             
             muU[:] = U[:] 
             muV[:] = V[:]
         else: 
-            learnerCython.updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, numIterations, sigma)
+            self.learnerCython.updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, numIterations, sigma)
