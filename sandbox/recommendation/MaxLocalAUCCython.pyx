@@ -7,7 +7,7 @@ import cython
 from cython.parallel import parallel, prange
 cimport numpy
 import numpy
-from sandbox.util.CythonUtils cimport dot, scale, choice, inverseChoice, uniformChoice, plusEquals, partialSum, square
+from sandbox.util.CythonUtils cimport dot, scale, choice, inverseChoice, inverseChoiceArray, uniformChoice, plusEquals, partialSum, square
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
 
 
@@ -76,8 +76,7 @@ cdef class MaxLocalAUCCython(object):
         self.startAverage = startAverage 
         self.w = w 
     
-    
-    def derivativeUi(self, numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int i):
+    def derivativeUi(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int i):
         """
         Find  delta phi/delta u_i using the hinge loss.  
         """
@@ -85,12 +84,12 @@ cdef class MaxLocalAUCCython(object):
         cdef double uivp, uivq, gamma, kappa, ri
         cdef double  normDeltaTheta, hGamma, hKappa, vpScale, normGp, normGq 
         cdef unsigned int m = U.shape[0], n = V.shape[0], numOmegai, numOmegaBari
-        cdef numpy.ndarray[int, ndim=1, mode="c"] omegai
-        cdef numpy.ndarray[int, ndim=1, mode="c"] omegaBari 
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaBari 
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(self.k, numpy.float)
           
         omegai = colInds[indPtr[i]:indPtr[i+1]]
-        omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.int32), omegai, assume_unique=True)
+        omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
         numOmegai = omegai.shape[0]
         numOmegaBari = n-numOmegai
         
@@ -127,7 +126,7 @@ cdef class MaxLocalAUCCython(object):
         
         return deltaTheta
     
-    def updateU(self, numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r, numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, double sigma):  
+    def updateU(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r, numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, double sigma):  
         """
         Compute the full gradient descent update of U
         """    
@@ -145,7 +144,7 @@ cdef class MaxLocalAUCCython(object):
             U[i,:] = scale(U, i, 1/numpy.linalg.norm(U[i,:]), self.k)   
     
     
-    def derivativeUiApprox(self, numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V,  numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int i):
+    def derivativeUiApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V,  numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, unsigned int i):
         """
         Find an approximation of delta phi/delta u_i using the simple objective without 
         sigmoid functions. 
@@ -154,8 +153,8 @@ cdef class MaxLocalAUCCython(object):
         cdef double uivp, ri, uivq, gamma, kappa, hGamma, hKappa
         cdef double normDeltaTheta, vqScale, vpScale, normGp=0, normGpq=0, tanhHKappa, rhoOver2 = self.rho/2
         cdef unsigned int m = U.shape[0], n = V.shape[0], numOmegai, numOmegaBari
-        cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
-        cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(self.k, numpy.float)
         cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(self.k, numpy.int)
              
@@ -170,7 +169,7 @@ cdef class MaxLocalAUCCython(object):
             omegaiSample = uniformChoice(omegai, self.numAucSamples)   
             
             for p in omegaiSample:
-                q = inverseChoice(omegai, n) 
+                q = inverseChoiceArray(omegai, permutedColInds) 
             
                 uivp = dot(U, i, V, p, self.k)
                 uivq = dot(U, i, V, q, self.k)
@@ -204,7 +203,7 @@ cdef class MaxLocalAUCCython(object):
         return deltaTheta
     
     
-    def derivativeVi(self, numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r, numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int j): 
+    def derivativeVi(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r, numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int j): 
         """
         delta phi/delta v_i using hinge loss. 
         """
@@ -217,12 +216,12 @@ cdef class MaxLocalAUCCython(object):
         cdef double uivp, uivq,  betaScale, ri, normTheta, gamma, kappa, hGamma, hKappa, normGp, normGq
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
-        cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
-        cdef numpy.ndarray[int, ndim=1, mode="c"] omegaBari
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaBari
         
         for i in range(m): 
             omegai = colInds[indPtr[i]:indPtr[i+1]]
-            omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.int32), omegai, assume_unique=True)
+            omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
             numOmegai = omegai.shape[0]       
             numOmegaBari = n-numOmegai
             ri = r[i]
@@ -289,7 +288,7 @@ cdef class MaxLocalAUCCython(object):
         return deltaTheta
      
     
-    def updateV(self, numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r, numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, double sigma): 
+    def updateV(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r, numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, double sigma): 
         """
         Compute the full gradient descent update of V
         """
@@ -308,7 +307,7 @@ cdef class MaxLocalAUCCython(object):
             if normVj >= self.lmbdaV: 
                 V[j,:] = scale(V, j, self.lmbdaV/normVj, k)               
     
-    def derivativeViApprox(self, numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, unsigned int j): 
+    def derivativeViApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, unsigned int j): 
         """
         delta phi/delta v_i  using the hinge loss. 
         """
@@ -321,9 +320,9 @@ cdef class MaxLocalAUCCython(object):
         cdef double uivp, uivq,  betaScale, normTheta, gamma, kappa, nu, nuPrime, hGamma, hKappa, zeta, ri, normBeta, normGqi, normGpi, rhoOver2
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(self.k, numpy.float)
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(self.k, numpy.float)
-        cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] rowInds = numpy.random.permutation(m)[0:self.numRowSamples]
-        cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
-        cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] rowInds = numpy.random.choice(permutedRowInds, self.numRowSamples, replace=False)
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample
         
         rhoOver2 = self.rho/2    
         
@@ -346,7 +345,7 @@ cdef class MaxLocalAUCCython(object):
                 #normGp = partialSum(gp, omegai)
     
                 for s in range(self.numAucSamples): 
-                    q = inverseChoice(omegai, n)
+                    q = inverseChoiceArray(omegai, permutedColInds)
                     uivq = dot(U, i, V, q, self.k)                
                     hGamma = max(0, nu+uivq) 
                     normGqi += gq[q]
@@ -404,7 +403,7 @@ cdef class MaxLocalAUCCython(object):
         return ui
         
     
-    def updateUVApprox(self, numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, unsigned int ind, unsigned int numIterations, double sigma): 
+    def updateUVApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, unsigned int ind, unsigned int numIterations, double sigma): 
         cdef unsigned int m = U.shape[0]
         cdef unsigned int n = V.shape[0]    
         cdef unsigned int i, j, s
@@ -424,7 +423,7 @@ cdef class MaxLocalAUCCython(object):
             if self.itemFactors: 
                 U[i,:] = self.meanPositive(indPtr, colInds, V, i)
             else: 
-                dUi = self.derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, i)
+                dUi = self.derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, permutedColInds, i)
                 plusEquals(U, i, -sigma*dUi, self.k)
                 normUi = numpy.linalg.norm(U[i,:])
                 
@@ -439,7 +438,7 @@ cdef class MaxLocalAUCCython(object):
             #Now update V
             #r = SparseUtilsCython.computeR(U, V, w, numAucSamples)        
             j = permutedColInds[s % permutedColInds.shape[0]]
-            dVj = self.derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, j)
+            dVj = self.derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, j)
             plusEquals(V, j, -sigma*dVj, self.k)
             normVj = numpy.linalg.norm(V[j,:])  
             
@@ -451,14 +450,14 @@ cdef class MaxLocalAUCCython(object):
             else: 
                 muV[j, :] = V[j, :]
                
-    def objectiveApprox(self, numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,   numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, bint full=False):         
+    def objectiveApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[unsigned int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,   numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, bint full=False):         
         cdef unsigned int m = U.shape[0]
         cdef unsigned int n = V.shape[0]
         cdef unsigned int i, j, k, p, q
         cdef double uivp, uivq, gamma, kappa, ri, partialObj, hGamma, hKappa, normGp, normGq, normGi=0, zeta, normGpq
-        cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
-        cdef numpy.ndarray[int, ndim=1, mode="c"] allOmegai 
-        cdef numpy.ndarray[int, ndim=1, mode="c"] omegaiSample
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] allOmegai 
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample
         cdef numpy.ndarray[double, ndim=1, mode="c"] objVector = numpy.zeros(m, dtype=numpy.float)
     
         k = U.shape[1]
@@ -503,7 +502,7 @@ cdef class MaxLocalAUCCython(object):
         else: 
             return objVector.sum() 
       
-    def objective(self, numpy.ndarray[int, ndim=1, mode="c"] indPtr, numpy.ndarray[int, ndim=1, mode="c"] colInds, numpy.ndarray[int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, bint full=False):         
+    def objective(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[unsigned int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, bint full=False):         
         """
         Note that distributions gp, gq and gi must be normalised to have sum 1. 
         """

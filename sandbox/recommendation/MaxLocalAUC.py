@@ -1,4 +1,4 @@
-
+import array
 import numpy 
 import logging
 import multiprocessing 
@@ -79,8 +79,10 @@ def updateUVBlock(sharedArgs, methodArgs):
             loopInd = iterationsPerBlock[rowInd, colInd]
             sigma = learner.getSigma(loopInd)
             numIterations = gradientsPerBlock[rowInd, colInd]
+            
+            indPtr2, colInds2 = restrictOmega(indPtr, colInds, blockColInds)
 
-            learner.updateUV(indPtr, colInds, U, V, muU, muV, blockRowInds, blockColInds, gi, gp, gq, normGp, normGq, loopInd, sigma, numIterations)
+            learner.updateUV(indPtr2, colInds2, U, V, muU, muV, blockRowInds, blockColInds, gi, gp, gq, normGp, normGq, loopInd, sigma, numIterations)
         else: 
             time.sleep(3)
 
@@ -91,7 +93,26 @@ def updateUVBlock(sharedArgs, methodArgs):
             iterationsPerBlock[rowInd, colInd] += 1
         lock.release()
         
-
+def restrictOmega(indPtr, colInds, colIndsSubset): 
+    """
+    Take a set of nonzero indices for a matrix and restrict the columns to colIndsSubset. 
+    """
+    m = indPtr.shape[0]-1
+    newIndPtr = numpy.zeros(indPtr.shape[0], indPtr.dtype)
+    newColInds = array.array("I")
+    ptr = 0 
+    
+    for i in range(m): 
+        omegai = colInds[indPtr[i]:indPtr[i+1]]
+        newOmegai = numpy.intersect1d(omegai, colIndsSubset)
+        
+        newIndPtr[i] = ptr 
+        newIndPtr[i+1] = ptr + newOmegai.shape[0]
+        newColInds.extend(newOmegai)
+        ptr += newOmegai.shape[0]
+       
+    newColInds = numpy.array(newColInds, dtype=colInds.dtype)   
+    return newIndPtr, newColInds
       
 class MaxLocalAUC(AbstractRecommender): 
     def __init__(self, k, w, alpha=0.05, eps=10**-6, lmbdaU=0, lmbdaV=1, stochastic=False, numProcesses=None): 
