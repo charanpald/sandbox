@@ -98,7 +98,7 @@ cdef inline unsigned int getNonZeroRow(X, unsigned int i, unsigned int n):
     return q
 
 @cython.profile(False)
-cdef inline unsigned int inverseChoice(numpy.ndarray[int, ndim=1, mode="c"] v, unsigned int n):
+cdef inline unsigned int inverseChoice(numpy.ndarray[unsigned int, ndim=1, mode="c"] v, unsigned int n):
     """
     Find a random nonzero element in the range 0:n not in v
     """
@@ -115,9 +115,31 @@ cdef inline unsigned int inverseChoice(numpy.ndarray[int, ndim=1, mode="c"] v, u
                 inV = 1 
                 break 
     return q
-    
+   
 def inverseChoicePy(v, n): 
-    return inverseChoice(v, n)
+    return inverseChoice(v, n)   
+   
+cdef inline unsigned int inverseChoiceArray(numpy.ndarray[unsigned int, ndim=1, mode="c"] v, numpy.ndarray[unsigned int, ndim=1, mode="c"] w):
+    """
+    Find a random nonzero element in w not in v 
+    """
+    cdef unsigned int q 
+    cdef int inV = 1
+    cdef unsigned int j 
+    cdef unsigned int m = v.shape[0]
+    cdef unsigned int n = w.shape[0]
+    
+    while inV == 1:
+        q = w[numpy.random.randint(0, n)]
+        inV = 0 
+        for j in range(m): 
+            if q == v[j]: 
+                inV = 1 
+                break 
+    return q
+    
+def inverseChoiceArrayPy(v, w): 
+    return inverseChoiceArray(v, w) 
     
 cdef inline numpy.ndarray[int, ndim=1, mode="c"] choice(numpy.ndarray[int, ndim=1, mode="c"] inds, unsigned int numSamples, numpy.ndarray[double, ndim=1, mode="c"] cumProbs):
     """
@@ -139,17 +161,17 @@ cdef inline numpy.ndarray[int, ndim=1, mode="c"] choice(numpy.ndarray[int, ndim=
     return sampleArray
 
 @cython.profile(False)
-cdef inline numpy.ndarray[int, ndim=1, mode="c"] uniformChoice(numpy.ndarray[int, ndim=1, mode="c"] inds, unsigned int numSamples):
+cdef inline numpy.ndarray[unsigned int, ndim=1, mode="c"] uniformChoice(numpy.ndarray[unsigned int, ndim=1, mode="c"] inds, unsigned int numSamples):
     """
     Given a list of numbers in inds, pick numSample elements uniformly randomly.
     """
 
-    cdef numpy.ndarray[int, ndim=1, mode="c"] sampleArray = numpy.zeros(numSamples, numpy.int32)
+    cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] sampleArray = numpy.zeros(numSamples, numpy.uint32)
     cdef double p 
     cdef unsigned int i, j
     
     if inds.shape[0] == 0: 
-        return numpy.array([], numpy.int32)
+        return numpy.array([], numpy.uint32)
     else: 
         for j in range(numSamples):
             i = numpy.random.randint(0, inds.shape[0])

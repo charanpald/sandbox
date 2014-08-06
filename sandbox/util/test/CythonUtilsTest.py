@@ -1,7 +1,7 @@
 import unittest
 import numpy
 import numpy.testing as nptst
-from sandbox.util.CythonUtils import inverseChoicePy, choicePy, dotPy
+from sandbox.util.CythonUtils import inverseChoicePy, inverseChoiceArrayPy, choicePy, dotPy
 
 class  CythonUtilsTest(unittest.TestCase):
     def testInverseChoicePy(self):
@@ -13,7 +13,20 @@ class  CythonUtilsTest(unittest.TestCase):
         for i in range(numRuns): 
             j = inverseChoicePy(a, n)
             self.assertTrue(j not in a)
+            self.assertTrue(j in numpy.arange(n))
+     
+    def testInverseChoiceArrayPy(self):
+        n = 100
+        b = numpy.random.choice(numpy.arange(n, dtype=numpy.int32), 50, replace=False)
+        a = numpy.random.choice(b, 10, replace=False)
         
+        numRuns = 1000 
+        for i in range(numRuns): 
+            j = inverseChoiceArrayPy(a, b)
+            print(j)
+            self.assertTrue(j not in a) 
+            self.assertTrue(j in b)
+     
 
     def testChoicePy(self): 
         n = 100
