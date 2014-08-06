@@ -429,7 +429,7 @@ class MaxLocalAUC(AbstractRecommender):
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdas=" + str(self.lmbdas)) 
         logging.debug("alphas=" + str(self.alphas)) 
-        logging.debug("t0s=" + str(self.alphas)) 
+        logging.debug("t0s=" + str(self.t0s)) 
         logging.debug("Mean metrics =" + str(meanTestMetrics))
         logging.debug("Std metrics =" + str(stdTestMetrics))
         
@@ -511,17 +511,17 @@ class MaxLocalAUC(AbstractRecommender):
         muV2[:] = muV[:]
         del U, V, muU, muV
         
-        rowBlockSize = numpy.ceil(m/numBlocks)
-        colBlockSize = numpy.ceil(n/numBlocks)
+        rowBlockSize = numpy.ceil(float(m)/numBlocks)
+        colBlockSize = numpy.ceil(float(n)/numBlocks)
         
         for i in range(numBlocks): 
             for j in range(numBlocks): 
                 blockRowInds = numpy.sort(numpy.array(permutedRowInds[i*rowBlockSize:(i+1)*rowBlockSize], numpy.int))
                 blockColInds = numpy.sort(numpy.array(permutedColInds[j*colBlockSize:(j+1)*colBlockSize], numpy.int))  
-                
                 block = X[blockRowInds, :][:, blockColInds]
-                gradientsPerBlock[i,j] = max(numpy.ceil(float(block.nnz)/self.numAucSamples), 1)
                 
+                gradientsPerBlock[i,j] = max(numpy.ceil(float(block.nnz)/self.numAucSamples), 1)
+        
         assert gradientsPerBlock.sum() >= X.nnz/self.numAucSamples
             
         lock = multiprocessing.Lock()        
@@ -543,6 +543,7 @@ class MaxLocalAUC(AbstractRecommender):
                 process.join()
         else: 
             learner = self.copy()
+            learner.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
             sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, nextPrint, U2, V2, muU2, muV2, lock 
             methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, 0
             updateUVBlock(sharedArgs, methodArgs)
