@@ -658,6 +658,8 @@ class SparseUtils(object):
             X = sppy.csarray(X)
         
         indPtr, colInds = X.nonzeroRowsPtr()
+        indPtr = numpy.array(indPtr, dtype=numpy.uint32)
+        colInds = numpy.array(colInds, dtype=numpy.uint32)
         return indPtr, colInds
         
     @staticmethod 
