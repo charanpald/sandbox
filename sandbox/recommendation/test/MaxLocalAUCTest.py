@@ -16,7 +16,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         numpy.seterr(all="raise")
         numpy.random.seed(22)
     
-    @unittest.skip("")
+    #@unittest.skip("")
     def testLearnModel(self): 
         m = 50 
         n = 20 
@@ -126,6 +126,34 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc = MaxLocalAUC(k, u, alpha=5.0, eps=eps)
         maxLocalAuc.copy()
 
+
+    def testRestrictOmega(self):
+        m = 5 
+        n = 10 
+        k = 5 
+        
+        u = 0.5
+        w = 1-u
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, w, csarray=True)
+        
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
+        
+        
+        colSubset = numpy.array([0, 1, 2, 8, 9], numpy.uint)
+
+        
+        from sandbox.recommendation.MaxLocalAUC import restrictOmega
+        
+        newIndPtr, newColInds = restrictOmega(indPtr, colInds, colSubset)
+        
+        
+        for i in range(m): 
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            omegai2 = newColInds[newIndPtr[i]:newIndPtr[i+1]]
+            
+            a = numpy.setdiff1d(omegai, omegai2)
+            
+            self.assertEquals(numpy.intersect1d(a, colSubset).shape[0], 0)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
