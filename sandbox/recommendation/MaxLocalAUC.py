@@ -356,7 +356,7 @@ class MaxLocalAUC(AbstractRecommender):
         """
         m, n = X.shape
         trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
-        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], self.alphas.shape[0], len(trainTestXs)))
+        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], self.alphas.shape[0], self.t0s.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection with test leave out per row of " + str(self.validationSize))
         paramList = []        
@@ -368,13 +368,14 @@ class MaxLocalAUC(AbstractRecommender):
                 U, V = self.initUV(trainX)
                 for j, lmbda in enumerate(self.lmbdas): 
                     for s, alpha in enumerate(self.alphas): 
-                        maxLocalAuc = self.copy()
-                        maxLocalAuc.k = k    
-                        #maxLocalAuc.lmbdaU = lmbda
-                        maxLocalAuc.lmbdaV = lmbda
-                        maxLocalAuc.alpha = alpha 
-                    
-                        paramList.append((trainX, testX, maxLocalAuc))
+                        for t, t0 in enumerate(self.t0s):
+                            maxLocalAuc = self.copy()
+                            maxLocalAuc.k = k    
+                            maxLocalAuc.lmbdaV = lmbda
+                            maxLocalAuc.alpha = alpha 
+                            maxLocalAuc.t0 = t0 
+                        
+                            paramList.append((trainX, testX, maxLocalAuc))
             
         logging.debug("Set parameters")
         if self.metric == "mrr":
@@ -395,7 +396,8 @@ class MaxLocalAUC(AbstractRecommender):
             for icv in range(len(trainTestXs)): 
                 for j, lmbda in enumerate(self.lmbdas): 
                     for s, alpha in enumerate(self.alphas): 
-                        testAucs[i, j, s, icv] = resultsIterator.next()
+                        for t, t0 in enumerate(self.t0s):
+                            testAucs[i, j, s, t, icv] = resultsIterator.next()
         
         if self.numProcesses != 1: 
             pool.terminate()
@@ -406,15 +408,16 @@ class MaxLocalAUC(AbstractRecommender):
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdas=" + str(self.lmbdas)) 
         logging.debug("alphas=" + str(self.alphas)) 
+        logging.debug("t0s=" + str(self.alphas)) 
         logging.debug("Mean metrics =" + str(meanTestMetrics))
         logging.debug("Std metrics =" + str(stdTestMetrics))
         
         self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[0]]
-        #self.lmbdaU = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
         self.lmbdaV = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
         self.alpha = self.alphas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[2]]
+        self.t0 = self.t0s[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[3]]
 
-        logging.debug("Model parameters: k=" + str(self.k) + " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " alpha=" + str(self.alpha) +  " max=" + str(numpy.max(meanTestMetrics)))
+        logging.debug("Model parameters: k=" + str(self.k) + " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) +  " max=" + str(numpy.max(meanTestMetrics)))
          
         return meanTestMetrics, stdTestMetrics
 
