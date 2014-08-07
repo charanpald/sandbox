@@ -172,6 +172,8 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += " numAucSamples=" + str(self.numAucSamples) 
         outputStr += " numRecordAucSamples=" + str(self.numRecordAucSamples)
         outputStr += " numRowSamples=" + str(self.numRowSamples) 
+        outputStr += " parallelSGD=" + str(self.parallelSGD) 
+        outputStr += " parallelStep=" + str(self.parallelStep) 
         outputStr += " rate=" + str(self.rate) 
         outputStr += " recordStep=" + str(self.recordStep)
         outputStr += " rho=" + str(self.rho) 
@@ -228,6 +230,8 @@ class MaxLocalAUC(AbstractRecommender):
         maxLocalAuc.numAucSamples = self.numAucSamples
         maxLocalAuc.numRecordAucSamples = self.numRecordAucSamples
         maxLocalAuc.numRowSamples = self.numRowSamples
+        maxLocalAuc.parallelSGD = self.parallelSGD
+        maxLocalAuc.parallelStep = self.parallelStep
         maxLocalAuc.rate = self.rate
         maxLocalAuc.recordStep = self.recordStep
         maxLocalAuc.rho = self.rho 
@@ -389,9 +393,14 @@ class MaxLocalAUC(AbstractRecommender):
             evaluationMethod = computeTestF1
         else: 
             raise ValueError("Invalid metric: " + self.metric)
+            
+        if self.parallelSGD: 
+            numProcesses = 1
+        else:
+            numProcesses = self.numProcesses
         
-        if self.numProcesses != 1: 
-            pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
+        if numProcesses != 1: 
+            pool = multiprocessing.Pool(processes=numProcesses, maxtasksperchild=100)
             resultsIterator = pool.imap(evaluationMethod, paramList, self.chunkSize)
         else: 
             import itertools
@@ -404,7 +413,7 @@ class MaxLocalAUC(AbstractRecommender):
                         for t, t0 in enumerate(self.t0s):
                             testAucs[i, j, s, t, icv] = resultsIterator.next()
         
-        if self.numProcesses != 1: 
+        if numProcesses != 1: 
             pool.terminate()
         
         meanTestMetrics = numpy.mean(testAucs, 3)
@@ -546,8 +555,9 @@ class MaxLocalAUC(AbstractRecommender):
         totalTime = time.time() - startTime
         
         #Compute quantities for last U and V 
+        print("")
         totalTime = time.time() - startTime
-        printStr = "\nFinished, time=" + str('%.1f' % totalTime) + " "
+        printStr = "Finished, time=" + str('%.1f' % totalTime) + " "
         printStr += self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)
         logging.debug(printStr)
                           
@@ -600,7 +610,7 @@ class MaxLocalAUC(AbstractRecommender):
             learner = self.copy()
             learner.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
             sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, U, V, muU, muV, lock 
-            methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, 0
+            methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, 0, loopInd
             updateUVBlock(sharedArgs, methodArgs)
             
     def predict(self, maxItems): 
