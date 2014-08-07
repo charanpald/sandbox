@@ -541,7 +541,7 @@ class MaxLocalAUC(AbstractRecommender):
             
             iterationsPerBlock = sharedmem.zeros((numBlocks, numBlocks))
             self.parallelUpdateUV(X, U2, V2, muU2, muV2, numBlocks, rowBlockSize, colBlockSize, rowIsFree, colIsFree, indPtr, colInds, lock, gi, gp, gq, normGp, normGq, iterationsPerBlock, loopInd)    
-            loopInd += int(iterationsPerBlock.mean())
+            loopInd += numpy.floor(iterationsPerBlock.mean())
 
         totalTime = time.time() - startTime
         
@@ -550,11 +550,7 @@ class MaxLocalAUC(AbstractRecommender):
         printStr = "\nFinished, time=" + str('%.1f' % totalTime) + " "
         printStr += self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)
         logging.debug(printStr)
-                   
-        #Compute quantities for last U and V 
-        printStr += self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)
-        logging.debug(printStr)
-         
+                          
         self.U = bestU 
         self.V = bestV
         self.gi = gi
