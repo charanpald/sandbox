@@ -32,10 +32,10 @@ def updateUVBlock(sharedArgs, methodArgs):
     """
     Compute the objective for a particular parameter set. Used to set a learning rate. 
     """
-    rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, nextPrint, U, V, muU, muV, lock = sharedArgs
-    learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, pid = methodArgs
+    rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, U, V, muU, muV, lock = sharedArgs
+    learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, pid, loopInd = methodArgs
 
-    while (iterationsPerBlock < learner.maxIterations).any(): 
+    while (iterationsPerBlock < learner.parallelStep).any(): 
         #Find free block 
         lock.acquire()
         inds = numpy.argsort(numpy.ravel(iterationsPerBlock))
@@ -54,35 +54,20 @@ def updateUVBlock(sharedArgs, methodArgs):
         blockRowInds = permutedRowInds[rowInd*rowBlockSize:(rowInd+1)*rowBlockSize]
         blockColInds = permutedColInds[colInd*colBlockSize:(colInd+1)*colBlockSize]
         
-        loopInd = iterationsPerBlock[rowInd, colInd]
-        sigma = learner.getSigma(loopInd)
-        
-        if iterationsPerBlock.mean() >= nextPrint.value: 
-            nextPrint.value += learner.recordStep
-            r = SparseUtilsCython.computeR(muU, muV, learner.w, learner.numRecordAucSamples)
-            obj = learner.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=False)  
-            auc = MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, learner.w, learner.numRecordAucSamples, r)
-            
-            printStr = "iter " + str(iterationsPerBlock.mean()) + ":"
-            printStr += " sigma=" + str('%.4f' % sigma)
-            printStr += " train: obj~" + str('%.4f' % obj) 
-            printStr += " LAUC~" + str('%.4f' % auc)
-            printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(muU))
-            printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(muV))
-            print("")
-            logging.debug(printStr)
-  
+        ind = iterationsPerBlock[rowInd, colInd] + loopInd
+        sigma = learner.getSigma(ind)
+          
         lock.release()
     
         #Now update U and V based on the block 
         if foundBlock: 
-            loopInd = iterationsPerBlock[rowInd, colInd]
-            sigma = learner.getSigma(loopInd)
+            ind = iterationsPerBlock[rowInd, colInd] + loopInd
+            sigma = learner.getSigma(ind)
             numIterations = gradientsPerBlock[rowInd, colInd]
             
             indPtr2, colInds2 = restrictOmega(indPtr, colInds, blockColInds)
 
-            learner.updateUV(indPtr2, colInds2, U, V, muU, muV, blockRowInds, blockColInds, gi, gp, gq, normGp, normGq, loopInd, sigma, numIterations)
+            learner.updateUV(indPtr2, colInds2, U, V, muU, muV, blockRowInds, blockColInds, gi, gp, gq, normGp, normGq, ind, sigma, numIterations)
         else: 
             time.sleep(3)
 
@@ -152,6 +137,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.numRecordAucSamples = 100
         self.numRowSamples = 30
         self.parallelSGD = False
+        self.parallelStep = 2
         self.rate = "constant"
         self.recordStep = 10
         self.rho = 0.5 #Penalise low rank elements 
@@ -197,8 +183,6 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += super(MaxLocalAUC, self).__str__()
         
         return outputStr     
-    
-
     
     def computeGipq(self, X): 
         m, n = X.shape 
@@ -472,32 +456,47 @@ class MaxLocalAUC(AbstractRecommender):
             X2 = sppy.csarray(X, storagetype="row")
             X = X2        
         
-        m, n = X.shape   
-        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
+        m, n = X.shape  
+        
+        #We keep a validation set in order to determine when to stop 
+        if self.validationUsers != 0: 
+            numValidationUsers = int(m*self.validationUsers)
+            trainX, testX, rowSamples = Sampling.shuffleSplitRows(X, 1, self.validationSize, numRows=numValidationUsers)[0] 
+            testIndPtr, testColInds = SparseUtils.getOmegaListPtr(testX)
+        else: 
+            trainX = X 
+            testX = None 
+            rowSamples = None
+            testIndPtr, testColInds = None, None         
+        
+        #Not that to compute the test AUC we pick i \in X and j \notin X \cup testX       
+        indPtr, colInds = SparseUtils.getOmegaListPtr(trainX)
+        allIndPtr, allColInds = SparseUtils.getOmegaListPtr(X)
 
         if U==None or V==None:
-            U, V = self.initUV(X)
+            U, V = self.initUV(trainX)
+            
+        if self.metric == "f1": 
+            metricInd = 2 
+        elif self.metric == "mrr": 
+            metricInd = 3 
+        else: 
+            raise ValueError("Unknown metric: " + self.metric)
         
-        muU = U.copy() 
-        muV = V.copy()     
+        bestMetric = 0 
+        bestU = 0 
+        bestV = 0
+        trainMeasures = []
+        testMeasures = []        
+        loopInd = 0
+           
         numBlocks = self.numProcesses+1 
-        #numBlocks = 1
-        
-        #Set up order of indices for stochastic methods 
-        permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
-        permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
-
         gi, gp, gq = self.computeGipq(X)
-        normGp, normGq = self.computeNormGpq(indPtr, colInds, gp, gq, m)
-        
-        self.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
+        normGp, normGq = self.computeNormGpq(indPtr, colInds, gp, gq, m)        
         
         #Some shared variables
         rowIsFree = sharedmem.ones(numBlocks, dtype=numpy.bool)
         colIsFree = sharedmem.ones(numBlocks, dtype=numpy.bool)
-        iterationsPerBlock = sharedmem.zeros((numBlocks, numBlocks))
-        gradientsPerBlock = sharedmem.zeros((numBlocks, numBlocks))
-        nextPrint = multiprocessing.Value('i', 0)
         
         #Create shared factors 
         U2 = sharedmem.zeros((m, self.k))
@@ -507,13 +506,74 @@ class MaxLocalAUC(AbstractRecommender):
         
         U2[:] = U[:]
         V2[:] = V[:]
-        muU2[:] = muU[:]
-        muV2[:] = muV[:]
-        del U, V, muU, muV
+        muU2[:] = U[:]
+        muV2[:] = V[:]
+        del U, V
         
         rowBlockSize = numpy.ceil(float(m)/numBlocks)
         colBlockSize = numpy.ceil(float(n)/numBlocks)
         
+        lock = multiprocessing.Lock()        
+        startTime = time.time()
+        loopInd = 0
+        iterationsPerBlock = sharedmem.zeros((numBlocks, numBlocks))
+        
+        self.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w)
+        nextRecord = 0 
+
+        while loopInd < self.maxIterations: 
+            if loopInd >= nextRecord: 
+                if loopInd != 0: 
+                    print("")  
+                    
+                printStr = self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)    
+                logging.debug(printStr) 
+                                
+                if testIndPtr != None and testMeasures[-1][metricInd] >= bestMetric: 
+                    bestMetric = testMeasures[-1][metricInd]
+                    bestU = muU2 
+                    bestV = muV2 
+                else: 
+                    bestU = muU2 
+                    bestV = muV2    
+                    
+                nextRecord += self.recordStep
+            
+            iterationsPerBlock = sharedmem.zeros((numBlocks, numBlocks))
+            self.parallelUpdateUV(X, U2, V2, muU2, muV2, numBlocks, rowBlockSize, colBlockSize, rowIsFree, colIsFree, indPtr, colInds, lock, gi, gp, gq, normGp, normGq, iterationsPerBlock, loopInd)    
+            loopInd += int(iterationsPerBlock.mean())
+
+        totalTime = time.time() - startTime
+        
+        #Compute quantities for last U and V 
+        totalTime = time.time() - startTime
+        printStr = "\nFinished, time=" + str('%.1f' % totalTime) + " "
+        printStr += self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)
+        logging.debug(printStr)
+                   
+        #Compute quantities for last U and V 
+        printStr += self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)
+        logging.debug(printStr)
+         
+        self.U = bestU 
+        self.V = bestV
+        self.gi = gi
+        self.gp = gp
+        self.gq = gq
+        
+        if verbose:     
+            return self.U, self.V, numpy.array(trainMeasures), numpy.array(testMeasures), loopInd, totalTime
+        else: 
+            return self.U, self.V  
+
+    def parallelUpdateUV(self, X, U, V, muU, muV, numBlocks, rowBlockSize, colBlockSize, rowIsFree, colIsFree, indPtr, colInds, lock, gi, gp, gq, normGp, normGq, iterationsPerBlock, loopInd):
+        m, n = X.shape
+        gradientsPerBlock = sharedmem.zeros((numBlocks, numBlocks))
+        
+        #Set up order of indices for stochastic methods 
+        permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
+        permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
+
         for i in range(numBlocks): 
             for j in range(numBlocks): 
                 blockRowInds = numpy.sort(numpy.array(permutedRowInds[i*rowBlockSize:(i+1)*rowBlockSize], numpy.int))
@@ -523,17 +583,15 @@ class MaxLocalAUC(AbstractRecommender):
                 gradientsPerBlock[i,j] = max(numpy.ceil(float(block.nnz)/self.numAucSamples), 1)
         
         assert gradientsPerBlock.sum() >= X.nnz/self.numAucSamples
-            
-        lock = multiprocessing.Lock()        
-        startTime = time.time()
+
         processList = []        
         
         if self.numProcesses != 1: 
             for i in range(self.numProcesses):
                 learner = self.copy()
                 learner.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
-                sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, nextPrint, U2, V2, muU2, muV2, lock 
-                methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, i
+                sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, U, V, muU, muV, lock 
+                methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, i, loopInd
     
                 process = multiprocessing.Process(target=updateUVBlock, args=(sharedArgs, methodArgs))
                 process.start()
@@ -541,42 +599,20 @@ class MaxLocalAUC(AbstractRecommender):
             
             for process in processList: 
                 process.join()
+                
         else: 
             learner = self.copy()
             learner.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
-            sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, nextPrint, U2, V2, muU2, muV2, lock 
+            sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, U, V, muU, muV, lock 
             methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, 0
             updateUVBlock(sharedArgs, methodArgs)
             
-            
-        totalTime = time.time() - startTime
-        
-        #Compute quantities for last U and V 
-        totalTime = time.time() - startTime
-        printStr = "Finished, time=" + str('%.1f' % totalTime) + " "
-        printStr += "iter " + str(iterationsPerBlock.mean()) 
-        r = SparseUtilsCython.computeR(muU2, muV2, learner.w, learner.numRecordAucSamples)
-        obj = self.objectiveApprox((indPtr, colInds), muU2, muV2, r, gi, gp, gq, full=False)
-        printStr += " train: obj~" + str('%.4f' % obj) 
-        print("")
-        logging.debug(printStr)
-                   
-        self.U = muU2 
-        self.V = muV2
-        self.gi = gi
-        self.gp = gp
-        self.gq = gq
-        
-        #Verbose output doesn't include recorded measures as that would be complicated 
-        if verbose: 
-            return self.U, self.V, iterationsPerBlock.mean(), totalTime
-        else: 
-            return self.U, self.V
-
     def predict(self, maxItems): 
         return MCEvaluator.recommendAtk(self.U, self.V, maxItems)
 
-    def recordResults(self, muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX): 
+    def recordResults(self, muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX): 
+        
+        sigma = self.getSigma(loopInd)        
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
         objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=True)
         if trainMeasures == None: 
@@ -676,7 +712,7 @@ class MaxLocalAUC(AbstractRecommender):
                 if loopInd != 0: 
                     print("")  
                     
-                printStr = self.recordResults(muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)    
+                printStr = self.recordResults(muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)    
                 logging.debug(printStr) 
                                 
                 if testIndPtr != None and testMeasures[-1][metricInd] >= bestMetric: 
@@ -694,7 +730,7 @@ class MaxLocalAUC(AbstractRecommender):
         #Compute quantities for last U and V 
         totalTime = time.time() - startTime
         printStr = "\nFinished, time=" + str('%.1f' % totalTime) + " "
-        printStr += self.recordResults(muU, muV, trainMeasures, testMeasures, sigma, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)
+        printStr += self.recordResults(muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)
         logging.debug(printStr)
          
         self.U = bestU 
