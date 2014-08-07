@@ -320,7 +320,7 @@ cdef class MaxLocalAUCCython(object):
         cdef double uivp, uivq,  betaScale, normTheta, gamma, kappa, nu, nuPrime, hGamma, hKappa, zeta, ri, normBeta, normGqi, normGpi, rhoOver2
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(self.k, numpy.float)
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(self.k, numpy.float)
-        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] rowInds = numpy.random.choice(permutedRowInds, self.numRowSamples, replace=False)
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] rowInds = numpy.random.choice(permutedRowInds, min(self.numRowSamples, permutedRowInds.shape[0]), replace=False)
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample
         
