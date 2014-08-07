@@ -1,4 +1,4 @@
-# cython: profile=True
+# cython: profile=False
 #cython: boundscheck=False
 #cython: wraparound=False
 #cython: nonecheck=False
@@ -80,6 +80,7 @@ class SparseUtilsCython(object):
         return result 
         
     @staticmethod
+    @cython.profile(False)  
     def computeR(numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, double w, unsigned int indsPerRow=50): 
         """
         Given a matrix Z = UV.T compute a vector r such r[i] is the uth quantile 

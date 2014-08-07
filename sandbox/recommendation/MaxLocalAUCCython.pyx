@@ -1,4 +1,4 @@
-#cython: profile=True 
+#cython: profile=False 
 #cython: boundscheck=False
 #cython: wraparound=False
 #cython: nonecheck=False
@@ -20,6 +20,7 @@ cdef extern from "math.h":
     double tanh(double x)
     bint isnan(double x)  
     double sqrt(double x)
+    double fmax(double x, double y)
 
 cdef computeOmegaProbs(unsigned int i, numpy.ndarray[int, ndim=1, mode="c"] omegai, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V): 
     cdef numpy.ndarray[double, ndim=1, mode="c"] uiVOmegai
@@ -340,14 +341,13 @@ cdef class MaxLocalAUCCython(object):
                 p = j 
                 uivp = dot(U, i, V, p, self.k)
                 nu = 1 - uivp
-                hKappa = max(0, 1 - self.rho*(uivp - ri))
+                hKappa = fmax(0, 1 - self.rho*(uivp - ri))
                 zeta = tanh(hKappa)
-                #normGp = partialSum(gp, omegai)
     
                 for s in range(self.numAucSamples): 
                     q = inverseChoiceArray(omegai, permutedColInds)
                     uivq = dot(U, i, V, q, self.k)                
-                    hGamma = max(0, nu+uivq) 
+                    hGamma = fmax(0, nu+uivq) 
                     normGqi += gq[q]
                     
                     betaScale += gp[p] * gq[q] * (hGamma*zeta + rhoOver2*square(hGamma) * (1 - square(zeta)))  
@@ -363,8 +363,8 @@ cdef class MaxLocalAUCCython(object):
     
                 for p in omegaiSample: 
                     uivp = dot(U, i, V, p, self.k)
-                    hGamma = max(0, nu - uivp) 
-                    hKappa = max(0, nuPrime - self.rho*uivp)
+                    hGamma = fmax(0, nu - uivp) 
+                    hKappa = fmax(0, nuPrime - self.rho*uivp)
                     normGpi += gp[p]
                     
                     betaScale += gp[p] * gq[q]*hGamma*tanh(hKappa)
@@ -408,13 +408,17 @@ cdef class MaxLocalAUCCython(object):
         cdef unsigned int n = V.shape[0]    
         cdef unsigned int i, j, s
         cdef double normUi, normVj
+        cdef bint newline = indPtr.shape[0] > 100000
         cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(self.k)
         cdef numpy.ndarray[double, ndim=1, mode="c"] dVj = numpy.zeros(self.k)
         cdef numpy.ndarray[double, ndim=1, mode="c"] r 
     
         for s in range(numIterations):
             if s % self.printStep == 0: 
-                print(str(s) + " ", end="")
+                if newline:  
+                    print(str(s) + " ", end="")
+                else: 
+                    print(str(s) + " of " + str(numIterations))
                 
             r = SparseUtilsCython.computeR(U, V, self.w, self.numAucSamples)
             

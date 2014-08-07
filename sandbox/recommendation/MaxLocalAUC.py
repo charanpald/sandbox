@@ -519,8 +519,8 @@ class MaxLocalAUC(AbstractRecommender):
         muV2[:] = V[:]
         del U, V
         
-        rowBlockSize = numpy.ceil(float(m)/numBlocks)
-        colBlockSize = numpy.ceil(float(n)/numBlocks)
+        rowBlockSize = int(numpy.ceil(float(m)/numBlocks))
+        colBlockSize = int(numpy.ceil(float(n)/numBlocks))
         
         lock = multiprocessing.Lock()        
         startTime = time.time()

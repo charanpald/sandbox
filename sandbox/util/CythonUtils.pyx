@@ -1,4 +1,4 @@
-#cython: profile=True 
+#cython: profile=False  
 #cython: boundscheck=False
 #cython: wraparound=False
 #cython: nonecheck=False
@@ -118,7 +118,8 @@ cdef inline unsigned int inverseChoice(numpy.ndarray[unsigned int, ndim=1, mode=
    
 def inverseChoicePy(v, n): 
     return inverseChoice(v, n)   
-   
+
+@cython.profile(False)   
 cdef inline unsigned int inverseChoiceArray(numpy.ndarray[unsigned int, ndim=1, mode="c"] v, numpy.ndarray[unsigned int, ndim=1, mode="c"] w):
     """
     Find a random nonzero element in w not in v 
