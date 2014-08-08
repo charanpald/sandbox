@@ -33,7 +33,7 @@ def updateUVBlock(sharedArgs, methodArgs):
     Compute the objective for a particular parameter set. Used to set a learning rate. 
     """
     rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, U, V, muU, muV, lock = sharedArgs
-    learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, pid, loopInd = methodArgs
+    learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, pid, loopInd, omegasList = methodArgs
 
     while (iterationsPerBlock < learner.parallelStep).any(): 
         #Find free block 
@@ -65,7 +65,7 @@ def updateUVBlock(sharedArgs, methodArgs):
             sigma = learner.getSigma(ind)
             numIterations = gradientsPerBlock[rowInd, colInd]
             
-            indPtr2, colInds2 = restrictOmega(indPtr, colInds, blockColInds)
+            indPtr2, colInds2 = omegasList[colInd]
 
             learner.updateUV(indPtr2, colInds2, U, V, muU, muV, blockRowInds, blockColInds, gi, gp, gq, normGp, normGq, ind, sigma, numIterations)
         else: 
@@ -590,6 +590,12 @@ class MaxLocalAUC(AbstractRecommender):
         
         assert gradientsPerBlock.sum() >= X.nnz/self.numAucSamples
 
+        #Compute omega for each col block 
+        omegasList = []
+        for i in range(numBlocks): 
+            blockColInds = permutedColInds[i*colBlockSize:(i+1)*colBlockSize]
+            omegasList.append(restrictOmega(indPtr, colInds, blockColInds))
+
         processList = []        
         
         if self.numProcesses != 1: 
@@ -597,7 +603,7 @@ class MaxLocalAUC(AbstractRecommender):
                 learner = self.copy()
                 learner.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
                 sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, U, V, muU, muV, lock 
-                methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, i, loopInd
+                methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, i, loopInd, omegasList
     
                 process = multiprocessing.Process(target=updateUVBlock, args=(sharedArgs, methodArgs))
                 process.start()
@@ -610,7 +616,7 @@ class MaxLocalAUC(AbstractRecommender):
             learner = self.copy()
             learner.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
             sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, U, V, muU, muV, lock 
-            methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, 0, loopInd
+            methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, 0, loopInd, omegasList
             updateUVBlock(sharedArgs, methodArgs)
             
     def predict(self, maxItems): 
