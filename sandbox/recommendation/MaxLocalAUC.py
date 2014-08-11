@@ -540,11 +540,11 @@ class MaxLocalAUC(AbstractRecommender):
                                 
                 if testIndPtr != None and testMeasures[-1][metricInd] >= bestMetric: 
                     bestMetric = testMeasures[-1][metricInd]
-                    bestU = muU2 
-                    bestV = muV2 
-                else: 
-                    bestU = muU2 
-                    bestV = muV2    
+                    bestU = muU2.copy() 
+                    bestV = muV2.copy() 
+                elif testIndPtr == None: 
+                    bestU = muU2.copy() 
+                    bestV = muV2.copy()  
                     
                 nextRecord += self.recordStep
             
@@ -674,7 +674,11 @@ class MaxLocalAUC(AbstractRecommender):
         if self.validationUsers != 0: 
             numValidationUsers = int(m*self.validationUsers)
             trainX, testX, rowSamples = Sampling.shuffleSplitRows(X, 1, self.validationSize, numRows=numValidationUsers)[0] 
+            
             testIndPtr, testColInds = SparseUtils.getOmegaListPtr(testX)
+            
+            logging.debug("Train X shape and nnz: " + str(trainX.shape) + " " + str(trainX.nnz))    
+            logging.debug("Validation X shape and nnz: " + str(testX.shape) + " " + str(testX.nnz))
         else: 
             trainX = X 
             testX = None 
@@ -729,11 +733,12 @@ class MaxLocalAUC(AbstractRecommender):
                                 
                 if testIndPtr != None and testMeasures[-1][metricInd] >= bestMetric: 
                     bestMetric = testMeasures[-1][metricInd]
-                    bestU = muU 
-                    bestV = muV 
-                else: 
-                    bestU = muU 
-                    bestV = muV                     
+                    logging.debug("Current best metric=" + str(bestMetric))
+                    bestU = muU.copy() 
+                    bestV = muV.copy() 
+                elif testIndPtr == None: 
+                    bestU = muU.copy() 
+                    bestV = muV.copy()                     
                 
             U  = numpy.ascontiguousarray(U)
             self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, loopInd, sigma, numIterations)                       
