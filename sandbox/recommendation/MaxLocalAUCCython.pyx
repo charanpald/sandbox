@@ -416,9 +416,9 @@ cdef class MaxLocalAUCCython(object):
         for s in range(numIterations):
             if s % self.printStep == 0: 
                 if newline:  
-                    print(str(s) + " ", end="")
-                else: 
                     print(str(s) + " of " + str(numIterations))
+                else: 
+                    print(str(s) + " ", end="")
                 
             r = SparseUtilsCython.computeR(U, V, self.w, self.numAucSamples)
             
