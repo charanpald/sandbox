@@ -209,6 +209,12 @@ class Sampling(object):
             storagetype = "row" 
         else: 
             storagetype = "col"
+            
+        if numRows == None: 
+            numRows = X.shape[0]
+            outputRows = False
+        else: 
+            outputRows = True
         
         trainTestXList = []
         omegaList = SparseUtils.getOmegaList(X)
@@ -224,11 +230,8 @@ class Sampling(object):
             testRowInds = numpy.zeros(X.shape[0]*testSize, numpy.int32)
             testColInds = numpy.zeros(X.shape[0]*testSize, numpy.int32)
 
-            if numRows != None: 
-                rowSample = numpy.random.choice(m, numRows, replace=False)
-            else: 
-                rowSample = numpy.arange(m)
-            
+            rowSample = numpy.sort(numpy.random.choice(m, numRows, replace=False))
+
             for j in range(m):
                 
                 if j in rowSample: 
@@ -261,7 +264,7 @@ class Sampling(object):
             trainX = SparseUtils.sparseMatrix(numpy.ones(trainRowInds.shape[0], numpy.int), trainRowInds, trainColInds, X.shape, mattype, storagetype)
             testX = SparseUtils.sparseMatrix(numpy.ones(testRowInds.shape[0], numpy.int), testRowInds, testColInds, X.shape, mattype, storagetype)
 
-            if numRows == None: 
+            if not outputRows: 
                 trainTestXList.append((trainX, testX))
             else: 
                 trainTestXList.append((trainX, testX, rowSample))

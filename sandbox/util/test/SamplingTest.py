@@ -223,6 +223,15 @@ class  SamplingTest(unittest.TestCase):
         colProbs2 /= colProbs2.sum() 
         colProbs3 /= colProbs3.sum()
         nptst.assert_array_almost_equal(colProbs2, colProbs3, 2)
+        
+        #Test when numRows=m
+        numpy.random.seed(21)
+        trainTestXs = Sampling.shuffleSplitRows(X, k2, testSize, numRows=m)
+        numpy.random.seed(21)
+        trainTestXs2 = Sampling.shuffleSplitRows(X, k2, testSize)
+
+        nptst.assert_array_equal(trainTestXs[0][0].toarray(), trainTestXs2[0][0].toarray())
+        nptst.assert_array_equal(trainTestXs[0][1].toarray(), trainTestXs2[0][1].toarray())
 
     def testSampleUsers(self): 
         m = 10
