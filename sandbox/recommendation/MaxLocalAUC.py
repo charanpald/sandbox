@@ -293,7 +293,10 @@ class MaxLocalAUC(AbstractRecommender):
         return U, V    
 
         
-    def learnModel(self, X, verbose=False, U=None, V=None): 
+    def learnModel(self, X, verbose=False, U=None, V=None):
+        logging.warn("Seeding random number generator")        
+        numpy.random.seed(21)        
+        
         if self.parallelSGD: 
             return self.parallelLearnModel(X, verbose, U, V)
         else: 
@@ -359,15 +362,19 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alpha=" + str(self.alpha)
         return outputStr 
 
-    def modelSelect(self, X, colProbs=None): 
+    def modelSelect(self, X, colProbs=None, testX=None): 
         """
         Perform model selection on X and return the best parameters. 
         """
         m, n = X.shape
-        trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
-        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], self.alphas.shape[0], self.t0s.shape[0], len(trainTestXs)))
+        if testX==None:
+            trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
+        else: 
+            trainTestXs = [[X, testX]]
+            
+        testMetrics = numpy.zeros((self.t0s.shape[0], self.ks.shape[0], self.lmbdas.shape[0], self.alphas.shape[0], len(trainTestXs)))
         
-        logging.debug("Performing model selection with test leave out per row of " + str(self.validationSize))
+        logging.debug("Performing model selection")
         paramList = []        
         
         for i, k in enumerate(self.ks): 
@@ -411,26 +418,26 @@ class MaxLocalAUC(AbstractRecommender):
                 for j, lmbda in enumerate(self.lmbdas): 
                     for s, alpha in enumerate(self.alphas): 
                         for t, t0 in enumerate(self.t0s):
-                            testAucs[i, j, s, t, icv] = resultsIterator.next()
+                            testMetrics[t, i, j, s, icv] = resultsIterator.next()
         
         if numProcesses != 1: 
             pool.terminate()
         
-        meanTestMetrics = numpy.mean(testAucs, 3)
-        stdTestMetrics = numpy.std(testAucs, 3)
+        meanTestMetrics = numpy.mean(testMetrics, 4)
+        stdTestMetrics = numpy.std(testMetrics, 4)
         
+        logging.debug("t0s=" + str(self.t0s)) 
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdas=" + str(self.lmbdas)) 
-        logging.debug("alphas=" + str(self.alphas)) 
-        logging.debug("t0s=" + str(self.t0s)) 
+        logging.debug("alphas=" + str(self.alphas))         
         logging.debug("Mean metrics =" + str(meanTestMetrics))
         logging.debug("Std metrics =" + str(stdTestMetrics))
         
-        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[0]]
-        self.lmbdaV = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
-        self.alpha = self.alphas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[2]]
-        self.t0 = self.t0s[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[3]]
-
+        self.t0 = self.t0s[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[0]]
+        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
+        self.lmbdaV = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[2]]
+        self.alpha = self.alphas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[3]]
+        
         logging.debug("Model parameters: k=" + str(self.k) + " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) +  " max=" + str(numpy.max(meanTestMetrics)))
          
         return meanTestMetrics, stdTestMetrics
