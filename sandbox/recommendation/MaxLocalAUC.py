@@ -342,8 +342,8 @@ class MaxLocalAUC(AbstractRecommender):
         if self.numProcesses != 1: 
             pool.terminate()
             
-        meanObjs = numpy.mean(objectives, 0) 
-        stdObjs = numpy.std(objectives, 0) 
+        meanObjs = numpy.mean(objectives, 2) 
+        stdObjs = numpy.std(objectives, 2) 
         logging.debug("t0s=" + str(self.t0s))
         logging.debug("alphas=" + str(self.alphas))
         logging.debug(meanObjs)
