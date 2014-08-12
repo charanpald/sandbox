@@ -293,9 +293,10 @@ class MaxLocalAUC(AbstractRecommender):
         return U, V    
 
         
-    def learnModel(self, X, verbose=False, U=None, V=None):
-        logging.warn("Seeding random number generator")        
-        numpy.random.seed(21)        
+    def learnModel(self, X, verbose=False, U=None, V=None, randSeed=None):
+        if randSeed != None: 
+            logging.warn("Seeding random number generator")   
+            numpy.random.seed(randSeed)        
         
         if self.parallelSGD: 
             return self.parallelLearnModel(X, verbose, U, V)
@@ -307,17 +308,16 @@ class MaxLocalAUC(AbstractRecommender):
         Let's set the initial learning rate. 
         """        
         m, n = X.shape
+        numInitialUVs = self.folds
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
-        objectives = numpy.zeros((self.t0s.shape[0], self.alphas.shape[0]))
+        objectives = numpy.zeros((self.t0s.shape[0], self.alphas.shape[0], numInitialUVs))
         
         paramList = []   
         logging.debug("t0s=" + str(self.t0s))
         logging.debug("alphas=" + str(self.alphas))
         logging.debug(self)
         
-        numInitalUVs = self.folds
-            
-        for k in range(numInitalUVs):
+        for k in range(numInitialUVs):
             U, V = self.initUV(X)
                         
             for i, t0 in enumerate(self.t0s): 
@@ -334,28 +334,30 @@ class MaxLocalAUC(AbstractRecommender):
             import itertools
             resultsIterator = itertools.imap(computeObjective, paramList)
         
-        for k in range(numInitalUVs):
+        for k in range(numInitialUVs):
             for i, t0 in enumerate(self.t0s): 
                 for j, alpha in enumerate(self.alphas):  
-                    objectives[i, j] += resultsIterator.next()
+                    objectives[k, i, j] += resultsIterator.next()
             
         if self.numProcesses != 1: 
             pool.terminate()
             
-        objectives /= float(numInitalUVs)   
+        meanObjs = numpy.mean(objectives, 0) 
+        stdObjs = numpy.std(objectives, 0) 
         logging.debug("t0s=" + str(self.t0s))
         logging.debug("alphas=" + str(self.alphas))
-        logging.debug(objectives)
+        logging.debug(meanObjs)
+        logging.debug(stdObjs)
         
-        t0 = self.t0s[numpy.unravel_index(numpy.argmin(objectives), objectives.shape)[0]]
-        alpha = self.alphas[numpy.unravel_index(numpy.argmin(objectives), objectives.shape)[1]]
+        t0 = self.t0s[numpy.unravel_index(numpy.argmin(meanObjs), meanObjs.shape)[0]]
+        alpha = self.alphas[numpy.unravel_index(numpy.argmin(meanObjs), meanObjs.shape)[1]]
         
         logging.debug("Learning rate parameters: t0=" + str(t0) + " alpha=" + str(alpha))
         
         self.t0 = t0 
         self.alpha = alpha 
         
-        return objectives   
+        return meanObjs, stdObjs  
 
 
     def modelParamsStr(self): 
