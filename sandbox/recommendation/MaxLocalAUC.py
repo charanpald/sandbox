@@ -136,8 +136,10 @@ class MaxLocalAUC(AbstractRecommender):
         self.numAucSamples = 10
         self.numRecordAucSamples = 100
         self.numRowSamples = 30
+        self.p = 10 
         self.parallelSGD = False
         self.parallelStep = 2
+        self.q = 3
         self.rate = "constant"
         self.recordStep = 10
         self.rho = 0.5 #Penalise low rank elements 
@@ -263,9 +265,9 @@ class MaxLocalAUC(AbstractRecommender):
         if self.initialAlg == "rand": 
             U = numpy.random.randn(m, self.k)*0.1
             V = numpy.random.randn(n, self.k)*0.1
-        elif self.initialAlg == "svd":
+        elif self.initialAlg == "rsvd":
             logging.debug("Initialising with Randomised SVD")
-            U, s, V = RandomisedSVD.svd(X, self.k)
+            U, s, V = RandomisedSVD.svd(X, self.k, self.p, self.q)
             U = U*s
         elif self.initialAlg == "softimpute": 
             logging.debug("Initialising with softimpute")
@@ -308,6 +310,7 @@ class MaxLocalAUC(AbstractRecommender):
         Let's set the initial learning rate. 
         """        
         m, n = X.shape
+
         numInitialUVs = self.folds
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
         objectives = numpy.zeros((self.t0s.shape[0], self.alphas.shape[0], numInitialUVs))
@@ -346,8 +349,8 @@ class MaxLocalAUC(AbstractRecommender):
         stdObjs = numpy.std(objectives, 2) 
         logging.debug("t0s=" + str(self.t0s))
         logging.debug("alphas=" + str(self.alphas))
-        logging.debug(meanObjs)
-        logging.debug(stdObjs)
+        logging.debug("meanObjs=" + str(meanObjs))
+        logging.debug("stdObjs=" + str(stdObjs))
         
         t0 = self.t0s[numpy.unravel_index(numpy.argmin(meanObjs), meanObjs.shape)[0]]
         alpha = self.alphas[numpy.unravel_index(numpy.argmin(meanObjs), meanObjs.shape)[1]]
