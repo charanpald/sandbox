@@ -265,7 +265,7 @@ class MaxLocalAUC(AbstractRecommender):
         if self.initialAlg == "rand": 
             U = numpy.random.randn(m, self.k)*0.1
             V = numpy.random.randn(n, self.k)*0.1
-        elif self.initialAlg == "rsvd":
+        elif self.initialAlg == "svd":
             logging.debug("Initialising with Randomised SVD")
             U, s, V = RandomisedSVD.svd(X, self.k, self.p, self.q)
             U = U*s
