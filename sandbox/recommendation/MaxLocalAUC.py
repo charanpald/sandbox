@@ -340,7 +340,7 @@ class MaxLocalAUC(AbstractRecommender):
         for k in range(numInitialUVs):
             for i, t0 in enumerate(self.t0s): 
                 for j, alpha in enumerate(self.alphas):  
-                    objectives[k, i, j] += resultsIterator.next()
+                    objectives[i, j, k] += resultsIterator.next()
             
         if self.numProcesses != 1: 
             pool.terminate()
