@@ -171,6 +171,7 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += " lmbdaV=" + str(self.lmbdaV) 
         outputStr += " maxIterations=" + str(self.maxIterations)
         outputStr += " metric=" + str(self.metric)
+        outputStr += " normalise=" + str(self.normalise)
         outputStr += " numAucSamples=" + str(self.numAucSamples) 
         outputStr += " numRecordAucSamples=" + str(self.numRecordAucSamples)
         outputStr += " numRowSamples=" + str(self.numRowSamples) 
@@ -229,6 +230,7 @@ class MaxLocalAUC(AbstractRecommender):
         maxLocalAuc.lmbdaV = self.lmbdaV
         maxLocalAuc.maxIterations = self.maxIterations
         maxLocalAuc.metric = self.metric
+        maxLocalAuc.normalise = self.normalise
         maxLocalAuc.numAucSamples = self.numAucSamples
         maxLocalAuc.numRecordAucSamples = self.numRecordAucSamples
         maxLocalAuc.numRowSamples = self.numRowSamples
