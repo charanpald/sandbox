@@ -394,6 +394,7 @@ class MaxLocalAUC(AbstractRecommender):
                         for t, t0 in enumerate(self.t0s):
                             maxLocalAuc = self.copy()
                             maxLocalAuc.k = k    
+                            maxLocalAuc.lmbdaU = lmbda
                             maxLocalAuc.lmbdaV = lmbda
                             maxLocalAuc.alpha = alpha 
                             maxLocalAuc.t0 = t0 
@@ -442,6 +443,7 @@ class MaxLocalAUC(AbstractRecommender):
         
         self.t0 = self.t0s[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[0]]
         self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
+        self.lmbdaU = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[2]]
         self.lmbdaV = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[2]]
         self.alpha = self.alphas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[3]]
         
