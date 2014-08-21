@@ -378,6 +378,10 @@ class MaxLocalAUC(AbstractRecommender):
             trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
         else: 
             trainTestXs = [[X, testX]]
+
+        #Constant rate ignores t0 
+        if self.rate == "constant": 
+            self.t0s = numpy.array([1.0])            
             
         testMetrics = numpy.zeros((self.t0s.shape[0], self.ks.shape[0], self.lmbdas.shape[0], self.alphas.shape[0], len(trainTestXs)))
         
