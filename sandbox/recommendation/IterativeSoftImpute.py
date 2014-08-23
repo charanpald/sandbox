@@ -122,30 +122,31 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         """
         super(AbstractMatrixCompleter, self).__init__()
 
-        self.rho = rho
-        self.eps = eps
-        self.k = k
-        self.svdAlg = svdAlg
-        self.updateAlg = updateAlg
-        self.p = p
-        self.q = q
-        #The q used for the SVD update 
-        self.qu = qu
         if k != None:
             self.kmax = k*5
         else:
             self.kmax = None
+
+        self.eps = eps
+        self.k = k
         self.logStep = logStep
+        self.maxIterations = 30
+        self.metric = "mse"
+        self.numProcesses = multiprocessing.cpu_count()
         self.postProcess = postProcess 
         self.postProcessSamples = 10**6
-        self.maxIterations = 30
-        self.weighted = weighted 
-        self.verbose = verbose 
-        self.numProcesses = multiprocessing.cpu_count()
-        self.metric = "mse"
-        self.validationSize = 3
+        self.p = p
+        self.q = q
+        #The q used for the SVD update 
+        self.qu = qu
         self.recommendSize = 10
-
+        self.rho = rho
+        self.svdAlg = svdAlg
+        self.updateAlg = updateAlg
+        self.validationSize = 3
+        self.verbose = verbose 
+        self.weighted = weighted 
+        
     def learnModel(self, XIterator, rhos=None):
         """
         Learn the matrix completion using an iterator which outputs
@@ -543,14 +544,22 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         iterativeSoftImpute = IterativeSoftImpute(rho=self.rho, eps=self.eps, k=self.k, svdAlg=self.svdAlg, updateAlg=self.updateAlg, logStep=self.logStep, kmax=self.kmax, postProcess=self.postProcess, weighted=self.weighted, p=self.p, q=self.q)
         iterativeSoftImpute.recommendSize = self.recommendSize 
         iterativeSoftImpute.maxIterations = self.maxIterations 
+        iterativeSoftImpute.metric = self.metric
+        iterativeSoftImpute.numProcesses = self.numProcesses
+        iterativeSoftImpute.postProcessSamples = self.postProcessSamples
+        iterativeSoftImpute.qu = self.qu
+        iterativeSoftImpute.verbose = self.verbose 
+        iterativeSoftImpute.weighted = self.weighted     
         iterativeSoftImpute.validationSize = self.validationSize
+        
         return iterativeSoftImpute
 
     def __str__(self): 
         outputStr = self.name() + ":" 
         outputStr += " rho=" + str(self.rho)+" eps="+str(self.eps)+" k="+str(self.k) + " svdAlg="+str(self.svdAlg) + " kmax="+str(self.kmax)
         outputStr += " postProcess=" + str(self.postProcess) + " weighted="+str(self.weighted) + " p="+str(self.p) + " q="+str(self.q)
-        outputStr += " maxIterations=" + str(self.maxIterations) + " recommendSize=" + str(self.recommendSize) + " validationSize=" + str(self.validationSize) 
+        outputStr += " maxIterations=" + str(self.maxIterations) + " recommendSize=" + str(self.recommendSize) + " validationSize=" + str(self.validationSize)
+        outputStr += " metric=" + str(self.metric)
         return outputStr
 
     def name(self):
