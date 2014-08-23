@@ -2,10 +2,8 @@
 import numpy 
 import logging
 import multiprocessing 
-from sandbox.util.SparseUtils import SparseUtils
-from sandbox.recommendation.RecommenderUtils import computeTestMRR
+from sandbox.recommendation.RecommenderUtils import computeTestMRR, computeTestF1
 from sandbox.util.Sampling import Sampling 
-from sandbox.util.Util import Util 
 from mrec.mf.wrmf import WRMFRecommender
 from sandbox.util.MCEvaluator import MCEvaluator 
 from sandbox.recommendation.AbstractRecommender import AbstractRecommender
@@ -48,7 +46,14 @@ class WeightedMf(AbstractRecommender):
         m, n = X.shape
         #cvInds = Sampling.randCrossValidation(self.folds, X.nnz)
         trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
-        testPrecisions = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
+        testMetrics = numpy.zeros((self.ks.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
+        
+        if self.metric == "mrr":
+            evaluationMethod = computeTestMRR
+        elif self.metric == "f1": 
+            evaluationMethod = computeTestF1
+        else: 
+            raise ValueError("Invalid metric: " + self.metric)        
         
         logging.debug("Performing model selection")
         paramList = []        
@@ -64,32 +69,32 @@ class WeightedMf(AbstractRecommender):
             
         if self.numProcesses != 1: 
             pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-            resultsIterator = pool.imap(computeTestMRR, paramList, self.chunkSize)
+            resultsIterator = pool.imap(evaluationMethod, paramList, self.chunkSize)
         else: 
             import itertools
-            resultsIterator = itertools.imap(computeTestMRR, paramList)
+            resultsIterator = itertools.imap(evaluationMethod, paramList)
         
         for i, k in enumerate(self.ks):
             for j, lmbda in enumerate(self.lmbdas):
                 for icv in range(len(trainTestXs)):             
-                    testPrecisions[i, j, icv] = resultsIterator.next()
+                    testMetrics[i, j, icv] = resultsIterator.next()
         
         if self.numProcesses != 1: 
             pool.terminate()
             
-        meanTestPrecisions = numpy.mean(testPrecisions, 2)
-        stdTestPrecisions = numpy.std(testPrecisions, 2)
+        meanTestMetrics= numpy.mean(testMetrics, 2)
+        stdTestMetrics = numpy.std(testMetrics, 2)
         
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdas=" + str(self.lmbdas)) 
-        logging.debug("Mean precisions=" + str(meanTestPrecisions))
+        logging.debug("Mean metrics=" + str(meanTestMetrics))
         
-        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestPrecisions), meanTestPrecisions.shape)[0]]
-        self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestPrecisions), meanTestPrecisions.shape)[1]]
+        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[0]]
+        self.lmbda = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
 
         logging.debug("Model parameters: k=" + str(self.k) + " lmbda=" + str(self.lmbda))
          
-        return meanTestPrecisions, stdTestPrecisions
+        return meanTestMetrics, stdTestMetrics
     
     def copy(self): 
         learner = WeightedMf(self.k, self.alpha, self.lmbda, self.maxIterations)

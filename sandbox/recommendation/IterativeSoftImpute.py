@@ -52,7 +52,7 @@ def learnPredictMSE(args):
         
     return errors 
 
-def learnPredictMRR(args): 
+def learnPredictRanking(args): 
     """
     A function to train on a training set and test on a test set, for a number 
     of values of rho. 
@@ -73,7 +73,7 @@ def learnPredictMRR(args):
 
     ZIter = learner.learnModel(trainXIter, iter(rhos))
     
-    f1s = numpy.zeros(rhos.shape[0])
+    metrics = numpy.zeros(rhos.shape[0])
     
     for j, Z in enumerate(ZIter): 
         U, s, V = Z
@@ -82,11 +82,19 @@ def learnPredictMRR(args):
         V = numpy.ascontiguousarray(V)
         
         testOrderedItems = MCEvaluatorCython.recommendAtk(U, V, learner.recommendSize, trainX)
-        f1s[j] = MCEvaluator.mrrAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.recommendSize) 
-        logging.debug("MRR@" + str(learner.recommendSize) +  ": " + str('%.4f' % f1s[j]) + " " + str(learner))
+        
+        if learner.metric == "mrr": 
+            metrics[j] = MCEvaluator.mrrAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.recommendSize) 
+            logging.debug("MRR@" + str(learner.recommendSize) +  ": " + str('%.4f' % metrics[j]) + " " + str(learner))
+        elif learner.metric == "f1": 
+            metrics[j] = MCEvaluator.mrrAtK(SparseUtils.getOmegaListPtr(testX), testOrderedItems, learner.recommendSize) 
+            logging.debug("F1@" + str(learner.recommendSize) +  ": " + str('%.4f' % metrics[j]) + " " + str(learner))
+        else: 
+            raise ValueError("Unknown metric " + learner.metric)
+            
         gc.collect()
         
-    return f1s 
+    return metrics 
 
 class IterativeSoftImpute(AbstractMatrixCompleter):
     """
@@ -368,8 +376,8 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         
         if self.metric == "mse": 
             metricFuction = learnPredictMSE
-        elif self.metric == "f1": 
-            metricFuction = learnPredictMRR
+        elif self.metric == "f1" or self.metric == "mrr": 
+            metricFuction = learnPredictRanking
         else: 
             raise ValueError("Unknown metric: " + self.metric)
             
@@ -411,7 +419,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         if self.metric == "mse": 
             self.setRho(rhos[numpy.unravel_index(numpy.argmin(meanMetrics), meanMetrics.shape)[0]]) 
             self.setK(ks[numpy.unravel_index(numpy.argmin(meanMetrics), meanMetrics.shape)[1]])
-        elif self.metric == "f1":
+        elif self.metric == "f1" or self.metric == "mrr": 
             self.setRho(rhos[numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)[0]]) 
             self.setK(ks[numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)[1]])
             
@@ -435,8 +443,8 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         
         if self.metric == "mse": 
             metricFuction = learnPredictMSE
-        elif self.metric == "mrr": 
-            metricFuction = learnPredictMRR
+        elif self.metric == "f1" or self.metric == "mrr": 
+            metricFuction = learnPredictRanking
         else: 
             raise ValueError("Unknown metric: " + self.metric)
             
@@ -474,7 +482,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         if self.metric == "mse": 
             self.setRho(rhos[numpy.unravel_index(numpy.argmin(meanMetrics), meanMetrics.shape)[0]]) 
             self.setK(ks[numpy.unravel_index(numpy.argmin(meanMetrics), meanMetrics.shape)[1]])
-        elif self.metric == "f1":
+        elif self.metric == "f1" or self.metric == "mrr": 
             self.setRho(rhos[numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)[0]]) 
             self.setK(ks[numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)[1]])
             
