@@ -375,7 +375,7 @@ cdef class MaxLocalAUCCython(object):
             deltaTheta += deltaBeta*gi[i]
             
         deltaTheta /= gi[rowInds].sum()
-        deltaTheta += scale(V, j, self.lmbdaV/n, self.k)
+        deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
         
         #Make gradient unit norm 
         normTheta = numpy.linalg.norm(deltaTheta)
