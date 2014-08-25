@@ -486,7 +486,7 @@ class MaxLocalAUC(AbstractRecommender):
 
                 maxLocalAuc.lmbdaU = numpy.random.choice(self.lmbdas) 
                 maxLocalAuc.lmbdaV = numpy.random.choice(self.lmbdas) 
-                maxLocalAuc.alpha = numpy.random.choice(self.alpha)  
+                maxLocalAuc.alpha = numpy.random.choice(self.alphas)  
                 maxLocalAuc.t0 = numpy.random.choice(self.t0s)  
                 maxLocalAuc.itemExpP = numpy.random.choice(self.itemExps) 
                 maxLocalAuc.itemExpQ = numpy.random.choice(self.itemExps)
