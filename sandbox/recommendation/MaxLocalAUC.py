@@ -136,6 +136,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.numAucSamples = 10
         self.numRecordAucSamples = 100
         self.numRowSamples = 30
+        self.numRuns = 200
         self.p = 10 
         self.parallelSGD = False
         self.parallelStep = 2
@@ -153,6 +154,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.ks = 2**numpy.arange(3, 8)
         self.lmbdas = 10.0**numpy.arange(-0.5, 1.5, 0.25)
         self.rhos = numpy.array([0, 0.1, 0.5, 1.0])
+        self.itemExps = numpy.array([0, 0.25, 0.5, 0.75, 1.0])
         
         #Learning rate selection 
         self.t0s = 2.0**-numpy.arange(0.0, 5.0)
@@ -452,6 +454,92 @@ class MaxLocalAUC(AbstractRecommender):
         self.alpha = self.alphas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[3]]
         
         logging.debug("Model parameters: k=" + str(self.k) + " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) +  " max=" + str(numpy.max(meanTestMetrics)))
+         
+        return meanTestMetrics, stdTestMetrics
+
+    def modelSelectRandom(self, X, colProbs=None, testX=None): 
+        """
+        Perform model selection on X and return the best parameters. 
+        """
+        m, n = X.shape
+        
+        if testX==None:
+            trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
+        else: 
+            trainTestXs = [[X, testX]]
+
+        #Constant rate ignores t0 
+        if self.rate == "constant": 
+            self.t0s = numpy.array([1.0])            
+            
+        testMetrics = numpy.zeros((self.numRuns, len(trainTestXs)))
+        
+        logging.debug("Performing model selection")
+        paramList = []        
+        
+        for i in range(self.numRuns): 
+            maxLocalAuc = self.copy()
+            maxLocalAuc.k = numpy.random.choice(self.ks)  
+            
+            for icv, (trainX, testX) in enumerate(trainTestXs):
+                U, V = self.initUV(trainX)
+
+                maxLocalAuc.lmbdaU = numpy.random.choice(self.lmbdas) 
+                maxLocalAuc.lmbdaV = numpy.random.choice(self.lmbdas) 
+                maxLocalAuc.alpha = numpy.random.choice(self.alpha)  
+                maxLocalAuc.t0 = numpy.random.choice(self.t0s)  
+                maxLocalAuc.itemExpP = numpy.random.choice(self.itemExps) 
+                maxLocalAuc.itemExpQ = numpy.random.choice(self.itemExps)
+            
+                paramList.append((trainX, testX, maxLocalAuc))
+            
+        logging.debug("Set parameters")
+        if self.metric == "mrr":
+            evaluationMethod = computeTestMRR
+        elif self.metric == "f1": 
+            evaluationMethod = computeTestF1
+        else: 
+            raise ValueError("Invalid metric: " + self.metric)
+            
+        if self.parallelSGD: 
+            numProcesses = 1
+        else:
+            numProcesses = self.numProcesses
+        
+        if numProcesses != 1: 
+            pool = multiprocessing.Pool(processes=numProcesses, maxtasksperchild=100)
+            resultsIterator = pool.imap(evaluationMethod, paramList, self.chunkSize)
+        else: 
+            import itertools
+            resultsIterator = itertools.imap(evaluationMethod, paramList)
+        
+        for i in range(self.numRuns): 
+            for icv, (trainX, testX) in enumerate(trainTestXs):
+                testMetrics[i, icv] = resultsIterator.next()
+        
+        if numProcesses != 1: 
+            pool.terminate()
+        
+        meanTestMetrics = numpy.mean(testMetrics, 1)
+        stdTestMetrics = numpy.std(testMetrics, 1)
+        
+        logging.debug("t0s=" + str(self.t0s)) 
+        logging.debug("ks=" + str(self.ks)) 
+        logging.debug("lmbdas=" + str(self.lmbdas)) 
+        logging.debug("alphas=" + str(self.alphas))  
+        logging.debug("itemExps=" + str(self.itemExps))
+        
+        bestLearner =   paramList[numpy.argmax(meanTestMetrics)][2]      
+        
+        self.t0 = bestLearner.t0
+        self.k = bestLearner.k
+        self.lmbdaU = bestLearner.lmbdaU
+        self.lmbdaV = bestLearner.lmbdaV
+        self.alpha = bestLearner.alpha
+        self.itemExpP = bestLearner.itemExpP
+        self.itemExpQ = bestLearner.itemExpQ
+        
+        logging.debug("Model parameters: k=" + str(self.k) + " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) + " itemExpP=" + str(self.itemExpP) + " itemExpQ=" + str(self.itemExpQ) +  " max=" + str(numpy.max(meanTestMetrics)))
          
         return meanTestMetrics, stdTestMetrics
 
