@@ -141,8 +141,6 @@ cdef class MaxLocalAUCCython(object):
         
         U -= sigma*dU
         
-        for i in range(m):
-            U[i,:] = scale(U, i, 1/numpy.linalg.norm(U[i,:]), self.k)   
     
     
     def derivativeUiApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V,  numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, unsigned int i):
@@ -279,7 +277,7 @@ cdef class MaxLocalAUCCython(object):
             deltaTheta += deltaBeta * gi[i]
         
         deltaTheta /= gi.sum()
-        deltaTheta += scale(V, j, self.lmbdaV/n, self.k)
+        deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
         
         #Make gradient unit norm 
         normTheta = numpy.linalg.norm(deltaTheta)
@@ -302,11 +300,7 @@ cdef class MaxLocalAUCCython(object):
             dV[j, :] = self.derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, j) 
             
         V -= sigma*dV
-        
-        for j in range(n): 
-            normVj = numpy.linalg.norm(V[j,:])        
-            if normVj >= self.lmbdaV: 
-                V[j,:] = scale(V, j, self.lmbdaV/normVj, k)               
+                  
     
     def derivativeViApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] r,  numpy.ndarray[double, ndim=1, mode="c"] gi, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, unsigned int j): 
         """
@@ -499,7 +493,7 @@ cdef class MaxLocalAUCCython(object):
                 objVector[i] = partialObj*gi[i]/normGpq
         
         objVector /= 2*normGi
-        objVector += 0.5*(self.lmbdaV/(n*m))*numpy.linalg.norm(V)**2
+        objVector += (0.5/m)*((self.lmbdaV/m)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
         
         if full: 
             return objVector
@@ -514,9 +508,9 @@ cdef class MaxLocalAUCCython(object):
         cdef unsigned int n = V.shape[0]
         cdef unsigned int i, j, p, q
         cdef double uivp, uivq, gamma, kappa, ri, hGamma, hKappa, normGpq, normGi=gi.sum(), sumQ=0
-        cdef numpy.ndarray[int, ndim=1, mode="c"] omegai 
-        cdef numpy.ndarray[int, ndim=1, mode="c"] omegaBari 
-        cdef numpy.ndarray[int, ndim=1, mode="c"] allOmegai 
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaBari 
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] allOmegai 
         cdef numpy.ndarray[double, ndim=1, mode="c"] objVector = numpy.zeros(m, dtype=numpy.float)
     
         for i in range(m): 
@@ -524,7 +518,7 @@ cdef class MaxLocalAUCCython(object):
             allOmegai = allColInds[allIndPtr[i]:allIndPtr[i+1]]
             ri = r[i]
             
-            omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.int32), omegai, assume_unique=True)
+            omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
             partialObj = 0 
             normGpq = 0
             
@@ -545,7 +539,7 @@ cdef class MaxLocalAUCCython(object):
             objVector[i] = gi[i]*partialObj/normGpq
         
         objVector /= 2*normGi  
-        objVector += 0.5*(self.lmbdaV/(n*m))*numpy.linalg.norm(V)**2
+        objVector += (0.5/m)*((self.lmbdaV/m)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
         
         if full: 
             return objVector
