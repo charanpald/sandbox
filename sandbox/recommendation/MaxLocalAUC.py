@@ -315,6 +315,10 @@ class MaxLocalAUC(AbstractRecommender):
         """        
         m, n = X.shape
 
+        #Constant rate ignores t0 
+        if self.rate == "constant": 
+            self.t0s = numpy.array([1.0])    
+
         numInitialUVs = self.folds
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
         objectives = numpy.zeros((self.t0s.shape[0], self.alphas.shape[0], numInitialUVs))
@@ -833,7 +837,7 @@ class MaxLocalAUC(AbstractRecommender):
             sigma = self.getSigma(loopInd)
 
             if loopInd % self.recordStep == 0: 
-                if loopInd != 0: 
+                if loopInd != 0 and self.stochastic: 
                     print("")  
                     
                 printStr = self.recordResults(muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)    
@@ -874,7 +878,7 @@ class MaxLocalAUC(AbstractRecommender):
         """
         Find the derivative with respect to V or part of it. 
         """
-        if not self.stochastic:               
+        if not self.stochastic:    
             r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)  
             #r = SparseUtilsCython.computeR2(U, V, self.wv, self.numRecordAucSamples)
             self.learnerCython.updateU(indPtr, colInds, U, V, r, gi, gp, gq, sigma)
