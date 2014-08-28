@@ -492,7 +492,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             nptst.assert_array_almost_equal(dv1, dv2, 3)
 
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testObjectiveApprox(self): 
         """
         We'll test the case in which we apprormate using a large number of samples 
@@ -593,6 +593,66 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         #self.assertAlmostEquals(obj, 2.0)
 
+    def testScale(self): 
+        """
+        Look at the scales of the unnormalised gradients. 
+        """        
+        
+        m = 100 
+        n = 400 
+        k = 3 
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True)
+        
+        w = 0.1
+        eps = 0.001
+        learner = MaxLocalAUCCython(k, w)
+        learner.normalise = False
+        learner.lmbdaU = 1.0
+        learner.lmbdaV = 1.0
+        learner.rho = 1.0
+        learner.numAucSamples = 100
+        
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
+        r = numpy.random.rand(m)
+
+        U = numpy.random.rand(X.shape[0], k)
+        V = numpy.random.rand(X.shape[1], k)
+        
+        gi = numpy.random.rand(m)
+        gi /= gi.sum()        
+        gp = numpy.random.rand(n)
+        gp /= gp.sum()        
+        gq = numpy.random.rand(n)
+        gq /= gq.sum()     
+        
+        permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
+        permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
+        
+        maxLocalAuc = MaxLocalAUC(k, w)
+        normGp, normGq = maxLocalAuc.computeNormGpq(indPtr, colInds, gp, gq, m)
+        
+        normDui = 0
+        for i in range(m): 
+            du = learner.derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i) 
+            normDui += numpy.linalg.norm(du)
+            
+        normDui /= float(m)
+        print(normDui)        
+        
+        normDvi = 0         
+        
+        for i in range(n): 
+            dv = learner.derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, i) 
+            normDvi += numpy.linalg.norm(dv)
+            
+        normDvi /= float(n)
+        print(normDvi)
+        
+        #U has a smaller scale than V but only by a factor of 5 
+
+        
+            
+        
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()
