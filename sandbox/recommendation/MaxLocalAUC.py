@@ -560,10 +560,10 @@ class MaxLocalAUC(AbstractRecommender):
         V = numpy.ascontiguousarray(V)        
         
         if allArray == None: 
-            return self.learnerCython.objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, r, gi, gp, gq, full=full)         
+            return self.learnerCython.objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, gp, gq, full=full)         
         else:
             allIndPtr, allColInds = allArray
-            return self.learnerCython.objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, r, gi, gp, gq, full=full)
+            return self.learnerCython.objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, gp, gq, full=full)
      
 
     def parallelLearnModel(self, X, verbose=False, U=None, V=None): 
@@ -853,7 +853,7 @@ class MaxLocalAUC(AbstractRecommender):
                     bestV = muV.copy()                     
                 
             U  = numpy.ascontiguousarray(U)
-            self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, loopInd, sigma, numIterations)                       
+            self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, loopInd, sigma, numIterations)                       
             loopInd += 1
             
         #Compute quantities for last U and V 
@@ -874,17 +874,15 @@ class MaxLocalAUC(AbstractRecommender):
             return self.U, self.V    
     
     
-    def updateUV(self, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, sigma, numIterations): 
+    def updateUV(self, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, ind, sigma, numIterations): 
         """
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic:    
-            r = SparseUtilsCython.computeR(U, V, self.w, self.numRecordAucSamples)  
-            #r = SparseUtilsCython.computeR2(U, V, self.wv, self.numRecordAucSamples)
-            self.learnerCython.updateU(indPtr, colInds, U, V, r, gi, gp, gq, sigma)
-            self.learnerCython.updateV(indPtr, colInds, U, V, r, gi, gp, gq, sigma)
+            self.learnerCython.updateU(indPtr, colInds, U, V, gp, gq, sigma)
+            self.learnerCython.updateV(indPtr, colInds, U, V, gp, gq, sigma)
             
             muU[:] = U[:] 
             muV[:] = V[:]
         else: 
-            self.learnerCython.updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, ind, numIterations, sigma)
+            self.learnerCython.updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, ind, numIterations, sigma)

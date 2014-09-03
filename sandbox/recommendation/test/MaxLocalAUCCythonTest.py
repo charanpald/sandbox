@@ -15,7 +15,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
         numpy.set_printoptions(precision=4, suppress=True, linewidth=150)
         
-        numpy.seterr(all="raise")
+        #numpy.seterr(all="raise")
         numpy.random.seed(21)
 
 
@@ -35,7 +35,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         learner.lmbdaU = 0
         learner.lmbdaV = 0
         learner.rho = 1.0
-        learner.numAucSamples = 100
+        learner.numAucSamples = n
         
          
 
@@ -55,25 +55,27 @@ class MaxLocalAUCTest(unittest.TestCase):
             V = numpy.random.randn(n, k)
             deltaU = numpy.zeros(U.shape)
             for i in range(X.shape[0]): 
-                deltaU[i, :] = learner.derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i)      
+                deltaU[i, :] = learner.derivativeUi(indPtr, colInds, U, V, gp, gq, i)      
     
             deltaU2 = numpy.zeros(U.shape) 
-            eps = 10**-6         
+            eps = 10**-8         
             
             for i in range(m): 
                 for j in range(k):
                     tempU = U.copy() 
                     tempU[i,j] += eps
-                    obj1 = learner.objective(indPtr, colInds, indPtr, colInds, tempU, V, r, gi, gp, gq)
+                    obj1 = learner.objective(indPtr, colInds, indPtr, colInds, tempU, V, gp, gq)
                     
                     tempU = U.copy() 
                     tempU[i,j] -= eps
-                    obj2 = learner.objective(indPtr, colInds, indPtr, colInds, tempU, V, r, gi, gp, gq)
+                    obj2 = learner.objective(indPtr, colInds, indPtr, colInds, tempU, V, gp, gq)
                     
                     deltaU2[i,j] = (obj1-obj2)/(2*eps)
     
                 #deltaU2[i,:] = deltaU2[i,:]/numpy.linalg.norm(deltaU2[i,:])
             
+            #print(deltaU*100)
+            #print(deltaU2*100)
             nptst.assert_almost_equal(deltaU, deltaU2, 3)
         
         #Try r != 0 and rho > 0
@@ -85,7 +87,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             deltaU = numpy.zeros(U.shape)
             for i in range(X.shape[0]): 
-                deltaU[i, :] = learner.derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i)
+                deltaU[i, :] = learner.derivativeUi(indPtr, colInds, U, V, gp, gq, i)
             
             deltaU2 = numpy.zeros(U.shape) 
             eps = 10**-9        
@@ -94,11 +96,11 @@ class MaxLocalAUCTest(unittest.TestCase):
                 for j in range(k):
                     tempU = U.copy() 
                     tempU[i,j] += eps
-                    obj1 = learner.objective(indPtr, colInds, indPtr, colInds, tempU, V, r, gi, gp, gq)
+                    obj1 = learner.objective(indPtr, colInds, indPtr, colInds, tempU, V, gp, gq)
                     
                     tempU = U.copy() 
                     tempU[i,j] -= eps
-                    obj2 = learner.objective(indPtr, colInds, indPtr, colInds, tempU, V, r, gi, gp, gq)
+                    obj2 = learner.objective(indPtr, colInds, indPtr, colInds, tempU, V, gp, gq)
                     
                     deltaU2[i,j] = (obj1-obj2)/(2*eps)
                                 
@@ -152,12 +154,9 @@ class MaxLocalAUCTest(unittest.TestCase):
         learner.rho = 1.0
         learner.numAucSamples = 100
 
-        
         U = numpy.random.rand(X.shape[0], k)
         V = numpy.random.rand(X.shape[1], k)
 
-        gi = numpy.random.rand(m)
-        gi /= gi.sum()        
         gp = numpy.random.rand(n)
         gp /= gp.sum()        
         gq = numpy.random.rand(n)
@@ -168,11 +167,10 @@ class MaxLocalAUCTest(unittest.TestCase):
         numTests = 5
         
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
-        r = numpy.zeros(m)
         permutedColInds = numpy.arange(n, dtype=numpy.uint32)
 
         #Test with small number of AUC samples, but normalise 
-        learner.numAucSamples = 30
+        learner.numAucSamples = n
         numRuns = 1000
         
         for i in numpy.random.permutation(m)[0:numTests]:  
@@ -181,9 +179,9 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             du1 = numpy.zeros(k)
             for j in range(numRuns): 
-                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, permutedColInds, i)
+                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, gp, gq, permutedColInds, i)
             du1 /= numRuns
-            du2 = learner.derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i) 
+            du2 = learner.derivativeUi(indPtr, colInds, U, V, gp, gq, i) 
             #print(du1, du2)
             print(du1/numpy.linalg.norm(du1), du2/numpy.linalg.norm(du2))
             #print(numpy.linalg.norm(du1 - du2)/numpy.linalg.norm(du1))
@@ -196,26 +194,13 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             du1 = numpy.zeros(k)
             for j in range(numRuns): 
-                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, permutedColInds, i)
+                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, gp, gq, permutedColInds, i)
             du1 /= numRuns
-            du2 = learner.derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i)   
+            du2 = learner.derivativeUi(indPtr, colInds, U, V, gp, gq, i)   
             
             print(du1/numpy.linalg.norm(du1), du2/numpy.linalg.norm(du2))
             nptst.assert_array_almost_equal(du1, du2, 2)
             
-        learner.rho = 0.1
-
-        for i in numpy.random.permutation(m)[0:numTests]:  
-            U = numpy.random.rand(X.shape[0], k)
-            V = numpy.random.rand(X.shape[1], k)            
-            
-            du1 = numpy.zeros(k)
-            for j in range(numRuns): 
-                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, permutedColInds, i)
-            du1 /= numRuns
-            du2 = learner.derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i)   
-            nptst.assert_array_almost_equal(du1, du2, 2)
-            print(du1, du2)
             
         learner.lmbdaV = 0.5 
         
@@ -225,25 +210,12 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             du1 = numpy.zeros(k)
             for j in range(numRuns): 
-                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, permutedColInds, i)
+                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, gp, gq, permutedColInds, i)
             du1 /= numRuns
-            du2 = learner.derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i)   
+            du2 = learner.derivativeUi(indPtr, colInds, U, V, gp, gq, i)   
             nptst.assert_array_almost_equal(du1, du2, 2)
-            print(du1, du2)
+            print(du1/numpy.linalg.norm(du1), du2/numpy.linalg.norm(du2))
             
-        #Test varying c 
-        
-        for i in numpy.random.permutation(m)[0:numTests]:  
-            U = numpy.random.rand(X.shape[0], k)
-            V = numpy.random.rand(X.shape[1], k)            
-            
-            du1 = numpy.zeros(k)
-            for j in range(numRuns): 
-                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, r, gi, gp, gq, permutedColInds, i)
-            du1 /= numRuns
-            du2 = learner.derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i)   
-            nptst.assert_array_almost_equal(du1, du2, 2)
-            print(du1, du2)
             
     @unittest.skip("")
     def testDerivativeV(self): 
@@ -251,6 +223,10 @@ class MaxLocalAUCTest(unittest.TestCase):
         n = 20 
         nnzPerRow = 5 
         X = SparseUtils.generateSparseBinaryMatrix((m, n), nnzPerRow, csarray=True)
+        
+        for i in range(m):
+            X[i, 0] = 1
+            X[i, 1] = 0
         
         k = 5
         u = 0.1
@@ -263,26 +239,21 @@ class MaxLocalAUCTest(unittest.TestCase):
         learner.rho = 1.0
         learner.numAucSamples = 100
 
-        r = numpy.zeros(m)
-
         numRuns = 20
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
-        
-        gi = numpy.random.rand(m)
-        gi /= gi.sum()        
+            
         gp = numpy.random.rand(n)
         gp /= gp.sum()        
         gq = numpy.random.rand(n)
         gq /= gq.sum()            
         
-
         for s in range(numRuns):
             U = numpy.random.randn(m, k)
             V = numpy.random.randn(n, k)            
             
             deltaV = numpy.zeros(V.shape)
             for j in range(n): 
-                deltaV[j, :] = learner.derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, j)   
+                deltaV[j, :] = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, j)   
             
             deltaV2 = numpy.zeros(V.shape)    
             
@@ -292,28 +263,28 @@ class MaxLocalAUCTest(unittest.TestCase):
                 for j in range(k):
                     tempV = V.copy() 
                     tempV[i,j] += eps
-                    obj1 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, r, gi, gp, gq)
+                    obj1 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, gp, gq)
                     
                     tempV = V.copy() 
                     tempV[i,j] -= eps
-                    obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, r, gi, gp, gq)
+                    obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, gp, gq)
                     
                     deltaV2[i,j] = (obj1-obj2)/(2*eps)
                 #deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])                   
                         
-
+            #print(deltaV*100)
+            #print(deltaV2*100)
             nptst.assert_almost_equal(deltaV, deltaV2, 3)
 
         #Try r != 0 and rho > 0
         for s in range(numRuns):
             U = numpy.random.randn(m, k)
             V = numpy.random.randn(n, k)   
-            r = numpy.random.rand(m)
             learner.rho = 1.0    
             
             deltaV = numpy.zeros(V.shape)
             for j in range(n): 
-                deltaV[j, :] = learner.derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, j)    
+                deltaV[j, :] = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, j)    
             
             deltaV2 = numpy.zeros(V.shape)
             
@@ -321,11 +292,11 @@ class MaxLocalAUCTest(unittest.TestCase):
                 for j in range(k):
                     tempV = V.copy() 
                     tempV[i,j] += eps
-                    obj1 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, r, gi, gp, gq)
+                    obj1 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, gp, gq)
                     
                     tempV = V.copy() 
                     tempV[i,j] -= eps
-                    obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, r, gi, gp, gq)
+                    obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, gp, gq)
                     
                     deltaV2[i,j] = (obj1-obj2)/(2*eps)
                 #deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])
@@ -342,7 +313,7 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             deltaV = numpy.zeros(V.shape)
             for j in range(n): 
-                deltaV[j, :] = learner.derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, j)
+                deltaV[j, :] = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, j)
             
             deltaV2 = numpy.zeros(V.shape)
             
@@ -350,16 +321,15 @@ class MaxLocalAUCTest(unittest.TestCase):
                 for j in range(k):
                     tempV = V.copy() 
                     tempV[i,j] += eps
-                    obj1 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, r, gi, gp, gq)
+                    obj1 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, gp, gq)
                     
                     tempV = V.copy() 
                     tempV[i,j] -= eps
-                    obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, r, gi, gp, gq)
+                    obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV,  gp, gq)
                     
                     deltaV2[i,j] = (obj1-obj2)/(2*eps)
                 #deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])
               
-     
             nptst.assert_almost_equal(deltaV, deltaV2, 3)         
       
     @unittest.skip("")
@@ -379,17 +349,13 @@ class MaxLocalAUCTest(unittest.TestCase):
         learner.normalise = False
         learner.lmbdaU = 0
         learner.lmbdaV = 0
-        learner.rho = 1.0
-        learner.numAucSamples = 100
+        learner.numAucSamples = n
         
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
-        r = numpy.random.rand(m)
 
         U = numpy.random.rand(X.shape[0], k)
         V = numpy.random.rand(X.shape[1], k)
-        
-        gi = numpy.random.rand(m)
-        gi /= gi.sum()        
+             
         gp = numpy.random.rand(n)
         gp /= gp.sum()        
         gq = numpy.random.rand(n)
@@ -401,7 +367,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc = MaxLocalAUC(k, w)
         normGp, normGq = maxLocalAuc.computeNormGpq(indPtr, colInds, gp, gq, m)
         
-        numRuns = 500 
+        numRuns = 100 
         numTests = 5
 
         #Let's compare against using the exact derivative 
@@ -410,9 +376,9 @@ class MaxLocalAUCTest(unittest.TestCase):
             V = numpy.random.rand(X.shape[1], k)
             dv1 = numpy.zeros(k)
             for j in range(numRuns): 
-                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, i)
+                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, i)
             dv1 /= numRuns
-            dv2 = learner.derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, i)   
+            dv2 = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, i)   
             
             
             dv3 = numpy.zeros(k)
@@ -420,31 +386,17 @@ class MaxLocalAUCTest(unittest.TestCase):
                 eps = 10**-6
                 tempV = V.copy() 
                 tempV[i,j] += eps
-                obj1 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, r, gi, gp, gq)
+                obj1 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, gp, gq)
                 
                 tempV = V.copy() 
                 tempV[i,j] -= eps
-                obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, r, gi, gp, gq)
+                obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, tempV, gp, gq)
                 
                 dv3[j] = (obj1-obj2)/(2*eps)            
             
             print(dv1, dv2, dv3)
             
             nptst.assert_array_almost_equal(dv1, dv2, 2)
-            
-        learner.rho = 0.2
-
-        for i in numpy.random.permutation(m)[0:numTests]: 
-            U = numpy.random.rand(X.shape[0], k)
-            V = numpy.random.rand(X.shape[1], k)            
-            
-            dv1 = numpy.zeros(k)
-            for j in range(numRuns): 
-                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, i)
-            dv1 /= numRuns
-            dv2 = learner.derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, i)  
-            print(dv1, dv2, dv3)
-            nptst.assert_array_almost_equal(dv1, dv2, 3)
             
         learner.lmbdaV = 0.5 
         
@@ -454,14 +406,14 @@ class MaxLocalAUCTest(unittest.TestCase):
     
             dv1 = numpy.zeros(k)
             for j in range(numRuns): 
-                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, i)
+                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V,  gp, gq, normGp, normGq, permutedRowInds, permutedColInds, i)
             dv1 /= numRuns
-            dv2 = learner.derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, i) 
-            print(dv1, dv2, dv3)
+            dv2 = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, i) 
+            print(dv1, dv2)
             nptst.assert_array_almost_equal(dv1, dv2, 2)
             
         learner.numRowSamples = 10 
-        numRuns = 5000
+        numRuns = 1000
         
         for i in numpy.random.permutation(m)[0:numTests]: 
             U = numpy.random.rand(X.shape[0], k)
@@ -469,10 +421,10 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             dv1 = numpy.zeros(k)
             for j in range(numRuns): 
-                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, i)
+                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, i)
             dv1 /= numRuns
-            dv2 = learner.derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, i)  
-            print(dv1, dv2, dv3)
+            dv2 = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, i)  
+            print(dv1, dv2)
             #nptst.assert_array_almost_equal(dv1, dv2, 3)
 
         maxLocalAuc.numRowSamples = m 
@@ -485,10 +437,10 @@ class MaxLocalAUCTest(unittest.TestCase):
             
             dv1 = numpy.zeros(k)
             for j in range(numRuns): 
-                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, r, gi, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, i)
+                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, i)
             dv1 /= numRuns
-            dv2 = learner.derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, i)   
-            print(dv1, dv2, dv3)
+            dv2 = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, i)   
+            print(dv1, dv2)
             nptst.assert_array_almost_equal(dv1, dv2, 3)
 
 
@@ -509,7 +461,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         learner.lmbdaU = 0
         learner.lmbdaV = 0
         learner.rho = 1.0
-        learner.numAucSamples = n**2
+        learner.numAucSamples = n
         
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
         r = numpy.random.rand(m)
@@ -518,7 +470,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         U = numpy.random.rand(X.shape[0], k)
         V = numpy.random.rand(X.shape[1], k)
         
-        numRuns = 500 
+        numRuns = 100 
         numTests = 5
         
         gi = numpy.random.rand(m)
@@ -534,11 +486,12 @@ class MaxLocalAUCTest(unittest.TestCase):
         #Let's compare against using the exact derivative 
         for i in range(numTests): 
             obj = 0
+
             for j in range(numRuns): 
-                obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, r, gi, gp, gq)
+                obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq)
             obj /= numRuns
-            
-            obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, r, gi, gp, gq)    
+
+            obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq)    
             self.assertAlmostEquals(obj, obj2, 2)
             
         learner.rho = 0.2
@@ -546,10 +499,10 @@ class MaxLocalAUCTest(unittest.TestCase):
         for i in range(numTests): 
             obj = 0
             for j in range(numRuns): 
-                obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, r, gi, gp, gq)
+                obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq)
             obj /= numRuns
             
-            obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, r, gi, gp, gq)    
+            obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq)    
             self.assertAlmostEquals(obj, obj2, 2)
 
         learner.lmbdaV = 0.2
@@ -557,42 +510,19 @@ class MaxLocalAUCTest(unittest.TestCase):
         for i in range(numTests): 
             obj = 0
             for j in range(numRuns): 
-                obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, r, gi, gp, gq)
+                obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq)
             obj /= numRuns
             
-            obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, r, gi, gp, gq)    
+            obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq)    
             self.assertAlmostEquals(obj, obj2, 2)
         
         #Check full and summary versions are the same 
-        obj = learner.objective(indPtr, colInds, indPtr, colInds, U, V, r, gi, gp, gq) 
-        obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, r, gi, gp, gq) 
+        obj = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq) 
+        obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq) 
         self.assertAlmostEquals(obj, obj2, 2)
         
-        
-        U = numpy.zeros((X.shape[0], k))
-        V = numpy.zeros((X.shape[1], k))
-        r = numpy.zeros(X.shape[0])
-        
-        learner.rho = 0 
-        obj = 0
-        for j in range(numRuns): 
-            obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, r, gi, gp, gq)
-        obj /= numRuns
-        
-        obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, r, gi, gp, gq)
-        
-        #self.assertEquals(obj, 0.5)
-        #self.assertEquals(obj2, 0.5)
-        
-        learner.rho = 1
-        r = numpy.ones(X.shape[0])
-        obj = 0
-        for j in range(numRuns): 
-            obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, r, gi, gp, gq)
-        obj /= numRuns        
-        
-        #self.assertAlmostEquals(obj, 2.0)
 
+    @unittest.skip("")
     def testScale(self): 
         """
         Look at the scales of the unnormalised gradients. 
