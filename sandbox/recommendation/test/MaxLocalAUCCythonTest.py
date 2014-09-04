@@ -434,7 +434,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc.numRowSamples = m 
         maxLocalAuc.numAucSamples = 20 
         maxLocalAuc.lmbdaV = 0
-        numRuns = 5000
+        numRuns = 1000
         print("Final test")
         
         #for i in numpy.random.permutation(m)[0:numTests]: 
