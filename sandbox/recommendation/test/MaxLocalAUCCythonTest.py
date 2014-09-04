@@ -332,7 +332,7 @@ class MaxLocalAUCTest(unittest.TestCase):
               
             nptst.assert_almost_equal(deltaV, deltaV2, 3)         
       
-    @unittest.skip("")
+    #@unittest.skip("")
     def testDerivativeViApprox(self): 
         """
         We'll test the case in which we apprormate using a large number of samples 
@@ -342,6 +342,10 @@ class MaxLocalAUCTest(unittest.TestCase):
         n = 30 
         k = 3 
         X = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True)
+        
+        for i in range(m):
+            X[i, 0] = 1
+            X[i, 1] = 0
         
         w = 0.1
         eps = 0.001
@@ -428,10 +432,13 @@ class MaxLocalAUCTest(unittest.TestCase):
             #nptst.assert_array_almost_equal(dv1, dv2, 3)
 
         maxLocalAuc.numRowSamples = m 
-        maxLocalAuc.numAucSamples = 10 
+        maxLocalAuc.numAucSamples = 20 
+        maxLocalAuc.lmbdaV = 0
         numRuns = 5000
+        print("Final test")
         
-        for i in numpy.random.permutation(m)[0:numTests]: 
+        #for i in numpy.random.permutation(m)[0:numTests]: 
+        for i in range(m): 
             U = numpy.random.rand(X.shape[0], k)
             V = numpy.random.rand(X.shape[1], k)            
             
@@ -439,9 +446,12 @@ class MaxLocalAUCTest(unittest.TestCase):
             for j in range(numRuns): 
                 dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, i)
             dv1 /= numRuns
+            #dv1 = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, i) 
             dv2 = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, i)   
-            print(dv1, dv2)
-            nptst.assert_array_almost_equal(dv1, dv2, 3)
+                      
+            
+            print(i, dv1, dv2)
+            nptst.assert_array_almost_equal(dv1, dv2, 2)
 
 
     @unittest.skip("")
