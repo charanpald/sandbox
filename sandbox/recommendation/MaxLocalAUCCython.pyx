@@ -1,4 +1,4 @@
-#cython: profile=False 
+#cython: profile=True 
 #cython: boundscheck=False
 #cython: wraparound=False
 #cython: nonecheck=False
@@ -149,7 +149,7 @@ cdef class MaxLocalAUCCython(object):
         """
         cdef unsigned int p, q, ind, j, s
         cdef double uivp, uivq, gamma, kappa, hGamma,
-        cdef double normDeltaTheta, normGp=0, normGq=0, zeta
+        cdef double normDeltaTheta, normGp, normGq, zeta, nu
         cdef unsigned int m = U.shape[0], n = V.shape[0]
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample
@@ -177,10 +177,13 @@ cdef class MaxLocalAUCCython(object):
                 gamma = uivp - uivq
                 hGamma = max(0, 1-gamma) 
                 
-                zeta += gq[q]*square(hGamma)
+                nu = gq[q]*hGamma
+                zeta += nu*hGamma
                 normGq += gq[q]
                 
-                deltaBeta += (V[q, :] - V[p, :])*gq[q]*hGamma
+                
+                #deltaBeta += (V[q, :] - V[p, :])*(gq[q]*hGamma)
+                deltaBeta += scale(V, q, nu, self.k) - scale(V, p, nu, self.k)
              
             deltaTheta += deltaBeta*(1 - tanh(zeta/normGq)**2)*gp[p]/normGq
          
@@ -317,11 +320,17 @@ cdef class MaxLocalAUCCython(object):
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] rowInds = numpy.random.choice(permutedRowInds, min(self.numRowSamples, permutedRowInds.shape[0]), replace=False)
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaBari
         
-        for i in range(m): 
+        for i in rowInds:
             omegai = colInds[indPtr[i]:indPtr[i+1]]
             #omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
             
+            #Find an array not in omega but in permutedColInds 
+            omegaBari = numpy.zeros(self.numAucSamples, numpy.uint32)
+            for s in range(self.numAucSamples): 
+                omegaBari[s] = inverseChoiceArray(omegai, permutedColInds)
+
             betaScale = 0
             
             if j in omegai:                 
@@ -332,8 +341,7 @@ cdef class MaxLocalAUCCython(object):
                 zeta = 0
                 kappa = 0 
                 
-                for s in range(self.numAucSamples):
-                    q = inverseChoiceArray(omegai, permutedColInds)
+                for q in omegaBari: 
                     uivq = dot(U, i, V, q, k)
                     gamma = uivp - uivq
                     hGamma = max(0, 1-gamma) 
@@ -341,7 +349,7 @@ cdef class MaxLocalAUCCython(object):
                     nu = gq[q]*hGamma                    
                     
                     kappa += nu
-                    zeta += nu * hGamma
+                    zeta += nu*hGamma
                     normGqi += gq[q]
                 
                 if normGqi != 0: 
@@ -360,13 +368,13 @@ cdef class MaxLocalAUCCython(object):
                 omegaiSample = uniformChoice(omegai, self.numAucSamples)
                 
                 for p in omegaiSample: 
+                    #for p in omegai: 
                     uivp = dot(U, i, V, p, k)
                     gamma = uivp - uivq  
                     hGamma = max(0, 1-gamma) 
                     zeta = 0
                     
-                    for s in range(self.numAucSamples):
-                        ell = inverseChoiceArray(omegai, permutedColInds)
+                    for ell in omegaBari: 
                         uivell = dot(U, i, V, ell, k)
                         gamma2 = uivp - uivell  
                         hGamma2 = max(0, 1-gamma2)
@@ -381,10 +389,9 @@ cdef class MaxLocalAUCCython(object):
                 if normGp[i]*normGpi != 0: 
                     betaScale += kappa/(normGpi*normGq[i])
             
-            #print(betaScale, U[i, :])
             deltaTheta += U[i, :]*betaScale 
         
-        deltaTheta /= m
+        deltaTheta /= rowInds.shape[0]
         deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
         
         #Make gradient unit norm 

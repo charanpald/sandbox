@@ -67,7 +67,7 @@ def updateUVBlock(sharedArgs, methodArgs):
             
             indPtr2, colInds2 = omegasList[colInd]
 
-            learner.updateUV(indPtr2, colInds2, U, V, muU, muV, blockRowInds, blockColInds, gi, gp, gq, normGp, normGq, ind, sigma, numIterations)
+            learner.updateUV(indPtr2, colInds2, U, V, muU, muV, blockRowInds, blockColInds, gp, gq, normGp, normGq, ind, sigma, numIterations)
         else: 
             time.sleep(3)
 
