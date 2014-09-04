@@ -132,6 +132,7 @@ cdef inline unsigned int inverseChoiceArray(numpy.ndarray[unsigned int, ndim=1, 
     
     while inV == 1:
         q = w[numpy.random.randint(0, n)]
+        #q = w[randint(n)]
         inV = 0 
         for j in range(m): 
             if q == v[j]: 
