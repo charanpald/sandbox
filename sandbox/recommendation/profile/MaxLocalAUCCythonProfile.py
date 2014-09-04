@@ -2,7 +2,7 @@ import numpy
 import logging
 import sys
 from sandbox.util.ProfileUtils import ProfileUtils
-from sandbox.recommendation.MaxLocalAUCCython import derivativeViApprox, objectiveApprox
+from sandbox.recommendation.MaxLocalAUCCython import MaxLocalAUCCython
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.Sampling import Sampling
@@ -67,14 +67,16 @@ class MaxLocalAUCCythonProfile(object):
         C = 0 
         normalise = True
         
+        learner = MaxLocalAUCCython()
+        
         def run(): 
             numRuns = 1
             for i in range(numRuns): 
                 for j in range(self.n):     
-                    derivativeViApprox(indPtr, colInds,  U,  V,  colIndsProbabilities, j, numRowSamples, numAucSamples, xi, lmbda, C, normalise)
+                    learner.derivativeViApprox(indPtr, colInds,  U,  V,  colIndsProbabilities, j, numRowSamples, numAucSamples, xi, lmbda, C, normalise)
                 
         ProfileUtils.profile('run()', globals(), locals())
 
 profiler = MaxLocalAUCCythonProfile()
-#profiler.profileDerivativeVjApprox()
-profiler.profileObjective()
+profiler.profileDerivativeVjApprox()
+#profiler.profileObjective()
