@@ -1,4 +1,4 @@
-#cython: profile=True 
+#cython: profile=False 
 #cython: boundscheck=False
 #cython: wraparound=False
 #cython: nonecheck=False
@@ -36,7 +36,7 @@ cdef computeOmegaProbs(unsigned int i, numpy.ndarray[int, ndim=1, mode="c"] omeg
     
     return colIndsCumProbs
 
-cdef inline itemRank(numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[int, ndim=1, mode="c"] omegai, unsigned int i, double uivp, unsigned int numOmegaBari): 
+cdef itemRank(numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[int, ndim=1, mode="c"] omegai, unsigned int i, double uivp, unsigned int numOmegaBari): 
     """
     Use the sampling scheme from k-order paper to get an estimate of the rank of an item 
     """
@@ -192,10 +192,11 @@ cdef class MaxLocalAUCCython(object):
         deltaTheta += scale(U, i, self.lmbdaU/m, self.k)
                         
         #Normalise gradient to have unit norm 
-        normDeltaTheta = numpy.linalg.norm(deltaTheta)
-        
-        if normDeltaTheta != 0 and self.normalise: 
-            deltaTheta = deltaTheta/normDeltaTheta
+        if self.normalise: 
+            normDeltaTheta = numpy.linalg.norm(deltaTheta)
+            
+            if normDeltaTheta != 0: 
+                deltaTheta = deltaTheta/normDeltaTheta
         
         return deltaTheta
     
@@ -310,7 +311,6 @@ cdef class MaxLocalAUCCython(object):
         """
         delta phi/delta v_i  using the hinge loss. 
         """
-        cdef unsigned int k = U.shape[1]
         cdef unsigned int m = U.shape[0]
         cdef unsigned int n = V.shape[0]
         cdef unsigned int i, p, q, s, ell
@@ -321,6 +321,7 @@ cdef class MaxLocalAUCCython(object):
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaBari
+        cdef numpy.ndarray[double, ndim=1, mode="c"] uivqs = numpy.zeros(self.numAucSamples, numpy.float)
         
         for i in rowInds:
             omegai = colInds[indPtr[i]:indPtr[i+1]]
@@ -330,19 +331,22 @@ cdef class MaxLocalAUCCython(object):
             omegaBari = numpy.zeros(self.numAucSamples, numpy.uint32)
             for s in range(self.numAucSamples): 
                 omegaBari[s] = inverseChoiceArray(omegai, permutedColInds)
+                #Can compute uivqs here 
+                uivqs[s] = dot(U, i, V, omegaBari[s], self.k)
 
             betaScale = 0
             
             if j in omegai:                 
                 p = j 
-                uivp = dot(U, i, V, p, k)
+                uivp = dot(U, i, V, p, self.k)
                 
                 normGqi = 0
                 zeta = 0
                 kappa = 0 
                 
-                for q in omegaBari: 
-                    uivq = dot(U, i, V, q, k)
+                for s, q in enumerate(omegaBari): 
+                    #uivq = dot(U, i, V, q, k)
+                    uivq = uivqs[s]
                     gamma = uivp - uivq
                     hGamma = max(0, 1-gamma) 
                     
@@ -357,10 +361,10 @@ cdef class MaxLocalAUCCython(object):
                     zeta /= normGqi
                     
                 if normGp[i] != 0: 
-                    betaScale -= kappa*(1 - tanh(zeta)**2)*gp[p]/normGp[i]
+                    betaScale -= kappa*(1 - square(tanh(zeta)))*gp[p]/normGp[i]
             else:
                 q = j 
-                uivq = dot(U, i, V, q, k)
+                uivq = dot(U, i, V, q, self.k)
                 
                 normGpi = 0 
                 kappa = 0
@@ -369,13 +373,14 @@ cdef class MaxLocalAUCCython(object):
                 
                 for p in omegaiSample: 
                     #for p in omegai: 
-                    uivp = dot(U, i, V, p, k)
+                    uivp = dot(U, i, V, p, self.k)
                     gamma = uivp - uivq  
                     hGamma = max(0, 1-gamma) 
                     zeta = 0
                     
-                    for ell in omegaBari: 
-                        uivell = dot(U, i, V, ell, k)
+                    for s, ell in enumerate(omegaBari): 
+                        #uivell = dot(U, i, V, ell, k)
+                        uivell = uivqs[s]
                         gamma2 = uivp - uivell  
                         hGamma2 = max(0, 1-gamma2)
                         zeta += gq[ell]*square(hGamma2)
@@ -383,21 +388,23 @@ cdef class MaxLocalAUCCython(object):
                     if normGq[i] != 0: 
                         zeta /= normGq[i]
                     
-                    kappa += gp[p]*gq[q]*hGamma * (1- tanh(zeta)**2)
+                    kappa += gp[p]*gq[q]*hGamma * (1- square(tanh(zeta)))
                     normGpi += gp[p]                    
                     
                 if normGp[i]*normGpi != 0: 
                     betaScale += kappa/(normGpi*normGq[i])
             
-            deltaTheta += U[i, :]*betaScale 
+            deltaTheta += scale(U, i, betaScale, self.k) 
         
         deltaTheta /= rowInds.shape[0]
         deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
         
-        #Make gradient unit norm 
-        normTheta = numpy.linalg.norm(deltaTheta)
-        if normTheta != 0 and self.normalise: 
-            deltaTheta = deltaTheta/normTheta
+        #Make gradient unit norm
+        if self.normalise: 
+            normTheta = numpy.linalg.norm(deltaTheta)
+            
+            if normTheta != 0: 
+                deltaTheta = deltaTheta/normTheta
         
         return deltaTheta
     
