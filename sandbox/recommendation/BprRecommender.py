@@ -65,7 +65,7 @@ class BprRecommender(AbstractRecommender):
         """
         m, n = X.shape
         trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, csarray=True, colProbs=colProbs)
-        testAucs = numpy.zeros((self.ks.shape[0], self.lmbdaUsers.shape[0], self.lmbdaItems.shape[0], len(trainTestXs)))
+        testMetrics = numpy.zeros((self.ks.shape[0], self.lmbdaUsers.shape[0], self.lmbdaItems.shape[0], self.gammas.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection with test leave out per row of " + str(self.validationSize))
         paramList = []        
@@ -73,12 +73,14 @@ class BprRecommender(AbstractRecommender):
         for i, k in enumerate(self.ks): 
             for j, lmbdaUser in enumerate(self.lmbdaUsers): 
                 for s, lmbdaItem in enumerate(self.lmbdaItems): 
+                    for t, gamma in enumerate(self.gammas):
                         for icv, (trainX, testX) in enumerate(trainTestXs):
                             learner = self.copy()
                             learner.k = k  
                             learner.lmbdaUser = lmbdaUser 
                             learner.lmbdaPos = lmbdaItem
                             learner.lmbdaNeg = lmbdaItem
+                            learner.gamma = gamma
                         
                             paramList.append((trainX, testX, learner))
             
@@ -92,29 +94,33 @@ class BprRecommender(AbstractRecommender):
         for i, k in enumerate(self.ks): 
             for j, lmbdaUser in enumerate(self.lmbdaUsers): 
                 for s, lmbdaPos in enumerate(self.lmbdaItems): 
+                    for t, gamma in enumerate(self.gammas):
                         for icv, (trainX, testX) in enumerate(trainTestXs):        
-                            testAucs[i, j, s, icv] = resultsIterator.next()
+                            testMetrics[i, j, s, t, icv] = resultsIterator.next()
                 
         if self.numProcesses != 1: 
             pool.terminate()
         
-        meanTestLocalAucs = numpy.mean(testAucs, 3)
-        stdTestLocalAucs = numpy.std(testAucs, 3)
+        meanTestMetrics = numpy.mean(testMetrics, 4)
+        stdTestMetrics = numpy.std(testMetrics, 4)
         
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdaUsers=" + str(self.lmbdaUsers)) 
         logging.debug("lmbdaPoses=" + str(self.lmbdaItems)) 
         logging.debug("lmbdaNegs=" + str(self.lmbdaItems)) 
-        logging.debug("Mean local AUCs=" + str(meanTestLocalAucs))
+        logging.debug("Mean metrics=" + str(meanTestMetrics))
         
-        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[0]]
-        self.lmbdaUser = self.lmbdaUsers[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[1]]
-        self.lmbdaPos = self.lmbdaItems[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[2]]
-        self.lmbdaNeg = self.lmbdaItems[numpy.unravel_index(numpy.argmax(meanTestLocalAucs), meanTestLocalAucs.shape)[2]]
+        
+        indK, indLmdabUser, indLmbdaItem, indGamma = numpy.unravel_index(meanTestMetrics.argmax(), meanTestMetrics.shape)
+        self.k = self.ks[indK]
+        self.lmbdaUser = self.lmbdaUsers[indLmdabUser]
+        self.lmbdaPos = self.lmbdaItems[indLmbdaItem]
+        self.lmbdaNeg = self.lmbdaItems[indLmbdaItem]
+        self.gamma = self.gammas[indGamma]
 
         logging.debug("Model parameters: " + str(self))
          
-        return meanTestLocalAucs, stdTestLocalAucs
+        return meanTestMetrics, stdTestMetrics
         
     def copy(self): 
         learner = BprRecommender(self.k, self.lmbdaUser, self.lmbdaPos, self.lmbdaNeg, self.biasReg, self.gamma)

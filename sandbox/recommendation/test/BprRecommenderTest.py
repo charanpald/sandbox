@@ -14,7 +14,7 @@ class BprRecommenderTest(unittest.TestCase):
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
         numpy.set_printoptions(precision=3, suppress=True, linewidth=150)
         
-        numpy.seterr(all="raise")
+        #numpy.seterr(all="raise")
         numpy.random.seed(21)
     
     def testLearnModel(self): 
@@ -23,7 +23,7 @@ class BprRecommenderTest(unittest.TestCase):
         k = 5
         u = 0.1 
         w = 1-u
-        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, w)
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, w, csarray=True)
         
         lmbda = 0.1 
         gamma = 0.01
@@ -54,7 +54,7 @@ class BprRecommenderTest(unittest.TestCase):
         learner.lmbdaNegs = 2.0**-numpy.arange(1, 3)
         learner.gammas = 2.0**-numpy.arange(1, 3)
         learner.folds = 2
-        #learner.numProcesses = 1 
+        learner.numProcesses = 1 
         
         colProbs = numpy.array(X.sum(1)).ravel()
         colProbs /= colProbs.sum()
