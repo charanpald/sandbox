@@ -63,7 +63,7 @@ cdef class MaxLocalAUCCython(object):
     cdef public double lmbdaU, lmbdaV, maxNorm, rho, w
     cdef public bint itemFactors, normalise
     
-    def __init__(self, k=8, lmbdaU=0.0, lmbdaV=1.0, normalise=True, numAucSamples=10, numRowSamples=30, startAverage=30, rho=0.5, w=0.9): 
+    def __init__(self, unsigned int k=8, double lmbdaU=0.0, double lmbdaV=1.0, bint normalise=True, unsigned int numAucSamples=10, unsigned int numRowSamples=30, unsigned int startAverage=30, double rho=0.5, double w=0.9): 
         self.itemFactors = False        
         self.k = k 
         self.lmbdaU = lmbdaU
