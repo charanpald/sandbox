@@ -106,8 +106,8 @@ class BprRecommender(AbstractRecommender):
         
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdaUsers=" + str(self.lmbdaUsers)) 
-        logging.debug("lmbdaPoses=" + str(self.lmbdaItems)) 
-        logging.debug("lmbdaNegs=" + str(self.lmbdaItems)) 
+        logging.debug("lmbdaItems=" + str(self.lmbdaItems)) 
+        logging.debug("gammas=" + str(self.gammas)) 
         logging.debug("Mean metrics=" + str(meanTestMetrics))
         
         
@@ -140,3 +140,8 @@ class BprRecommender(AbstractRecommender):
         outputStr += super(BprRecommender, self).__str__()
         
         return outputStr   
+        
+
+    def modelParamsStr(self): 
+        outputStr = " k=" + str(self.k) + " lmbdaUser=" + str(self.lmbdaUser) + " lmbdaPos=" + str(self.lmbdaPos) +  " gamma=" + str(self.gamma)
+        return outputStr 
