@@ -275,7 +275,7 @@ class Sampling(object):
     def sampleUsers(X, k): 
         """
         Let's pick a sample of users from X such that each item has at least 2 
-        users
+        users. Pick at most k users. 
         """
         m, n = X.shape        
         
@@ -295,7 +295,4 @@ class Sampling(object):
             userInds = numpy.sort(userInds)
             
             return X[userInds, :]
-        
-
-        
         
