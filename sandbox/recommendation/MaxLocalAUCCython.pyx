@@ -158,7 +158,10 @@ cdef class MaxLocalAUCCython(object):
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(self.k, numpy.float)
              
         omegai = colInds[indPtr[i]:indPtr[i+1]]
-        omegaiSample = uniformChoice(omegai, self.numAucSamples)   
+        
+        #This ought to restrict omega to permutedColInds
+        omegaiSample = numpy.intersect1d(omegai, permutedColInds, assume_unique=True)                
+        omegaiSample = uniformChoice(omegaiSample, self.numAucSamples)   
         normGp = 0
         
         for p in omegaiSample: 
@@ -368,8 +371,10 @@ cdef class MaxLocalAUCCython(object):
                 
                 normGpi = 0 
                 kappa = 0
-                #TODO: This ought to restrict omega to permutedRows
-                omegaiSample = uniformChoice(omegai, self.numAucSamples)
+                
+                #This ought to restrict omega to permutedColInds
+                omegaiSample = numpy.intersect1d(omegai, permutedColInds, assume_unique=True)
+                omegaiSample = uniformChoice(omegaiSample, self.numAucSamples)
                 
                 for p in omegaiSample: 
                     #for p in omegai: 
