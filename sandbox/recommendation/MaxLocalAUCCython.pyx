@@ -160,8 +160,8 @@ cdef class MaxLocalAUCCython(object):
         omegai = colInds[indPtr[i]:indPtr[i+1]]
         
         #This ought to restrict omega to permutedColInds
-        omegaiSample = numpy.intersect1d(omegai, permutedColInds, assume_unique=True)                
-        omegaiSample = uniformChoice(omegaiSample, self.numAucSamples)   
+        #omegaiSample = numpy.intersect1d(omegai, permutedColInds, assume_unique=True)                
+        omegaiSample = uniformChoice(omegai, self.numAucSamples)   
         normGp = 0
         
         for p in omegaiSample: 
@@ -373,8 +373,8 @@ cdef class MaxLocalAUCCython(object):
                 kappa = 0
                 
                 #This ought to restrict omega to permutedColInds
-                omegaiSample = numpy.intersect1d(omegai, permutedColInds, assume_unique=True)
-                omegaiSample = uniformChoice(omegaiSample, self.numAucSamples)
+                #omegaiSample = numpy.intersect1d(omegai, permutedColInds, assume_unique=True)
+                omegaiSample = uniformChoice(omegai, self.numAucSamples)
                 
                 for p in omegaiSample: 
                     #for p in omegai: 
