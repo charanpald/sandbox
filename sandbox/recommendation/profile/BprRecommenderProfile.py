@@ -14,9 +14,9 @@ class BprRecommenderProfile(object):
         
         #Create a low rank matrix  
         m = 500
-        n = 200
+        n = 2000
         self.k = 8 
-        self.X = SparseUtils.generateSparseBinaryMatrix((m, n), self.k, csarray=False)
+        self.X = SparseUtils.generateSparseBinaryMatrix((m, n), self.k, csarray=True)
         
         
     def profileLearnModel(self):

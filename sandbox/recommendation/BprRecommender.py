@@ -7,8 +7,7 @@ import logging
 import multiprocessing
 from sandbox.util.MCEvaluator import MCEvaluator 
 from sandbox.util.Sampling import Sampling
-from bpr import BPRArgs, BPR, UniformPairWithoutReplacement 
-from bprCython import UniformUserUniformItem
+from bprCython import UniformUserUniformItem, BPRArgs, BPR 
 from sandbox.recommendation.RecommenderUtils import computeTestMRR, computeTestF1
 from sandbox.recommendation.AbstractRecommender import AbstractRecommender
 
@@ -49,12 +48,11 @@ class BprRecommender(AbstractRecommender):
         
         model = BPR(self.k, args)
     
-        sample_negative_items_empirically = True
-        sampler = UniformUserUniformItem(sample_negative_items_empirically)
-        model.train(X, sampler, self.maxIterations)
+        sampler = UniformUserUniformItem()
+        user_factors, item_factors = model.train(X, sampler, self.maxIterations)
         
-        self.U = model.user_factors
-        self.V = model.item_factors
+        self.U = user_factors
+        self.V = item_factors
     
     def predict(self, maxItems): 
         return MCEvaluator.recommendAtk(self.U, self.V, maxItems)
