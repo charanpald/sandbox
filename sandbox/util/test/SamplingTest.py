@@ -274,6 +274,23 @@ class  SamplingTest(unittest.TestCase):
         X2, userInds = Sampling.sampleUsers2(X, k)
 
         nptst.assert_array_equal(X.toarray(), X2.toarray())
+        
+        #Test pruning of cols 
+        k = 500
+        m = 100
+        n = 500
+        u = 0.1
+        w = 1 - u
+        X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), r, w, csarray=True, verbose=True, indsPerRow=200)
+        numpy.random.seed(21)
+        X2, userInds = Sampling.sampleUsers2(X, k, prune=True)
+        nnz1 = X2.nnz
+        self.assertTrue((X2.sum(0)!=0).all())
+
+        numpy.random.seed(21)
+        X2, userInds = Sampling.sampleUsers2(X, k, prune=False)
+        nnz2 = X2.nnz
+        self.assertEquals(nnz1, nnz2)
 
         numRuns = 50
         for i in range(numRuns): 

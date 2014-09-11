@@ -297,7 +297,7 @@ class Sampling(object):
             return X[userInds, :], userInds
         
     @staticmethod 
-    def sampleUsers2(X, k): 
+    def sampleUsers2(X, k, prune=False): 
         """
         Let's pick a sample of users from X randomly. Pick at most k nnz elements. 
         """
@@ -320,5 +320,10 @@ class Sampling(object):
         else: 
             userInds = numpy.sort(allUserInds[0:(i-1)*stepSize] )            
             
-        return X[userInds, :], userInds
+        if prune: 
+            tempX = X[userInds, :]
+            colInds = numpy.arange(n, dtype=numpy.int)[tempX.sum(0)!=0]
+            return tempX[:, colInds], userInds
+        else:   
+            return X[userInds, :], userInds
             
