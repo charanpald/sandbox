@@ -280,7 +280,7 @@ class Sampling(object):
         m, n = X.shape        
         
         if X.shape[0] <= k: 
-            return X 
+            return X, numpy.arange(m) 
         else: 
             itemInds = numpy.random.permutation(n)
             userInds = numpy.array([], numpy.int32)
@@ -294,5 +294,32 @@ class Sampling(object):
             userInds = numpy.random.choice(userInds, min(k, userInds.shape[0]), replace=False)
             userInds = numpy.sort(userInds)
             
-            return X[userInds, :]
+            return X[userInds, :], userInds
         
+    @staticmethod 
+    def sampleUsers2(X, k): 
+        """
+        Let's pick a sample of users from X randomly. Pick at most k nnz elements. 
+        """
+        m, n = X.shape  
+        stepSize = 5 
+        userInds = numpy.array([], numpy.int)
+        allUserInds = numpy.random.permutation(m) 
+        tempX = X[userInds, :]
+        nnz = 0
+        
+        i = 0         
+        
+        while nnz <= k and i*stepSize <= m: 
+            i += 1            
+            userInds = allUserInds[0:i*stepSize]  
+            tempX = X[userInds, :]            
+            nnz = tempX.nnz
+        
+        if i*stepSize >= m and nnz <= k: 
+            userInds = numpy.arange(m)
+        else: 
+            userInds = numpy.sort(allUserInds[0:(i-1)*stepSize] )            
+            
+        return X[userInds, :], userInds
+            
