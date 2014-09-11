@@ -305,7 +305,6 @@ class Sampling(object):
         stepSize = 5 
         userInds = numpy.array([], numpy.int)
         allUserInds = numpy.random.permutation(m) 
-        tempX = X[userInds, :]
         nnz = 0
         
         i = 0         
