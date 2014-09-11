@@ -242,7 +242,7 @@ class  SamplingTest(unittest.TestCase):
         X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), r, w, csarray=True, verbose=True, indsPerRow=200)
 
         k = 50
-        X2 = Sampling.sampleUsers(X, k)
+        X2, userInds = Sampling.sampleUsers(X, k)
 
         nptst.assert_array_equal(X.toarray(), X2.toarray())
         
@@ -254,11 +254,41 @@ class  SamplingTest(unittest.TestCase):
 
             X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), r, w, csarray=True, verbose=True, indsPerRow=200)
 
-            X2 = Sampling.sampleUsers(X, k)
+            X2, userInds = Sampling.sampleUsers(X, k)
             
             self.assertEquals(X2.shape[0], min(k, m))
             self.assertTrue((X.dot(X.T)!=numpy.zeros((m, m)).all()))
+            self.assertTrue((X2.toarray() == X.toarray()[userInds, :]).all())
+            self.assertEquals(X.toarray()[userInds, :].nonzero()[0].shape[0], X2.nnz)
         
+
+    def testSampleUsers2(self): 
+        m = 10
+        n = 15
+        r = 5 
+        u = 0.3
+        w = 1-u
+        X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), r, w, csarray=True, verbose=True, indsPerRow=200)
+
+        k = X.nnz+100
+        X2, userInds = Sampling.sampleUsers2(X, k)
+
+        nptst.assert_array_equal(X.toarray(), X2.toarray())
+
+        numRuns = 50
+        for i in range(numRuns): 
+            m = numpy.random.randint(10, 100)
+            n = numpy.random.randint(10, 100)
+            k = 500
+
+            X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), r, w, csarray=True, verbose=True, indsPerRow=200)
+
+            X2, userInds = Sampling.sampleUsers2(X, k)
+            
+
+            self.assertTrue((X.dot(X.T)!=numpy.zeros((m, m)).all()))
+            self.assertTrue((X2.toarray() == X.toarray()[userInds, :]).all())
+            self.assertEquals(X.toarray()[userInds, :].nonzero()[0].shape[0], X2.nnz)
 
 if __name__ == '__main__':
     unittest.main()
