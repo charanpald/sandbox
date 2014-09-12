@@ -647,7 +647,7 @@ class MaxLocalAUC(AbstractRecommender):
                 if loopInd != 0: 
                     print("")  
                     
-                printStr = self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)    
+                printStr = self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime)    
                 logging.debug(printStr) 
                                 
                 if testIndPtr != None and testMeasures[-1][metricInd] >= bestMetric: 
@@ -670,7 +670,7 @@ class MaxLocalAUC(AbstractRecommender):
         print("")
         totalTime = time.time() - startTime
         printStr = "Finished, time=" + str('%.1f' % totalTime) + " "
-        printStr += self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)
+        printStr += self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime)
         logging.debug(printStr)
                           
         self.U = bestU 
@@ -734,14 +734,14 @@ class MaxLocalAUC(AbstractRecommender):
     def predict(self, maxItems): 
         return MCEvaluator.recommendAtk(self.U, self.V, maxItems)
 
-    def recordResults(self, muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX): 
+    def recordResults(self, muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime): 
         
         sigma = self.getSigma(loopInd)        
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
         objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=True)
         if trainMeasures == None: 
             trainMeasures = []
-        trainMeasures.append([objArr.sum(), MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r)]) 
+        trainMeasures.append([objArr.sum(), MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r), time.time()-startTime]) 
         
         printStr = "iter " + str(loopInd) + ":"
         printStr += " sigma=" + str('%.4f' % sigma)
@@ -798,7 +798,7 @@ class MaxLocalAUC(AbstractRecommender):
             testIndPtr, testColInds = None, None 
 
         
-        #Not that to compute the test AUC we pick i \in X and j \notin X \cup testX       
+        #Note that to compute the test AUC we pick i \in X and j \notin X \cup testX       
         indPtr, colInds = SparseUtils.getOmegaListPtr(trainX)
         allIndPtr, allColInds = SparseUtils.getOmegaListPtr(X)
 
@@ -840,7 +840,7 @@ class MaxLocalAUC(AbstractRecommender):
                 if loopInd != 0 and self.stochastic: 
                     print("")  
                     
-                printStr = self.recordResults(muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)    
+                printStr = self.recordResults(muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime)    
                 logging.debug(printStr) 
                                 
                 if testIndPtr != None and testMeasures[-1][metricInd] >= bestMetric: 
@@ -859,7 +859,7 @@ class MaxLocalAUC(AbstractRecommender):
         #Compute quantities for last U and V 
         totalTime = time.time() - startTime
         printStr = "\nFinished, time=" + str('%.1f' % totalTime) + " "
-        printStr += self.recordResults(muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX)
+        printStr += self.recordResults(muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime)
         logging.debug(printStr)
          
         self.U = bestU 
