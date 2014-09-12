@@ -752,17 +752,32 @@ class MaxLocalAUC(AbstractRecommender):
             testMeasuresRow = []
             testMeasuresRow.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, gi, gp, gq, allArray=(allIndPtr, allColInds)))
             testMeasuresRow.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
-            testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, self.recommendSize, trainX)
-            f1Array, orderedItems = MCEvaluator.f1AtK((testIndPtr, testColInds), testOrderedItems, self.recommendSize, verbose=True)
-            testMeasuresRow.append(f1Array[rowSamples].mean())   
-            mrr, orderedItems = MCEvaluator.mrrAtK((testIndPtr, testColInds), testOrderedItems, self.recommendSize, verbose=True)
-            testMeasuresRow.append(mrr[rowSamples].mean())
-            testMeasures.append(testMeasuresRow)
-           
+            testOrderedItems = MCEvaluatorCython.recommendAtk(muU, muV, numpy.max(self.recommendSize), trainX)
+
             printStr += " validation: obj~" + str('%.4f' % testMeasuresRow[0])
             printStr += " LAUC~" + str('%.4f' % testMeasuresRow[1])
-            printStr += " f1@" + str(self.recommendSize) + "=" + str('%.4f' % testMeasuresRow[2])
-            printStr += " mrr@" + str(self.recommendSize) + "=" + str('%.4f' % testMeasuresRow[3])
+
+            try: 
+                for p in self.recommendSize: 
+                    f1Array, orderedItems = MCEvaluator.f1AtK((testIndPtr, testColInds), testOrderedItems, p, verbose=True)
+                    testMeasuresRow.append(f1Array[rowSamples].mean())
+            except: 
+                f1Array, orderedItems = MCEvaluator.f1AtK((testIndPtr, testColInds), testOrderedItems, self.recommendSize, verbose=True)
+                testMeasuresRow.append(f1Array[rowSamples].mean())
+
+            printStr += " f1@" + str(self.recommendSize) + "=" + str('%.4f' % testMeasuresRow[-1])                    
+                   
+            try:
+                for p in self.recommendSize: 
+                    mrr, orderedItems = MCEvaluator.mrrAtK((testIndPtr, testColInds), testOrderedItems, p, verbose=True)
+                    testMeasuresRow.append(mrr[rowSamples].mean())
+            except: 
+                mrr, orderedItems = MCEvaluator.mrrAtK((testIndPtr, testColInds), testOrderedItems, self.recommendSize, verbose=True)
+                testMeasuresRow.append(mrr[rowSamples].mean())
+                
+            printStr += " mrr@" + str(self.recommendSize) + "=" + str('%.4f' % testMeasuresRow[-1])
+            testMeasures.append(testMeasuresRow)
+                       
             
         printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(muU))
         printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(muV))
