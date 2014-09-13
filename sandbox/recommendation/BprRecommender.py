@@ -7,7 +7,7 @@ import logging
 import multiprocessing
 from sandbox.util.MCEvaluator import MCEvaluator 
 from sandbox.util.Sampling import Sampling
-from bprCython import UniformUserUniformItem, BPRArgs, BPR 
+from bprCython import AllUserUniformItem, BPRArgs, BPR 
 from sandbox.recommendation.RecommenderUtils import computeTestMRR, computeTestF1
 from sandbox.recommendation.AbstractRecommender import AbstractRecommender
 
@@ -29,6 +29,8 @@ class BprRecommender(AbstractRecommender):
         self.gamma = gamma
                 
         self.maxIterations = 25
+        self.numAucSamples = 5
+        self.recordStep = 5
         
         #Model selection parameters 
         self.ks = 2**numpy.arange(3, 8)
@@ -47,8 +49,10 @@ class BprRecommender(AbstractRecommender):
         args.positive_item_regularization = self.lmbdaNeg
         
         model = BPR(self.k, args)
+        model.numAucSamples = self.numAucSamples
+        model.recordStep = self.recordStep 
     
-        sampler = UniformUserUniformItem()
+        sampler = AllUserUniformItem()
         user_factors, item_factors = model.train(X, sampler, self.maxIterations)
         
         self.U = user_factors
@@ -135,6 +139,8 @@ class BprRecommender(AbstractRecommender):
         outputStr += " biasReg=" + str(self.biasReg)
         outputStr += " gamma=" + str(self.gamma)
         outputStr += " maxIterations=" + str(self.maxIterations)
+        outputStr += " numAucSamples=" + str(self.numAucSamples)
+        outputStr += " recordStep=" + str(self.recordStep)
         outputStr += super(BprRecommender, self).__str__()
         
         return outputStr   
