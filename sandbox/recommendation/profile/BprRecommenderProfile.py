@@ -13,8 +13,8 @@ class BprRecommenderProfile(object):
         numpy.random.seed(21)        
         
         #Create a low rank matrix  
-        m = 2000
-        n = 1000
+        m = 1000
+        n = 500
         self.k = 8 
         self.X = SparseUtils.generateSparseBinaryMatrix((m, n), self.k, csarray=True)
         
@@ -26,10 +26,11 @@ class BprRecommenderProfile(object):
         eps = 10**-6
         alpha = 0.5
         learner = BprRecommender(self.k)
-        learner.maxIterations = 10
+        learner.maxIterations = 2
         learner.recordStep = 1
         learner.numAucSamples = 5
         print(learner)
+        print(self.X.nnz)
                 
         ProfileUtils.profile('learner.learnModel(self.X)', globals(), locals())
         
