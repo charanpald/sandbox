@@ -128,6 +128,8 @@ class BprRecommender(AbstractRecommender):
         learner = BprRecommender(self.k, self.lmbdaUser, self.lmbdaPos, self.lmbdaNeg, self.biasReg, self.gamma)
         self.copyParams(learner)
         learner.maxIterations = self.maxIterations 
+        learner.numAucSamples = self.numAucSamples
+        learner.recordStep = self.recordStep
         
         return learner 
 
