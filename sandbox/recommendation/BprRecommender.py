@@ -16,7 +16,7 @@ class BprRecommender(AbstractRecommender):
     An interface to the BPR recommender system. 
     """
     
-    def __init__(self, k, lmbdaUser=0.1, lmbdaPos=0.1, lmbdaNeg=0.1, biasReg=0.1, gamma=0.1, numProcesses=None): 
+    def __init__(self, k, lmbdaUser=0.1, lmbdaPos=0.1, lmbdaNeg=0.1, gamma=0.1, numProcesses=None): 
         """
         k is the number of factors, lambda is the regularistion and gamma is the learning rate 
         """
@@ -25,7 +25,6 @@ class BprRecommender(AbstractRecommender):
         self.lmbdaUser = lmbdaUser
         self.lmbdaPos = lmbdaPos
         self.lmbdaNeg = lmbdaNeg
-        self.biasReg = biasReg
         self.gamma = gamma
                 
         self.maxIterations = 25
@@ -43,7 +42,6 @@ class BprRecommender(AbstractRecommender):
     def learnModel(self, X, U=None, V=None):
         args = BPRArgs()
         args.learning_rate = self.gamma
-        args.bias_regularization = self.biasReg
         args.user_regularization = self.lmbdaUser
         args.negative_item_regularization = self.lmbdaPos 
         args.positive_item_regularization = self.lmbdaNeg
@@ -125,7 +123,7 @@ class BprRecommender(AbstractRecommender):
         return meanTestMetrics, stdTestMetrics
         
     def copy(self): 
-        learner = BprRecommender(self.k, self.lmbdaUser, self.lmbdaPos, self.lmbdaNeg, self.biasReg, self.gamma)
+        learner = BprRecommender(self.k, self.lmbdaUser, self.lmbdaPos, self.lmbdaNeg, self.gamma)
         self.copyParams(learner)
         learner.maxIterations = self.maxIterations 
         learner.numAucSamples = self.numAucSamples
@@ -138,7 +136,6 @@ class BprRecommender(AbstractRecommender):
         outputStr += " lmbdaUser=" + str(self.lmbdaUser)
         outputStr += " lmbdaPos=" + str(self.lmbdaPos)
         outputStr += " lmbdaNeg=" + str(self.lmbdaNeg)
-        outputStr += " biasReg=" + str(self.biasReg)
         outputStr += " gamma=" + str(self.gamma)
         outputStr += " maxIterations=" + str(self.maxIterations)
         outputStr += " numAucSamples=" + str(self.numAucSamples)
