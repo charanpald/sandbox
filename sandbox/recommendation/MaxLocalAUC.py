@@ -140,6 +140,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.p = 10 
         self.parallelSGD = False
         self.parallelStep = 2
+        self.phi = 0 
         self.q = 3
         self.rate = "constant"
         self.recordStep = 10
@@ -899,5 +900,8 @@ class MaxLocalAUC(AbstractRecommender):
             
             muU[:] = U[:] 
             muV[:] = V[:]
-        else: 
-            self.learnerCython.updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, ind, numIterations, sigma)
+        else:
+            if self.phi == 0: 
+                self.learnerCython.updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, ind, numIterations, sigma)
+            else: 
+                self.learnerCython.updateUVApprox2(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, ind, numIterations, sigma)
