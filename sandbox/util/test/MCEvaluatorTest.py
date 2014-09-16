@@ -11,6 +11,7 @@ from sandbox.util.Util import Util
 class  MCEvaluatorTest(unittest.TestCase):
     def setUp(self): 
         numpy.random.seed(21)
+        numpy.set_printoptions(suppress=True, precision=3)
     
     def testMeanSqError(self): 
         numExamples = 10
@@ -40,14 +41,16 @@ class  MCEvaluatorTest(unittest.TestCase):
         X = sppy.csarray(X)  
         
         k = 10        
-        orderedItems = MCEvaluator.recommendAtk(U, V, k)
+        orderedItems, scores = MCEvaluator.recommendAtk(U, V, k, verbose=True)
         
         #Now do it manually 
         Z = U.dot(V.T)
         
         orderedItems2 = Util.argmaxN(Z, k)
+        scores2 = numpy.fliplr(numpy.sort(Z, 1))[:, 0:k]
         
         nptst.assert_array_equal(orderedItems, orderedItems2)
+        nptst.assert_array_equal(scores, scores2)
         
         
         #Test case where we have a set of training indices to remove 

@@ -169,19 +169,25 @@ class MCEvaluator(object):
             return mrr.mean()
 
     @staticmethod 
-    def recommendAtk(U, V, k, blockSize=1000, omegaList=None): 
+    def recommendAtk(U, V, k, blockSize=1000, omegaList=None, verbose=False): 
         """
         Compute the matrix Z = U V^T and then find the k largest indices for each row. 
         """
         blocksize = 1000
         numBlocks = int(ceil(U.shape[0]/float(blocksize)))
         orderedItems = numpy.zeros((U.shape[0], k), numpy.int32)
+        scores = numpy.zeros((U.shape[0], k), numpy.float) 
 
         for j in range(numBlocks):
             logging.debug("Block " + str(j) + " of " + str(numBlocks))
             endInd = min(U.shape[0], (j+1)*blocksize)
-            scores = U[j*blocksize:endInd, :].dot(V.T)     
-            orderedItems[j*blocksize:endInd, :] = Util.argmaxN(scores, k)
+            UV = U[j*blocksize:endInd, :].dot(V.T)
+            orderedItems[j*blocksize:endInd, :] = Util.argmaxN(UV, k)
+            
+            rowInds = numpy.repeat(numpy.arange(endInd-j*blocksize), k)
+            colInds = orderedItems[j*blocksize:endInd, :].flatten()           
+            
+            scores[j*blocksize:endInd, :] = numpy.reshape(UV[rowInds, colInds], (endInd-j*blocksize,k))
             #orderedItems[j*blocksize:endInd, :] = Util.argmaxN2d(scores, k)
             
             #Now delete items in omegaList if given 
@@ -191,8 +197,11 @@ class MCEvaluator(object):
                     nonTrainItems = orderedItems[i, :][numpy.logical_not(numpy.in1d(orderedItems[i, :], omegaList[i]))]
                     orderedItems[i, 0:nonTrainItems.shape[0]] = nonTrainItems
                     orderedItems[i, nonTrainItems.shape[0]:] = -1
-            
-        return orderedItems 
+        
+        if verbose: 
+            return orderedItems, scores 
+        else: 
+            return orderedItems
         
     @staticmethod 
     def localAUC(positiveArray, U, V, w, numRowInds=None): 
