@@ -100,7 +100,7 @@ def restrictOmega(indPtr, colInds, colIndsSubset):
     return newIndPtr, newColInds
       
 class MaxLocalAUC(AbstractRecommender): 
-    def __init__(self, k, w, alpha=0.05, eps=10**-6, lmbdaU=0, lmbdaV=1, stochastic=False, numProcesses=None): 
+    def __init__(self, k, w, alpha=0.05, eps=10**-6, lmbdaU=0, lmbdaV=1, maxIterations=50, stochastic=False, numProcesses=None): 
         """
         Create an object for  maximising the local AUC with a penalty term using the matrix
         decomposition UV.T 
@@ -130,7 +130,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.k = k 
         self.lmbdaU = lmbdaU 
         self.lmbdaV = lmbdaV 
-        self.maxIterations = 50
+        self.maxIterations = maxIterations
         self.metric = "f1"
         self.normalise = True
         self.numAucSamples = 10
