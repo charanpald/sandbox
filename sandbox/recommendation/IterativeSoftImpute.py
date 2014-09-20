@@ -147,6 +147,8 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         self.verbose = verbose 
         self.weighted = weighted 
         
+        self.folds = 3
+        
     def learnModel(self, XIterator, rhos=None):
         """
         Learn the matrix completion using an iterator which outputs

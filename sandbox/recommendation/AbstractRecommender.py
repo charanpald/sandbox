@@ -14,6 +14,7 @@ class AbstractRecommender(object):
         self.validationSize = 3
         self.folds = 2 
         self.chunkSize = 1 
+        self.metric = "f1"
         
     def copyParams(self, learner): 
         learner.recommendSize = self.recommendSize
