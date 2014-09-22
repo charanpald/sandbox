@@ -23,7 +23,7 @@ class WeightedMf(AbstractRecommender):
         self.maxIterations = maxIterations 
         
         self.ks = 2**numpy.arange(3, 8)
-        self.lmbdas = numpy.flipud(numpy.logspace(-3, -1, 11)*2) 
+        self.lmbdas = 2.0**-numpy.arange(-1, 12, 2)
     
         
     def learnModel(self, X): 
