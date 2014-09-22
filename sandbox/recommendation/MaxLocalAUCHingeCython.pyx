@@ -26,9 +26,12 @@ cdef extern from "math.h":
     double fmax(double x, double y)
     
     
-cdef class MaxLocalAUCHingeCython(object): 
-    def __init__(self, unsigned int k=8, double lmbdaU=0.0, double lmbdaV=1.0, bint normalise=True, unsigned int numAucSamples=10, unsigned int numRowSamples=30, unsigned int startAverage=30, double rho=0.5): 
-        self.itemFactors = False        
+cdef class MaxLocalAUCHingeCython(object):
+    cdef public unsigned int k, printStep, numAucSamples, numRowSamples, startAverage
+    cdef public double lmbdaU, lmbdaV, maxNorm, rho, w
+    cdef public bint normalise    
+    
+    def __init__(self, unsigned int k=8, double lmbdaU=0.0, double lmbdaV=1.0, bint normalise=True, unsigned int numAucSamples=10, unsigned int numRowSamples=30, unsigned int startAverage=30, double rho=0.5):      
         self.k = k 
         self.lmbdaU = lmbdaU
         self.lmbdaV = lmbdaV
