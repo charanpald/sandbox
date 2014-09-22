@@ -463,7 +463,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
                 paramList.append((learner, trainX, testX, rhos)) 
             
             if self.numProcesses != 1: 
-                pool = multiprocessing.Pool(processes=multiprocessing.cpu_count()/2, maxtasksperchild=10)
+                pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=10)
                 results = pool.imap(metricFuction, paramList)
             else: 
                 results = itertools.imap(metricFuction, paramList)
@@ -561,7 +561,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         outputStr += " rho=" + str(self.rho)+" eps="+str(self.eps)+" k="+str(self.k) + " svdAlg="+str(self.svdAlg) + " kmax="+str(self.kmax)
         outputStr += " postProcess=" + str(self.postProcess) + " weighted="+str(self.weighted) + " p="+str(self.p) + " q="+str(self.q)
         outputStr += " maxIterations=" + str(self.maxIterations) + " recommendSize=" + str(self.recommendSize) + " validationSize=" + str(self.validationSize)
-        outputStr += " metric=" + str(self.metric)
+        outputStr += " metric=" + str(self.metric) + " numProcesses=" + str(self.numProcesses)
         return outputStr
 
     def name(self):
