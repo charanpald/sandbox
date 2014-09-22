@@ -9,7 +9,8 @@ ext_modules = [Extension("sandbox.predictors.TreeCriterion", ["sandbox/predictor
     Extension("sandbox.recommendation.SGDNorm2RegCython", ["sandbox/recommendation/SGDNorm2RegCython.pyx"], include_dirs=[numpy.get_include()]), 
     Extension("sandbox.util.CythonUtils", ["sandbox/util/CythonUtils.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ]), 
     Extension("sandbox.recommendation.MaxLocalAUCCython", ["sandbox/recommendation/MaxLocalAUCCython.pyx", "sandbox/util/CythonUtils.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ]),
-    Extension("sandbox.util.MCEvaluatorCython", ["sandbox/util/MCEvaluatorCython.pyx", "sandbox/util/CythonUtils.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ])
+    Extension("sandbox.recommendation.MaxLocalAUCHingeCython", ["sandbox/recommendation/MaxLocalAUCHingeCython.pyx", "sandbox/util/CythonUtils.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ]),
+    Extension("sandbox.util.MCEvaluatorCython", ["sandbox/util/MCEvaluatorCython.pyx", "sandbox/util/CythonUtils.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ]), 
 ]
 
 setup(
