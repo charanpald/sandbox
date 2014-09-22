@@ -61,10 +61,9 @@ cdef itemRank(numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, n
 cdef class MaxLocalAUCCython(object): 
     cdef public unsigned int k, printStep, numAucSamples, numRowSamples, startAverage
     cdef public double lmbdaU, lmbdaV, maxNorm, rho, w
-    cdef public bint itemFactors, normalise
+    cdef public bint normalise
     
-    def __init__(self, unsigned int k=8, double lmbdaU=0.0, double lmbdaV=1.0, bint normalise=True, unsigned int numAucSamples=10, unsigned int numRowSamples=30, unsigned int startAverage=30, double rho=0.5, double w=0.9): 
-        self.itemFactors = False        
+    def __init__(self, unsigned int k=8, double lmbdaU=0.0, double lmbdaV=1.0, bint normalise=True, unsigned int numAucSamples=10, unsigned int numRowSamples=30, unsigned int startAverage=30, double rho=0.5):        
         self.k = k 
         self.lmbdaU = lmbdaU
         self.lmbdaV = lmbdaV
@@ -75,7 +74,6 @@ cdef class MaxLocalAUCCython(object):
         self.printStep = 1000
         self.rho = rho
         self.startAverage = startAverage 
-        self.w = w 
     
     def derivativeUi(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int i):
         """
@@ -440,7 +438,6 @@ cdef class MaxLocalAUCCython(object):
         cdef bint newline = indPtr.shape[0] > 100000
         cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(self.k)
         cdef numpy.ndarray[double, ndim=1, mode="c"] dVj = numpy.zeros(self.k)
-        cdef numpy.ndarray[double, ndim=1, mode="c"] r 
     
         for s in range(numIterations):
             if s % self.printStep == 0: 
@@ -448,28 +445,22 @@ cdef class MaxLocalAUCCython(object):
                     print(str(s) + " of " + str(numIterations))
                 else: 
                     print(str(s) + " ", end="")
-                
-            r = SparseUtilsCython.computeR(U, V, self.w, self.numAucSamples)
-            
+                            
             i = permutedRowInds[s % permutedRowInds.shape[0]]   
             
-            if self.itemFactors: 
-                U[i,:] = self.meanPositive(indPtr, colInds, V, i)
-            else: 
-                dUi = self.derivativeUiApprox(indPtr, colInds, U, V, gp, gq, permutedColInds, i)
-                plusEquals(U, i, -sigma*dUi, self.k)
-                normUi = numpy.linalg.norm(U[i,:])
-                
-                if normUi >= self.maxNorm: 
-                    U[i,:] = scale(U, i, self.maxNorm/normUi, self.k)             
+            dUi = self.derivativeUiApprox(indPtr, colInds, U, V, gp, gq, permutedColInds, i)
+            plusEquals(U, i, -sigma*dUi, self.k)
+            normUi = numpy.linalg.norm(U[i,:])
+            
+            if normUi >= self.maxNorm: 
+                U[i,:] = scale(U, i, self.maxNorm/normUi, self.k)             
             
             if ind > self.startAverage: 
                 muU[i, :] = muU[i, :]*ind/float(ind+1) + U[i, :]/float(ind+1)
             else: 
                 muU[i, :] = U[i, :]
                 
-            #Now update V
-            #r = SparseUtilsCython.computeR(U, V, w, numAucSamples)        
+            #Now update V   
             j = permutedColInds[s % permutedColInds.shape[0]]
             dVj = self.derivativeViApprox(indPtr, colInds, U, V, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, j)
             plusEquals(V, j, -sigma*dVj, self.k)
