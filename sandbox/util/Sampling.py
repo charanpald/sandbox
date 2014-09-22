@@ -4,6 +4,7 @@ from sandbox.util.SparseUtils import SparseUtils
 import numpy
 import array 
 import scipy.sparse
+import logging
 
 
 class Sampling(object):
@@ -314,6 +315,9 @@ class Sampling(object):
             userInds = allUserInds[0:i*stepSize]  
             tempX = X[userInds, :]            
             nnz = tempX.nnz
+            
+            if i % 100 == 0: 
+                logging.debug("nnz=" + str(nnz))
         
         if i*stepSize >= m and nnz <= k: 
             userInds = numpy.arange(m)
