@@ -451,28 +451,30 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
         else: 
             raise ValueError("Unknown metric: " + self.metric)
             
+            
+        paramList = []
+        
         for i, (trainX, testX) in enumerate(trainTestXs):
             Util.printIteration(i, 1, len(cvInds), "Fold: ")
 
-            paramList = []
-        
             for m, k in enumerate(ks): 
                 learner = self.copy()
                 learner.updateAlg="initial" 
                 learner.setK(k)
                 paramList.append((learner, trainX, testX, rhos)) 
             
-            if self.numProcesses != 1: 
-                pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=10)
-                results = pool.imap(metricFuction, paramList)
-            else: 
-                results = itertools.imap(metricFuction, paramList)
-            
-            for m, rhoMetrics in enumerate(results): 
-                metrics[:, m, i] = rhoMetrics
-            
-            if self.numProcesses != 1: 
-                pool.terminate()
+        if self.numProcesses != 1: 
+            pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=10)
+            resultsIter = pool.imap(metricFuction, paramList)
+        else: 
+            resultsIter = itertools.imap(metricFuction, paramList)
+        
+        for i, (trainX, testX) in enumerate(trainTestXs):
+            for m, k in enumerate(ks):
+                metrics[:, m, i] = resultsIter.next()
+        
+        if self.numProcesses != 1: 
+            pool.terminate()
 
         meanMetrics = metrics.mean(2)
         stdMetrics = metrics.std(2)
