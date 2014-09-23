@@ -409,14 +409,7 @@ cdef class MaxLocalAUCHingeCython(object):
                     uivp = dot(U, i, V, p, self.k)
                     gamma = uivp - uivq  
                     hGamma = max(0, 1-gamma) 
-                    zeta = 0
                     
-                    for s, ell in enumerate(omegaBari): 
-                        #uivell = dot(U, i, V, ell, k)
-                        uivell = uivqs[s]
-                        gamma2 = uivp - uivell  
-                        hGamma2 = max(0, 1-gamma2)
-
                     
                     kappa += gp[p]*gq[q]*hGamma
                     normGpi += gp[p]                    
