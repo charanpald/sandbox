@@ -9,6 +9,7 @@ import scipy.sparse
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
 from sandbox.recommendation.MaxLocalAUCCython import MaxLocalAUCCython
+from sandbox.recommendation.MaxLocalAUCHingeCython import MaxLocalAUCHingeCython
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.MCEvaluator import MCEvaluator 
 from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
@@ -137,6 +138,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.numRecordAucSamples = 100
         self.numRowSamples = 30
         self.numRuns = 200
+        self.obj = "hinge" 
         self.p = 10 
         self.parallelSGD = False
         self.parallelStep = 2
@@ -248,7 +250,18 @@ class MaxLocalAUC(AbstractRecommender):
                             
         return maxLocalAuc    
         
-         
+
+    def getCythonLearner(self): 
+        
+        if self.obj == "tanh": 
+            learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
+        elif self.obj == "hinge": 
+            learnerCython = MaxLocalAUCHingeCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
+        else: 
+            raise ValueError("Unknown objective: " + self.obj)
+            
+        return learnerCython
+        
     def getSigma(self, ind): 
         if self.rate == "constant": 
             sigma = self.alpha 
@@ -639,7 +652,7 @@ class MaxLocalAUC(AbstractRecommender):
         loopInd = 0
         iterationsPerBlock = sharedmem.zeros((numBlocks, numBlocks))
         
-        self.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w)
+        self.learnerCython = self.getCythonLearner()
         nextRecord = 0 
 
         while loopInd < self.maxIterations: 
@@ -713,7 +726,7 @@ class MaxLocalAUC(AbstractRecommender):
         if self.numProcesses != 1: 
             for i in range(self.numProcesses):
                 learner = self.copy()
-                learner.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
+                learner.learnerCython = self.getCythonLearner()
                 sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, U, V, muU, muV, lock 
                 methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, i, loopInd, omegasList
     
@@ -726,7 +739,7 @@ class MaxLocalAUC(AbstractRecommender):
                 
         else: 
             learner = self.copy()
-            learner.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho, self.w) 
+            learner.learnerCython = self.getCythonLearner()
             sharedArgs = rowIsFree, colIsFree, iterationsPerBlock, gradientsPerBlock, U, V, muU, muV, lock 
             methodArgs = learner, rowBlockSize, colBlockSize, indPtr, colInds, permutedRowInds, permutedColInds, gi, gp, gq, normGp, normGq, 0, loopInd, omegasList
             updateUVBlock(sharedArgs, methodArgs)
@@ -837,7 +850,7 @@ class MaxLocalAUC(AbstractRecommender):
         loopInd = 0
         numIterations = trainX.nnz/self.numAucSamples
         
-        self.learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho) 
+        self.learnerCython = self.getCythonLearner()
         
         #Set up order of indices for stochastic methods 
         permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
