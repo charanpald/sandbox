@@ -11,6 +11,7 @@ from sandbox.recommendation.AbstractRecommender import AbstractRecommender
 from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
 from sandbox.recommendation.MaxLocalAUCCython import MaxLocalAUCCython
 from sandbox.recommendation.MaxLocalAUCHingeCython import MaxLocalAUCHingeCython
+from sandbox.recommendation.MaxLocalAUCLogisticCython import MaxLocalAUCLogisticCython
 from sandbox.recommendation.MaxLocalAUCSquareCython import MaxLocalAUCSquareCython
 from sandbox.recommendation.RecommenderUtils import computeTestMRR, computeTestF1
 from sandbox.recommendation.WeightedMf import WeightedMf
@@ -261,6 +262,8 @@ class MaxLocalAUC(AbstractRecommender):
             learnerCython = MaxLocalAUCHingeCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
         elif self.obj == "square": 
             learnerCython = MaxLocalAUCSquareCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
+        elif self.objs == "logistic": 
+            learnerCython = MaxLocalAUCLogisticCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
         else: 
             raise ValueError("Unknown objective: " + self.obj)
             
