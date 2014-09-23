@@ -10,7 +10,7 @@ import logging
 import numpy.linalg 
 import numpy.testing as nptst 
 
-class MaxLocalAUCTest(unittest.TestCase):
+class MaxLocalAUCCythonTest(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
         numpy.set_printoptions(precision=4, suppress=True, linewidth=150)
