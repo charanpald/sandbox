@@ -1,23 +1,25 @@
 import array
-import numpy 
 import logging
 import multiprocessing 
+import numpy 
+import scipy.sparse
+import sharedmem 
 import sppy 
 import time
-import sharedmem 
-import scipy.sparse
-from sandbox.util.SparseUtils import SparseUtils
-from sandbox.util.SparseUtilsCython import SparseUtilsCython
-from sandbox.recommendation.MaxLocalAUCCython import MaxLocalAUCCython
-from sandbox.recommendation.MaxLocalAUCHingeCython import MaxLocalAUCHingeCython
-from sandbox.util.Sampling import Sampling 
-from sandbox.util.MCEvaluator import MCEvaluator 
-from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
-from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
-from sandbox.recommendation.WeightedMf import WeightedMf
-from sandbox.recommendation.RecommenderUtils import computeTestMRR, computeTestF1
 from sandbox.misc.RandomisedSVD import RandomisedSVD
 from sandbox.recommendation.AbstractRecommender import AbstractRecommender
+from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
+from sandbox.recommendation.MaxLocalAUCCython import MaxLocalAUCCython
+from sandbox.recommendation.MaxLocalAUCHingeCython import MaxLocalAUCHingeCython
+from sandbox.recommendation.MaxLocalAUCSquareCython import MaxLocalAUCSquareCython
+from sandbox.recommendation.RecommenderUtils import computeTestMRR, computeTestF1
+from sandbox.recommendation.WeightedMf import WeightedMf
+from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
+from sandbox.util.MCEvaluator import MCEvaluator 
+from sandbox.util.Sampling import Sampling 
+from sandbox.util.SparseUtilsCython import SparseUtilsCython
+from sandbox.util.SparseUtils import SparseUtils
+
 
 def computeObjective(args): 
     """
@@ -257,6 +259,8 @@ class MaxLocalAUC(AbstractRecommender):
             learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
         elif self.obj == "hinge": 
             learnerCython = MaxLocalAUCHingeCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
+        elif self.obj == "square": 
+            learnerCython = MaxLocalAUCSquareCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
         else: 
             raise ValueError("Unknown objective: " + self.obj)
             
