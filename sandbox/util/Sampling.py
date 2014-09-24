@@ -308,7 +308,10 @@ class Sampling(object):
         allUserInds = numpy.random.permutation(m) 
         nnz = 0
         
-        i = 0         
+        i = 0  
+        
+        if k >= X.nnz: 
+            return X, numpy.arange(m)
         
         while nnz <= k and i*stepSize <= m: 
             i += 1            
