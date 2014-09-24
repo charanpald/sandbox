@@ -1,13 +1,6 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Sep 23 15:36:28 2014
-
-@author: charanpal
-"""
-
 
 import sys
-from sandbox.recommendation.MaxLocalAUCSquareCython import MaxLocalAUCSquareCython
+from sandbox.recommendation.MaxAUCTanh import MaxAUCTanh
 from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC 
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.SparseUtilsCython import SparseUtilsCython 
@@ -17,7 +10,7 @@ import logging
 import numpy.linalg 
 import numpy.testing as nptst 
 
-class MaxLocalAUCCythonHingeTest(unittest.TestCase):
+class MaxAUCTanhTest(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
         numpy.set_printoptions(precision=4, suppress=True, linewidth=150)
@@ -35,15 +28,19 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         
         k = 5
         u = 0.1
+        w = 1-u
         eps = 0.05
-        learner = MaxLocalAUCSquareCython(k)
+        learner = MaxAUCTanh(k, w)
         learner.normalise = False
         learner.lmbdaU = 0
         learner.lmbdaV = 0
         learner.rho = 1.0
         learner.numAucSamples = n
+        
+         
 
         numRuns = 20
+        r = numpy.zeros(m)
         gi = numpy.random.rand(m)
         gi /= gi.sum()        
         gp = numpy.random.rand(n)
@@ -149,7 +146,7 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         X = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True)
         
         w = 0.1
-        learner = MaxLocalAUCSquareCython(k, w)
+        learner = MaxAUCTanh(k, w)
         learner.normalise = False
         learner.lmbdaU = 0
         learner.lmbdaV = 0
@@ -205,6 +202,7 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
             
             
         learner.lmbdaV = 0.5 
+        learner.rho = 0.5
         
         for i in numpy.random.permutation(m)[0:numTests]:  
             U = numpy.random.rand(X.shape[0], k)
@@ -234,7 +232,7 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         u = 0.1
         w = 1-u
         eps = 0.05
-        learner = MaxLocalAUCSquareCython(k, w)
+        learner = MaxAUCTanh(k, w)
         learner.normalise = False
         learner.lmbdaU = 0
         learner.lmbdaV = 0
@@ -274,14 +272,15 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
                     deltaV2[i,j] = (obj1-obj2)/(2*eps)
                 #deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])                   
                         
-
+            #print(deltaV*100)
+            #print(deltaV2*100)
             nptst.assert_almost_equal(deltaV, deltaV2, 3)
 
         #Try r != 0 and rho > 0
         for s in range(numRuns):
             U = numpy.random.randn(m, k)
             V = numpy.random.randn(n, k)   
-            learner.rho = 1.0    
+            learner.rho = 0.5  
             
             deltaV = numpy.zeros(V.shape)
             for j in range(n): 
@@ -350,7 +349,7 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         
         w = 0.1
         eps = 0.001
-        learner = MaxLocalAUCSquareCython(k, w)
+        learner = MaxAUCTanh(k, w)
         learner.normalise = False
         learner.lmbdaU = 0
         learner.lmbdaV = 0
@@ -404,6 +403,7 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
             nptst.assert_array_almost_equal(dv1, dv2, 2)
             
         learner.lmbdaV = 0.5 
+        learner.rho = 0.5 
         
         for i in numpy.random.permutation(m)[0:numTests]: 
             U = numpy.random.rand(X.shape[0], k)
@@ -466,7 +466,8 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         k = 3 
         X = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True)
         
-        learner = MaxLocalAUCSquareCython(k)
+        w = 0.1
+        learner = MaxAUCTanh(k, w)
         learner.normalise = False
         learner.lmbdaU = 0
         learner.lmbdaV = 0
@@ -474,15 +475,13 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         learner.numAucSamples = n
         
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
-
+        
         U = numpy.random.rand(X.shape[0], k)
         V = numpy.random.rand(X.shape[1], k)
         
         numRuns = 100 
         numTests = 5
-        
-        gi = numpy.random.rand(m)
-        gi /= gi.sum()        
+             
         gp = numpy.random.rand(n)
         gp /= gp.sum()        
         gq = numpy.random.rand(n)
@@ -528,6 +527,67 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         obj = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gp, gq) 
         obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gp, gq) 
         self.assertAlmostEquals(obj, obj2, 2)
+        
+
+    @unittest.skip("")
+    def testScale(self): 
+        """
+        Look at the scales of the unnormalised gradients. 
+        """        
+        
+        m = 100 
+        n = 400 
+        k = 3 
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True)
+        
+        w = 0.1
+        eps = 0.001
+        learner = MaxAUCTanh(k, w)
+        learner.normalise = False
+        learner.lmbdaU = 1.0
+        learner.lmbdaV = 1.0
+        learner.rho = 1.0
+        learner.numAucSamples = 100
+        
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
+        r = numpy.random.rand(m)
+
+        U = numpy.random.rand(X.shape[0], k)
+        V = numpy.random.rand(X.shape[1], k)
+        
+        gi = numpy.random.rand(m)
+        gi /= gi.sum()        
+        gp = numpy.random.rand(n)
+        gp /= gp.sum()        
+        gq = numpy.random.rand(n)
+        gq /= gq.sum()     
+        
+        permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
+        permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
+        
+        maxLocalAuc = MaxLocalAUC(k, w)
+        normGp, normGq = maxLocalAuc.computeNormGpq(indPtr, colInds, gp, gq, m)
+        
+        normDui = 0
+        for i in range(m): 
+            du = learner.derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i) 
+            normDui += numpy.linalg.norm(du)
+            
+        normDui /= float(m)
+        print(normDui)        
+        
+        normDvi = 0         
+        
+        for i in range(n): 
+            dv = learner.derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, i) 
+            normDvi += numpy.linalg.norm(dv)
+            
+        normDvi /= float(n)
+        print(normDvi)
+        
+        #U has a smaller scale than V but only by a factor of 5 
+
+        
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

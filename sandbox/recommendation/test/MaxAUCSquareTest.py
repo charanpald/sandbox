@@ -1,6 +1,13 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Sep 23 15:36:28 2014
+
+@author: charanpal
+"""
+
 
 import sys
-from sandbox.recommendation.MaxLocalAUCCython import MaxLocalAUCCython
+from sandbox.recommendation.MaxAUCSquare import MaxAUCSquare
 from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC 
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.SparseUtilsCython import SparseUtilsCython 
@@ -10,7 +17,7 @@ import logging
 import numpy.linalg 
 import numpy.testing as nptst 
 
-class MaxLocalAUCCythonTest(unittest.TestCase):
+class MaxLocalAUCCythonHingeTest(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
         numpy.set_printoptions(precision=4, suppress=True, linewidth=150)
@@ -28,19 +35,15 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
         
         k = 5
         u = 0.1
-        w = 1-u
         eps = 0.05
-        learner = MaxLocalAUCCython(k, w)
+        learner = MaxAUCSquare(k)
         learner.normalise = False
         learner.lmbdaU = 0
         learner.lmbdaV = 0
         learner.rho = 1.0
         learner.numAucSamples = n
-        
-         
 
         numRuns = 20
-        r = numpy.zeros(m)
         gi = numpy.random.rand(m)
         gi /= gi.sum()        
         gp = numpy.random.rand(n)
@@ -82,7 +85,6 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
         for s in range(numRuns):
             U = numpy.random.randn(m, k)
             V = numpy.random.randn(n, k)
-            r = numpy.random.rand(m)
             learner.rho = 0.1
             
             deltaU = numpy.zeros(U.shape)
@@ -107,7 +109,7 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
             nptst.assert_almost_equal(deltaU, deltaU2, 3)
         
         #Try lmbda > 0
-        """
+        
         for s in range(numRuns):
             U = numpy.random.randn(m, k)
             V = numpy.random.randn(n, k)
@@ -115,7 +117,7 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
             
             deltaU = numpy.zeros(U.shape)
             for i in range(X.shape[0]): 
-                deltaU[i, :] = learner.derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i) 
+                deltaU[i, :] = learner.derivativeUi(indPtr, colInds, U, V, gp, gq, i) 
             
             deltaU2 = numpy.zeros(U.shape) 
             eps = 10**-9        
@@ -124,16 +126,16 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
                 for j in range(k):
                     tempU = U.copy() 
                     tempU[i,j] += eps
-                    obj1 = learner.objective(indPtr, colInds, indPtr, colInds, tempU, V, r, gi, gp, gq)
+                    obj1 = learner.objective(indPtr, colInds, indPtr, colInds, tempU, V, gp, gq)
                     
                     tempU = U.copy() 
                     tempU[i,j] -= eps
-                    obj2 = learner.objective(indPtr, colInds, indPtr, colInds, tempU, V, r, gi, gp, gq)
+                    obj2 = learner.objective(indPtr, colInds, indPtr, colInds, tempU, V, gp, gq)
                     
                     deltaU2[i,j] = (obj1-obj2)/(2*eps)
                                 
             nptst.assert_almost_equal(deltaU, deltaU2, 3)
-        """
+        
        
     @unittest.skip("")
     def testDerivativeUiApprox(self): 
@@ -147,7 +149,7 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
         X = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True)
         
         w = 0.1
-        learner = MaxLocalAUCCython(k, w)
+        learner = MaxAUCSquare(k, w)
         learner.normalise = False
         learner.lmbdaU = 0
         learner.lmbdaV = 0
@@ -232,7 +234,7 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
         u = 0.1
         w = 1-u
         eps = 0.05
-        learner = MaxLocalAUCCython(k, w)
+        learner = MaxAUCSquare(k, w)
         learner.normalise = False
         learner.lmbdaU = 0
         learner.lmbdaV = 0
@@ -272,8 +274,7 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
                     deltaV2[i,j] = (obj1-obj2)/(2*eps)
                 #deltaV2[i,:] = deltaV2[i,:]/numpy.linalg.norm(deltaV2[i,:])                   
                         
-            #print(deltaV*100)
-            #print(deltaV2*100)
+
             nptst.assert_almost_equal(deltaV, deltaV2, 3)
 
         #Try r != 0 and rho > 0
@@ -349,7 +350,7 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
         
         w = 0.1
         eps = 0.001
-        learner = MaxLocalAUCCython(k, w)
+        learner = MaxAUCSquare(k, w)
         learner.normalise = False
         learner.lmbdaU = 0
         learner.lmbdaV = 0
@@ -465,8 +466,7 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
         k = 3 
         X = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True)
         
-        w = 0.1
-        learner = MaxLocalAUCCython(k, w)
+        learner = MaxAUCSquare(k)
         learner.normalise = False
         learner.lmbdaU = 0
         learner.lmbdaV = 0
@@ -474,9 +474,7 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
         learner.numAucSamples = n
         
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
-        r = numpy.random.rand(m)
 
-        
         U = numpy.random.rand(X.shape[0], k)
         V = numpy.random.rand(X.shape[1], k)
         
@@ -498,10 +496,10 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
             obj = 0
 
             for j in range(numRuns): 
-                obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq)
+                obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, gp, gq)
             obj /= numRuns
 
-            obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq)    
+            obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gp, gq)    
             self.assertAlmostEquals(obj, obj2, 2)
             
         learner.rho = 0.2
@@ -509,10 +507,10 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
         for i in range(numTests): 
             obj = 0
             for j in range(numRuns): 
-                obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq)
+                obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, gp, gq)
             obj /= numRuns
             
-            obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq)    
+            obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gp, gq)    
             self.assertAlmostEquals(obj, obj2, 2)
 
         learner.lmbdaV = 0.2
@@ -520,78 +518,16 @@ class MaxLocalAUCCythonTest(unittest.TestCase):
         for i in range(numTests): 
             obj = 0
             for j in range(numRuns): 
-                obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq)
+                obj += learner.objectiveApprox(indPtr, colInds, indPtr, colInds, U, V, gp, gq)
             obj /= numRuns
             
-            obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq)    
+            obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gp, gq)    
             self.assertAlmostEquals(obj, obj2, 2)
         
         #Check full and summary versions are the same 
-        obj = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq) 
-        obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gi, gp, gq) 
+        obj = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gp, gq) 
+        obj2 = learner.objective(indPtr, colInds, indPtr, colInds, U, V, gp, gq) 
         self.assertAlmostEquals(obj, obj2, 2)
-        
-
-    @unittest.skip("")
-    def testScale(self): 
-        """
-        Look at the scales of the unnormalised gradients. 
-        """        
-        
-        m = 100 
-        n = 400 
-        k = 3 
-        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True)
-        
-        w = 0.1
-        eps = 0.001
-        learner = MaxLocalAUCCython(k, w)
-        learner.normalise = False
-        learner.lmbdaU = 1.0
-        learner.lmbdaV = 1.0
-        learner.rho = 1.0
-        learner.numAucSamples = 100
-        
-        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
-        r = numpy.random.rand(m)
-
-        U = numpy.random.rand(X.shape[0], k)
-        V = numpy.random.rand(X.shape[1], k)
-        
-        gi = numpy.random.rand(m)
-        gi /= gi.sum()        
-        gp = numpy.random.rand(n)
-        gp /= gp.sum()        
-        gq = numpy.random.rand(n)
-        gq /= gq.sum()     
-        
-        permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
-        permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
-        
-        maxLocalAuc = MaxLocalAUC(k, w)
-        normGp, normGq = maxLocalAuc.computeNormGpq(indPtr, colInds, gp, gq, m)
-        
-        normDui = 0
-        for i in range(m): 
-            du = learner.derivativeUi(indPtr, colInds, U, V, r, gi, gp, gq, i) 
-            normDui += numpy.linalg.norm(du)
-            
-        normDui /= float(m)
-        print(normDui)        
-        
-        normDvi = 0         
-        
-        for i in range(n): 
-            dv = learner.derivativeVi(indPtr, colInds, U, V, r, gi, gp, gq, i) 
-            normDvi += numpy.linalg.norm(dv)
-            
-        normDvi /= float(n)
-        print(normDvi)
-        
-        #U has a smaller scale than V but only by a factor of 5 
-
-        
-            
         
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

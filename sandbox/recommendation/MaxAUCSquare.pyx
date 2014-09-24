@@ -26,7 +26,7 @@ cdef extern from "math.h":
     double fmax(double x, double y)
     
     
-cdef class MaxLocalAUCSquareCython(object):
+cdef class MaxAUCSquare(object):
     cdef public unsigned int k, printStep, numAucSamples, numRowSamples, startAverage
     cdef public double lmbdaU, lmbdaV, maxNorm, rho, w
     cdef public bint normalise    

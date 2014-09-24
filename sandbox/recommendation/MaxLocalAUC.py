@@ -9,10 +9,10 @@ import time
 from sandbox.misc.RandomisedSVD import RandomisedSVD
 from sandbox.recommendation.AbstractRecommender import AbstractRecommender
 from sandbox.recommendation.IterativeSoftImpute import IterativeSoftImpute 
-from sandbox.recommendation.MaxLocalAUCCython import MaxLocalAUCCython
-from sandbox.recommendation.MaxLocalAUCHingeCython import MaxLocalAUCHingeCython
-from sandbox.recommendation.MaxLocalAUCLogisticCython import MaxLocalAUCLogisticCython
-from sandbox.recommendation.MaxLocalAUCSquareCython import MaxLocalAUCSquareCython
+from sandbox.recommendation.MaxAUCTanh import MaxAUCTanh
+from sandbox.recommendation.MaxAUCHinge import MaxAUCHinge
+from sandbox.recommendation.MaxAUCSquare import MaxAUCSquare
+from sandbox.recommendation.MaxAUCLogistic import MaxAUCLogistic
 from sandbox.recommendation.RecommenderUtils import computeTestMRR, computeTestF1
 from sandbox.recommendation.WeightedMf import WeightedMf
 from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
@@ -148,7 +148,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.q = 3
         self.rate = "constant"
         self.recordStep = 10
-        self.rho = 0.5 #Penalise low rank elements 
+        self.rho = 1.0
         self.startAverage = 30
         self.stochastic = stochastic
         self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
@@ -259,13 +259,13 @@ class MaxLocalAUC(AbstractRecommender):
     def getCythonLearner(self): 
         
         if self.loss == "tanh": 
-            learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
+            learnerCython = MaxAUCTanh(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
         elif self.loss == "hinge": 
-            learnerCython = MaxLocalAUCHingeCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
+            learnerCython = MaxAUCHinge(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
         elif self.loss == "square": 
-            learnerCython = MaxLocalAUCSquareCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
+            learnerCython = MaxAUCSquare(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
         elif self.loss == "logistic": 
-            learnerCython = MaxLocalAUCLogisticCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
+            learnerCython = MaxAUCLogistic(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
         else: 
             raise ValueError("Unknown objective: " + self.loss)
             

@@ -20,14 +20,13 @@ cdef extern from "limits.h":
 
 cdef extern from "math.h":
     double exp(double x)
-    double log(double x)
     double tanh(double x)
     bint isnan(double x)  
     double sqrt(double x)
     double fmax(double x, double y)
     
     
-cdef class MaxLocalAUCLogisticCython(object):
+cdef class MaxAUCHinge(object):
     cdef public unsigned int k, printStep, numAucSamples, numRowSamples, startAverage
     cdef public double lmbdaU, lmbdaV, maxNorm, rho, w
     cdef public bint normalise    
@@ -75,18 +74,18 @@ cdef class MaxLocalAUCLogisticCython(object):
                 for q in omegaBari:                 
                     uivq = dot(U, i, V, q, self.k)
                     gamma = uivp - uivq
-                    hGamma = log(1/(1 + exp(-gamma)))
+                    hGamma = max(0, 1-gamma)
                     
                     normGq += gq[q]
-                    kappa += hGamma*gq[q]
+                    kappa += square(hGamma)*gq[q]
                 
                 if normGq != 0: 
                     partialObj += gp[p]*(kappa/normGq)
                
             if normGp != 0: 
-                objVector[i] = -partialObj/normGp
+                objVector[i] = partialObj/normGp
         
-        objVector /= m  
+        objVector /= 2*m  
         objVector += (0.5/m)*((self.lmbdaV/m)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
         
         if full: 
@@ -126,18 +125,18 @@ cdef class MaxLocalAUCLogisticCython(object):
                     q = inverseChoice(allOmegai, n) 
                     uivq = dot(U, i, V, q, self.k)
                     gamma = uivp - uivq
-                    hGamma = log(1/(1 + exp(-gamma)))
+                    hGamma = max(0, 1-gamma)
                     
                     normGq += gq[q]
-                    kappa += gq[q]*hGamma
+                    kappa += gq[q]*square(hGamma)
                 
                 if normGq != 0: 
                     partialObj += gp[p]*(kappa/normGq)
                
             if normGp != 0: 
-                objVector[i] = -partialObj/normGp
+                objVector[i] = partialObj/normGp
         
-        objVector /= m
+        objVector /= 2*m
         objVector += (0.5/m)*((self.lmbdaV/m)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
         
         if full: 
@@ -175,8 +174,7 @@ cdef class MaxLocalAUCLogisticCython(object):
                 uivq = dot(U, i, V, q, self.k)
                 
                 gamma = uivp - uivq
-                zeta = exp(-gamma)
-                hGamma = zeta/(1+zeta) 
+                hGamma = max(0, 1-gamma) 
                 
                 normGq += gq[q]
                 
@@ -232,8 +230,7 @@ cdef class MaxLocalAUCLogisticCython(object):
                 uivq = dot(U, i, V, q, self.k)
                 
                 gamma = uivp - uivq
-                zeta = exp(-gamma)
-                hGamma = zeta/(1+zeta) 
+                hGamma = max(0, 1-gamma) 
                 
                 nu = gq[q]*hGamma
                 normGq += gq[q]
@@ -291,8 +288,7 @@ cdef class MaxLocalAUCLogisticCython(object):
                 for q in omegaBari: 
                     uivq = dot(U, i, V, q, k)
                     gamma = uivp - uivq
-                    zeta = exp(-gamma)
-                    hGamma = zeta/(1+zeta) 
+                    hGamma = max(0, 1-gamma) 
                     
                     kappa += gq[q]*hGamma
                     normGq += gq[q]
@@ -314,9 +310,15 @@ cdef class MaxLocalAUCLogisticCython(object):
                 for p in omegai: 
                     uivp = dot(U, i, V, p, k)
                     gamma = uivp - uivq  
-                    hGamma = 1-gamma
-                    zeta = exp(-gamma)
-                    hGamma = zeta/(1+zeta) 
+                    hGamma = max(0, 1-gamma) 
+                    zeta = 0
+                    
+                    for ell in omegaBari:
+                        uivell = dot(U, i, V, ell, k)
+                        gamma2 = uivp - uivell  
+                    
+                    if normGq != 0: 
+                        zeta /= normGq
                     
                     kappa += gp[p]*gq[q]*hGamma
                     normGp += gp[p]                    
@@ -378,8 +380,7 @@ cdef class MaxLocalAUCLogisticCython(object):
                     #uivq = dot(U, i, V, q, k)
                     uivq = uivqs[s]
                     gamma = uivp - uivq
-                    zeta = exp(-gamma)
-                    hGamma = zeta/(1+zeta) 
+                    hGamma = max(0, 1-gamma) 
                     
                     nu = gq[q]*hGamma                    
                     
@@ -407,9 +408,9 @@ cdef class MaxLocalAUCLogisticCython(object):
                     #for p in omegai: 
                     uivp = dot(U, i, V, p, self.k)
                     gamma = uivp - uivq  
-                    zeta = exp(-gamma)
-                    hGamma = zeta/(1+zeta) 
-                                        
+                    hGamma = max(0, 1-gamma) 
+                    
+                    
                     kappa += gp[p]*gq[q]*hGamma
                     normGpi += gp[p]                    
                     
