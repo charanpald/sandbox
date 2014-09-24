@@ -197,6 +197,7 @@ class MaxAUCLogisticTest(unittest.TestCase):
             
             
         learner.lmbdaV = 0.5 
+        learner.rho = 0.5
         
         for i in numpy.random.permutation(m)[0:numTests]:  
             U = numpy.random.rand(X.shape[0], k)
@@ -302,7 +303,8 @@ class MaxAUCLogisticTest(unittest.TestCase):
             U = numpy.random.randn(m, k)
             V = numpy.random.randn(n, k)              
             
-            learner.lmbdaV = 100    
+            learner.lmbdaV = 100   
+            learner.rho = 0.1
             
             deltaV = numpy.zeros(V.shape)
             for j in range(n): 
@@ -396,6 +398,7 @@ class MaxAUCLogisticTest(unittest.TestCase):
             nptst.assert_array_almost_equal(dv1, dv2, 3)
             
         learner.lmbdaV = 0.5 
+        learner.rho = 0.5
         
         for i in numpy.random.permutation(m)[0:numTests]: 
             U = numpy.random.rand(X.shape[0], k)

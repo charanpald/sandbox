@@ -75,7 +75,7 @@ cdef class MaxAUCLogistic(object):
                 for q in omegaBari:                 
                     uivq = dot(U, i, V, q, self.k)
                     gamma = uivp - uivq
-                    hGamma = log(1/(1 + exp(-gamma)))
+                    hGamma = log(1/(1 + exp(-self.rho*gamma)))
                     
                     normGq += gq[q]
                     kappa += hGamma*gq[q]
@@ -126,7 +126,7 @@ cdef class MaxAUCLogistic(object):
                     q = inverseChoice(allOmegai, n) 
                     uivq = dot(U, i, V, q, self.k)
                     gamma = uivp - uivq
-                    hGamma = log(1/(1 + exp(-gamma)))
+                    hGamma = log(1/(1 + exp(-self.rho*gamma)))
                     
                     normGq += gq[q]
                     kappa += gq[q]*hGamma
@@ -175,14 +175,14 @@ cdef class MaxAUCLogistic(object):
                 uivq = dot(U, i, V, q, self.k)
                 
                 gamma = uivp - uivq
-                zeta = exp(-gamma)
+                zeta = exp(-self.rho*gamma)
                 hGamma = zeta/(1+zeta) 
                 
                 normGq += gq[q]
                 
                 deltaBeta += (V[q, :] - V[p, :])*gq[q]*hGamma
              
-            deltaTheta += deltaBeta*gp[p]/normGq
+            deltaTheta += deltaBeta*self.rho*gp[p]/normGq
         
         if normGp != 0:
             deltaTheta /= m*normGp
@@ -232,7 +232,7 @@ cdef class MaxAUCLogistic(object):
                 uivq = dot(U, i, V, q, self.k)
                 
                 gamma = uivp - uivq
-                zeta = exp(-gamma)
+                zeta = exp(-self.rho*gamma)
                 hGamma = zeta/(1+zeta) 
                 
                 nu = gq[q]*hGamma
@@ -240,7 +240,7 @@ cdef class MaxAUCLogistic(object):
                 
                 deltaBeta += scale(V, q, nu, self.k) - scale(V, p, nu, self.k)
              
-            deltaTheta += deltaBeta*gp[p]/normGq
+            deltaTheta += deltaBeta*gp[p]*self.rho/normGq
          
         if normGp != 0:
             deltaTheta /= m*normGp
@@ -291,7 +291,7 @@ cdef class MaxAUCLogistic(object):
                 for q in omegaBari: 
                     uivq = dot(U, i, V, q, k)
                     gamma = uivp - uivq
-                    zeta = exp(-gamma)
+                    zeta = exp(-self.rho*gamma)
                     hGamma = zeta/(1+zeta) 
                     
                     kappa += gq[q]*hGamma
@@ -302,7 +302,7 @@ cdef class MaxAUCLogistic(object):
                     zeta /= normGq
                     
                 if normGp != 0: 
-                    betaScale -= kappa*gp[p]/normGp
+                    betaScale -= self.rho*kappa*gp[p]/normGp
             else:
                 q = j 
                 uivq = dot(U, i, V, q, k)
@@ -315,14 +315,14 @@ cdef class MaxAUCLogistic(object):
                     uivp = dot(U, i, V, p, k)
                     gamma = uivp - uivq  
                     hGamma = 1-gamma
-                    zeta = exp(-gamma)
+                    zeta = exp(-self.rho*gamma)
                     hGamma = zeta/(1+zeta) 
                     
                     kappa += gp[p]*gq[q]*hGamma
                     normGp += gp[p]                    
                     
                 if normGp*normGq != 0: 
-                    betaScale += kappa/(normGp*normGq)
+                    betaScale += self.rho*kappa/(normGp*normGq)
             
             #print(betaScale, U[i, :])
             deltaTheta += U[i, :]*betaScale 
@@ -378,7 +378,7 @@ cdef class MaxAUCLogistic(object):
                     #uivq = dot(U, i, V, q, k)
                     uivq = uivqs[s]
                     gamma = uivp - uivq
-                    zeta = exp(-gamma)
+                    zeta = exp(-self.rho*gamma)
                     hGamma = zeta/(1+zeta) 
                     
                     nu = gq[q]*hGamma                    
@@ -391,7 +391,7 @@ cdef class MaxAUCLogistic(object):
                     zeta /= normGqi
                     
                 if normGp[i] != 0: 
-                    betaScale -= kappa*gp[p]/normGp[i]
+                    betaScale -= self.rho*kappa*gp[p]/normGp[i]
             else:
                 q = j 
                 uivq = dot(U, i, V, q, self.k)
@@ -407,14 +407,14 @@ cdef class MaxAUCLogistic(object):
                     #for p in omegai: 
                     uivp = dot(U, i, V, p, self.k)
                     gamma = uivp - uivq  
-                    zeta = exp(-gamma)
+                    zeta = exp(-self.rho*gamma)
                     hGamma = zeta/(1+zeta) 
                                         
                     kappa += gp[p]*gq[q]*hGamma
                     normGpi += gp[p]                    
                     
                 if normGp[i]*normGpi != 0: 
-                    betaScale += kappa/(normGpi*normGq[i])
+                    betaScale += self.rho*kappa/(normGpi*normGq[i])
             
             deltaTheta += scale(U, i, betaScale, self.k) 
         
