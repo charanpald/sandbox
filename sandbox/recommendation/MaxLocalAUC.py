@@ -141,7 +141,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.numRecordAucSamples = 100
         self.numRowSamples = 30
         self.numRuns = 200
-        self.obj = "hinge" 
+        self.loss = "hinge" 
         self.p = 10 
         self.parallelSGD = False
         self.parallelStep = 2
@@ -174,6 +174,7 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += " itemExpP=" + str(self.itemExpP) 
         outputStr += " itemExpQ=" + str(self.itemExpQ) 
         outputStr += " itemFactors=" + str(self.itemFactors) 
+        outputStr += " loss=" + str(self.loss)
         outputStr += " lmbdaU=" + str(self.lmbdaU) 
         outputStr += " lmbdaV=" + str(self.lmbdaV) 
         outputStr += " maxIterations=" + str(self.maxIterations)
@@ -232,6 +233,7 @@ class MaxLocalAUC(AbstractRecommender):
         maxLocalAuc.itemExpQ = self.itemExpQ
         maxLocalAuc.itemFactors = self.itemFactors
         maxLocalAuc.ks = self.ks
+        maxLocalAuc.loss = self.loss 
         maxLocalAuc.lmbdas = self.lmbdas
         maxLocalAuc.lmbdaU = self.lmbdaU
         maxLocalAuc.lmbdaV = self.lmbdaV
@@ -256,16 +258,16 @@ class MaxLocalAUC(AbstractRecommender):
 
     def getCythonLearner(self): 
         
-        if self.obj == "tanh": 
+        if self.loss == "tanh": 
             learnerCython = MaxLocalAUCCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
-        elif self.obj == "hinge": 
+        elif self.loss == "hinge": 
             learnerCython = MaxLocalAUCHingeCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
-        elif self.obj == "square": 
+        elif self.loss == "square": 
             learnerCython = MaxLocalAUCSquareCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
-        elif self.objs == "logistic": 
+        elif self.loss == "logistic": 
             learnerCython = MaxLocalAUCLogisticCython(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
         else: 
-            raise ValueError("Unknown objective: " + self.obj)
+            raise ValueError("Unknown objective: " + self.loss)
             
         return learnerCython
         
