@@ -11,7 +11,8 @@ ext_modules = [Extension("sandbox.predictors.TreeCriterion", ["sandbox/predictor
     Extension("sandbox.recommendation.MaxAUCTanh", ["sandbox/recommendation/MaxAUCTanh.pyx", "sandbox/util/CythonUtils.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ]),
     Extension("sandbox.recommendation.MaxAUCHinge", ["sandbox/recommendation/MaxAUCHinge.pyx", "sandbox/util/CythonUtils.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ]),
     Extension("sandbox.recommendation.MaxAUCSquare", ["sandbox/recommendation/MaxAUCSquare.pyx", "sandbox/util/CythonUtils.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ]),
-    Extension("sandbox.recommendation.MaxAUCLogistic", ["sandbox/recommendation/MaxAUCLogistic.pyx", "sandbox/util/CythonUtils.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ]),    
+    Extension("sandbox.recommendation.MaxAUCLogistic", ["sandbox/recommendation/MaxAUCLogistic.pyx", "sandbox/util/CythonUtils.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ]), 
+    Extension("sandbox.recommendation.MaxAUCSigmoid", ["sandbox/recommendation/MaxAUCSigmoid.pyx", "sandbox/util/CythonUtils.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ]),    
     Extension("sandbox.util.MCEvaluatorCython", ["sandbox/util/MCEvaluatorCython.pyx", "sandbox/util/CythonUtils.pyx"], include_dirs=[numpy.get_include()], extra_compile_args=["-O3", ]), 
 ]
 

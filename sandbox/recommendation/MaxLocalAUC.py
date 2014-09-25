@@ -13,6 +13,7 @@ from sandbox.recommendation.MaxAUCTanh import MaxAUCTanh
 from sandbox.recommendation.MaxAUCHinge import MaxAUCHinge
 from sandbox.recommendation.MaxAUCSquare import MaxAUCSquare
 from sandbox.recommendation.MaxAUCLogistic import MaxAUCLogistic
+from sandbox.recommendation.MaxAUCSigmoid import MaxAUCSigmoid
 from sandbox.recommendation.RecommenderUtils import computeTestMRR, computeTestF1
 from sandbox.recommendation.WeightedMf import WeightedMf
 from sandbox.util.MCEvaluatorCython import MCEvaluatorCython 
@@ -266,6 +267,8 @@ class MaxLocalAUC(AbstractRecommender):
             learnerCython = MaxAUCSquare(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
         elif self.loss == "logistic": 
             learnerCython = MaxAUCLogistic(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
+        elif self.loss == "sigmoid": 
+            learnerCython = MaxAUCSigmoid(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
         else: 
             raise ValueError("Unknown objective: " + self.loss)
             
