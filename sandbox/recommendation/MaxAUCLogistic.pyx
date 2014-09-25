@@ -75,7 +75,7 @@ cdef class MaxAUCLogistic(object):
                 for q in omegaBari:                 
                     uivq = dot(U, i, V, q, self.k)
                     gamma = uivp - uivq
-                    hGamma = log(1/(1 + exp(-self.rho*gamma)))
+                    hGamma = log(1.0/(1 + exp(-self.rho*gamma)))
                     
                     normGq += gq[q]
                     kappa += hGamma*gq[q]
@@ -126,7 +126,7 @@ cdef class MaxAUCLogistic(object):
                     q = inverseChoice(allOmegai, n) 
                     uivq = dot(U, i, V, q, self.k)
                     gamma = uivp - uivq
-                    hGamma = log(1/(1 + exp(-self.rho*gamma)))
+                    hGamma = log(1.0/(1 + exp(-self.rho*gamma)))
                     
                     normGq += gq[q]
                     kappa += gq[q]*hGamma
