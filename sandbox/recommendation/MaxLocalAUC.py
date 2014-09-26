@@ -227,6 +227,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.copyParams(maxLocalAuc)
 
         maxLocalAuc.alpha = self.alpha
+        maxLocalAuc.alphas = self.alphas
         maxLocalAuc.beta = self.beta
         maxLocalAuc.eps = self.eps 
         maxLocalAuc.initialAlg = self.initialAlg
