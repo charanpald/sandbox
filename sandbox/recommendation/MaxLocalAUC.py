@@ -105,7 +105,7 @@ def restrictOmega(indPtr, colInds, colIndsSubset):
     return newIndPtr, newColInds
       
 class MaxLocalAUC(AbstractRecommender): 
-    def __init__(self, k, w, alpha=0.05, eps=10**-6, lmbdaU=0, lmbdaV=1, maxIterations=50, stochastic=False, numProcesses=None): 
+    def __init__(self, k, w, alpha=0.05, eps=10**-4, lmbdaU=0, lmbdaV=1, maxIterations=50, stochastic=False, numProcesses=None): 
         """
         Create an object for  maximising the local AUC with a penalty term using the matrix
         decomposition UV.T 
@@ -128,6 +128,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.alpha = alpha #Initial learning rate 
         self.beta = 0.75
         self.eps = eps 
+        self.eta = 5
         self.initialAlg = "rand"
         self.itemExpP = 0.0 #Sample from power law between 0 and 1 
         self.itemExpQ = 0.5     
@@ -272,6 +273,8 @@ class MaxLocalAUC(AbstractRecommender):
             learnerCython = MaxAUCSigmoid(self.k, self.lmbdaU, self.lmbdaV, self.normalise, self.numAucSamples, self.numRowSamples, self.startAverage, self.rho)
         else: 
             raise ValueError("Unknown objective: " + self.loss)
+    
+        learnerCython.eta = self.eta            
             
         return learnerCython
         
@@ -809,6 +812,13 @@ class MaxLocalAUC(AbstractRecommender):
         printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(muV))
         
         return printStr
+    
+    def regularisationPath(self, X): 
+        """
+        Compute a complete regularisation path for lambda. 
+        """
+        pass 
+        
     
     def singleLearnModel(self, X, verbose=False, U=None, V=None): 
         """

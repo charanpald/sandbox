@@ -29,10 +29,11 @@ cdef extern from "math.h":
     
 cdef class MaxAUCSigmoid(object):
     cdef public unsigned int k, printStep, numAucSamples, numRowSamples, startAverage
-    cdef public double lmbdaU, lmbdaV, maxNorm, rho, w
+    cdef public double lmbdaU, lmbdaV, maxNorm, rho, w, eta
     cdef public bint normalise    
     
     def __init__(self, unsigned int k=8, double lmbdaU=0.0, double lmbdaV=1.0, bint normalise=True, unsigned int numAucSamples=10, unsigned int numRowSamples=30, unsigned int startAverage=30, double rho=0.5):      
+        self.eta = 0          
         self.k = k 
         self.lmbdaU = lmbdaU
         self.lmbdaV = lmbdaV
@@ -471,7 +472,7 @@ cdef class MaxAUCSigmoid(object):
                 U[i,:] = scale(U, i, self.maxNorm/normUi, self.k)             
             
             if ind > self.startAverage: 
-                muU[i, :] = muU[i, :]*ind/float(ind+1) + U[i, :]/float(ind+1)
+                muU[i, :] = muU[i, :]*ind/float(ind+self.eta+1) + U[i, :]*(1+self.eta)/float(ind+self.eta+1)
             else: 
                 muU[i, :] = U[i, :]
                 
@@ -485,7 +486,7 @@ cdef class MaxAUCSigmoid(object):
                 V[j,:] = scale(V, j, self.maxNorm/normVj, self.k)        
             
             if ind > self.startAverage: 
-                muV[j, :] = muV[j, :]*ind/float(ind+1) + V[j, :]/float(ind+1)
+                muV[j, :] = muV[j, :]*ind/float(ind+self.eta+1) + V[j, :]*(1+self.eta)/float(ind+self.eta+1)
             else: 
                 muV[j, :] = V[j, :]
 
