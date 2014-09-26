@@ -42,6 +42,7 @@ class MaxLocalAUCProfile(object):
         maxLocalAuc.parallelSGD = False
         maxLocalAuc.numProcesses = 1
         maxLocalAuc.numAucSamples = 10
+        maxLocalAuc.loss = "square"
         print(maxLocalAuc)
                 
         ProfileUtils.profile('maxLocalAuc.learnModel(X)', globals(), locals())
