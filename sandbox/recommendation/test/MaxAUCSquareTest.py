@@ -187,7 +187,7 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
             #print(du1, du2)
             print(du1/numpy.linalg.norm(du1), du2/numpy.linalg.norm(du2))
             #print(numpy.linalg.norm(du1 - du2)/numpy.linalg.norm(du1))
-            self.assertTrue(numpy.linalg.norm(du1 - du2)/numpy.linalg.norm(du1) < 0.5)
+            nptst.assert_array_almost_equal(du1, du2, 2)
 
         #Let's compare against using the exact derivative 
         for i in numpy.random.permutation(m)[0:numTests]:  
