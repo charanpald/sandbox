@@ -1,4 +1,4 @@
-#cython: profile=False 
+#cython: profile=True 
 #cython: boundscheck=False
 #cython: wraparound=False
 #cython: nonecheck=False
@@ -229,14 +229,15 @@ cdef class MaxAUCSquare(object):
                 q = inverseChoiceArray(omegai, permutedColInds) 
                 uivq = dot(U, i, V, q, self.k)
                 
-                gamma = uivp - uivq
-                hGamma = 1-gamma 
+                hGamma = 1- uivp + uivq 
                 
                 nu = gq[q]*hGamma
                 normGq += gq[q]
+                zeta += nu
                 
-                deltaBeta += scale(V, q, nu, self.k) - scale(V, p, nu, self.k)
-             
+                deltaBeta += scale(V, q, nu, self.k) 
+                
+            deltaBeta -= scale(V, p, zeta, self.k)
             deltaTheta += deltaBeta*gp[p]/normGq
          
         if normGp != 0:
@@ -379,11 +380,9 @@ cdef class MaxAUCSquare(object):
                 for s, q in enumerate(omegaBari): 
                     #uivq = dot(U, i, V, q, k)
                     uivq = uivqs[s]
-                    gamma = uivp - uivq
-                    hGamma = 1-gamma
+                    hGamma = 1 - uivp + uivq
                     
                     nu = gq[q]*hGamma                    
-                    
                     kappa += nu
                     normGqi += gq[q]
                 
@@ -405,11 +404,8 @@ cdef class MaxAUCSquare(object):
                 omegaiSample = uniformChoice(omegai, self.numAucSamples)
                 
                 for p in omegaiSample: 
-                    #for p in omegai: 
                     uivp = dot(U, i, V, p, self.k)
-                    gamma = uivp - uivq  
-                    hGamma = 1-gamma
-                    zeta = 0
+                    hGamma = 1 - uivp + uivq
                                         
                     kappa += gp[p]*gq[q]*hGamma
                     normGpi += gp[p]                    
