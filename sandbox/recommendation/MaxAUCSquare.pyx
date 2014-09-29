@@ -44,6 +44,41 @@ cdef class MaxAUCSquare(object):
         self.rho = rho
         self.startAverage = startAverage
     
+    def computeV1V2(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq): 
+        """
+        Find matrices V1 and V2 such that the rows of V1 are the means of v_i wrt omega, and V1 is the means of v_i wrt omegaBar 
+        """
+        cdef double gpNorm
+        cdef unsigned int i, m = U.shape[0], n = V.shape[0]
+        cdef numpy.ndarray[double, ndim=2, mode="c"] V1 = numpy.zeros((m, V.shape[1]), dtype=numpy.float)
+        cdef numpy.ndarray[double, ndim=2, mode="c"] V2 = numpy.zeros((m, V.shape[1]), dtype=numpy.float)
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample 
+        
+        for i in range(m): 
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            omegaiSample = uniformChoice(omegai, self.numAucSamples)
+            gpNorm = 0            
+            
+            for j in omegai: 
+                V1[i, :] += V[j, :]*gp[j]
+                gpNorm += gp[j]
+            
+            if gpNorm != 0:
+                V1[i, :] /= gpNorm
+            
+            gqNorm = 0 
+            for j in range(self.numAucSamples): 
+                q = inverseChoiceArray(omegai, permutedColInds)
+                V2[i, :] += V[q, :]*gq[q]
+                gqNorm += gq[q]
+           
+            if gqNorm != 0: 
+                V2[i, :] /= gqNorm
+            
+        return V1, V2
+            
+    
     def objective(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[unsigned int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, bint full=False):         
         """
         Note that distributions gp, gq and gi must be normalised to have sum 1. 

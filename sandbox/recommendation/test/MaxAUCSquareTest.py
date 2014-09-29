@@ -26,6 +26,76 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         numpy.random.seed(21)
 
 
+    def testComputeV1V2(self): 
+        m = 10 
+        n = 20 
+        nnzPerRow = 5 
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), nnzPerRow, csarray=True)
+        
+        k = 5
+        learner = MaxAUCSquare(k)
+        learner.normalise = False
+        learner.lmbdaU = 0
+        learner.lmbdaV = 0
+        learner.rho = 1.0
+        learner.numAucSamples = n*2
+        
+        numRuns = 100      
+        gp = numpy.random.rand(n)
+        gp /= gp.sum()        
+        gq = numpy.random.rand(n)
+        gq /= gq.sum()    
+
+        permutedRowInds = numpy.arange(m, dtype=numpy.uint32)        
+        permutedColInds = numpy.arange(n, dtype=numpy.uint32)
+        
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)        
+        
+        U = numpy.random.randn(m, k)
+        V = numpy.random.randn(n, k)        
+        
+        V11 = numpy.zeros((m, k))
+        V21 = numpy.zeros((m, k))       
+        
+        for i in range(numRuns):
+            tempV1, tempV2 = learner.computeV1V2(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
+            V11 += tempV1
+            V21 += tempV2
+        
+        V11 /= numRuns 
+        V21 /= numRuns         
+        
+        #print(V11)
+        print(V21)        
+        
+        #Now compute real solution 
+        V12 = numpy.zeros((m, k))
+        V22 = numpy.zeros((m, k))   
+                 
+        
+        for i in range(m):
+            normGp = 0
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            for j in omegai: 
+                V12[i, :] += V[j, :]*gp[j]
+                normGp += gp[j]
+                
+            V12[i, :] /= normGp
+
+
+            normGq = 0             
+            omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
+            
+            for j in omegaBari: 
+                V22[i, :] += V[j, :]*gq[j]
+                normGq += gq[j]
+                
+            V22[i, :] /= normGq
+                
+
+        #print(V12)
+        print(V22)
+
     @unittest.skip("")
     def testDerivativeU(self): 
         m = 10 
@@ -333,7 +403,7 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
               
             nptst.assert_almost_equal(deltaV, deltaV2, 3)         
       
-    #@unittest.skip("")
+    @unittest.skip("")
     def testDerivativeViApprox(self): 
         """
         We'll test the case in which we apprormate using a large number of samples 
