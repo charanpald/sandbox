@@ -44,14 +44,16 @@ cdef class MaxAUCSquare(object):
         self.rho = rho
         self.startAverage = startAverage
     
-    def computeV1V2(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq): 
+    def computeMeansVW(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq): 
         """
         Find matrices V1 and V2 such that the rows of V1 are the means of v_i wrt omega, and V1 is the means of v_i wrt omegaBar 
         """
         cdef double gpNorm
         cdef unsigned int i, m = U.shape[0], n = V.shape[0]
-        cdef numpy.ndarray[double, ndim=2, mode="c"] V1 = numpy.zeros((m, V.shape[1]), dtype=numpy.float)
-        cdef numpy.ndarray[double, ndim=2, mode="c"] V2 = numpy.zeros((m, V.shape[1]), dtype=numpy.float)
+        cdef numpy.ndarray[double, ndim=2, mode="c"] VDot = numpy.zeros((m, V.shape[1]), dtype=numpy.float)
+        cdef numpy.ndarray[double, ndim=2, mode="c"] VDotDot = numpy.zeros((m, V.shape[1]), dtype=numpy.float)
+        cdef numpy.ndarray[double, ndim=2, mode="c"] WDot = numpy.zeros((m, V.shape[1]), dtype=numpy.float)
+        cdef numpy.ndarray[double, ndim=2, mode="c"] WDotDot = numpy.zeros((m, V.shape[1]), dtype=numpy.float)
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample 
         
@@ -60,23 +62,28 @@ cdef class MaxAUCSquare(object):
             omegaiSample = uniformChoice(omegai, self.numAucSamples)
             gpNorm = 0            
             
-            for j in omegai: 
-                V1[i, :] += V[j, :]*gp[j]
+            for j in omegaiSample: 
+                VDot[i, :] += V[j, :]*gp[j]
+                WDot[i, :] += V[j, :]*gp[j]*dot(U, i, V, j, self.k)
                 gpNorm += gp[j]
             
             if gpNorm != 0:
-                V1[i, :] /= gpNorm
+                VDot[i, :] /= gpNorm
+                WDot[i, :] /= gpNorm 
             
             gqNorm = 0 
             for j in range(self.numAucSamples): 
                 q = inverseChoiceArray(omegai, permutedColInds)
-                V2[i, :] += V[q, :]*gq[q]
+                VDotDot[i, :] += V[q, :]*gq[q]
+                WDotDot[i, :] += V[q, :]*gq[q]*dot(U, i, V, q, self.k)
                 gqNorm += gq[q]
            
             if gqNorm != 0: 
-                V2[i, :] /= gqNorm
+                VDotDot[i, :] /= gqNorm
+                WDotDot[i, :] /= gqNorm
             
-        return V1, V2
+            
+        return VDot, VDotDot, WDot, WDotDot
             
     
     def objective(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[unsigned int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, bint full=False):         

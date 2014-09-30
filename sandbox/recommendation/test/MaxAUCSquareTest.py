@@ -38,9 +38,9 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         learner.lmbdaU = 0
         learner.lmbdaV = 0
         learner.rho = 1.0
-        learner.numAucSamples = n*2
+        learner.numAucSamples = 20
         
-        numRuns = 100      
+        numRuns = 500      
         gp = numpy.random.rand(n)
         gp /= gp.sum()        
         gq = numpy.random.rand(n)
@@ -55,32 +55,46 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         V = numpy.random.randn(n, k)        
         
         V11 = numpy.zeros((m, k))
-        V21 = numpy.zeros((m, k))       
+        V21 = numpy.zeros((m, k))    
+        
+        W11 = numpy.zeros((m, k))
+        W21 = numpy.zeros((m, k)) 
         
         for i in range(numRuns):
-            tempV1, tempV2 = learner.computeV1V2(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
+            tempV1, tempV2, tempW1, tempW2 = learner.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
             V11 += tempV1
             V21 += tempV2
+            
+            W11 += tempW1 
+            W21 += tempW2
         
         V11 /= numRuns 
-        V21 /= numRuns         
+        V21 /= numRuns 
+
+        W11 /= numRuns 
+        W21 /= numRuns          
         
         #print(V11)
-        print(V21)        
+        #print(V21)        
         
         #Now compute real solution 
         V12 = numpy.zeros((m, k))
         V22 = numpy.zeros((m, k))   
+        W12 = numpy.zeros((m, k))
+        W22 = numpy.zeros((m, k))                 
                  
-        
+                 
+        #The bootstrap sampling causes slight errors 
         for i in range(m):
             normGp = 0
             omegai = colInds[indPtr[i]:indPtr[i+1]]
             for j in omegai: 
                 V12[i, :] += V[j, :]*gp[j]
+                W12[i, :] += V[j, :]*gp[j]*(U[i, :].dot(V[j, :]))
                 normGp += gp[j]
                 
             V12[i, :] /= normGp
+            W12[i, :] /= normGp
 
 
             normGq = 0             
@@ -88,13 +102,20 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
             
             for j in omegaBari: 
                 V22[i, :] += V[j, :]*gq[j]
+                W22[i, :] += V[j, :]*gq[j]*(U[i, :].dot(V[j, :]))
                 normGq += gq[j]
                 
             V22[i, :] /= normGq
+            W22[i, :] /= normGq
                 
 
-        #print(V12)
-        print(V22)
+        #print(W21)
+        #print(W22)
+        nptst.assert_array_almost_equal(V11, V12, 1)
+        nptst.assert_array_almost_equal(V21, V22, 1)
+        
+        nptst.assert_array_almost_equal(W11, W12, 1)
+        nptst.assert_array_almost_equal(W21, W22, 1)
 
     @unittest.skip("")
     def testDerivativeU(self): 
