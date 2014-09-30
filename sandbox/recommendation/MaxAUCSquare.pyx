@@ -60,9 +60,11 @@ cdef class MaxAUCSquare(object):
         for i in range(m): 
             omegai = colInds[indPtr[i]:indPtr[i+1]]
             omegaiSample = uniformChoice(omegai, self.numAucSamples)
-            gpNorm = 0            
+            gpNorm = 0       
             
-            for j in omegaiSample: 
+            omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
+            
+            for j in omegai: 
                 VDot[i, :] += V[j, :]*gp[j]
                 WDot[i, :] += V[j, :]*gp[j]*dot(U, i, V, j, self.k)
                 gpNorm += gp[j]
@@ -72,8 +74,9 @@ cdef class MaxAUCSquare(object):
                 WDot[i, :] /= gpNorm 
             
             gqNorm = 0 
-            for j in range(self.numAucSamples): 
-                q = inverseChoiceArray(omegai, permutedColInds)
+            #for j in range(self.numAucSamples): 
+            #    q = inverseChoiceArray(omegai, permutedColInds)
+            for q in omegaBari: 
                 VDotDot[i, :] += V[q, :]*gq[q]
                 WDotDot[i, :] += V[q, :]*gq[q]*dot(U, i, V, q, self.k)
                 gqNorm += gq[q]
@@ -84,8 +87,199 @@ cdef class MaxAUCSquare(object):
             
             
         return VDot, VDotDot, WDot, WDotDot
-            
     
+    def derivativeUi(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int i):
+        """
+        Find  delta phi/delta u_i using the hinge loss.  
+        """
+        cdef unsigned int p, q
+        cdef double uivp, uivq, gamma, kappa, ri
+        cdef double  normDeltaTheta, hGamma, zeta, normGp, normGq 
+        cdef unsigned int m = U.shape[0], n = V.shape[0]
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaBari 
+        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(self.k, numpy.float)
+        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(self.k, numpy.float)
+          
+        omegai = colInds[indPtr[i]:indPtr[i+1]]
+        omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
+        normGp = 0
+        
+        for p in omegai: 
+            uivp = dot(U, i, V, p, self.k)
+            normGp += gp[p]
+            
+            deltaBeta = numpy.zeros(self.k, numpy.float)
+            kappa = 0
+            zeta = 0 
+            normGq = 0
+            
+            for q in omegaBari: 
+                uivq = dot(U, i, V, q, self.k)
+                
+                gamma = uivp - uivq
+                hGamma = 1-gamma 
+                
+                normGq += gq[q]
+                
+                deltaBeta += (V[q, :] - V[p, :])*gq[q]*hGamma
+             
+            deltaTheta += deltaBeta*gp[p]/normGq
+        
+        if normGp != 0:
+            deltaTheta /= m*normGp
+        deltaTheta += scale(U, i, self.lmbdaU/m, self.k)
+                    
+        #Normalise gradient to have unit norm 
+        normDeltaTheta = numpy.linalg.norm(deltaTheta)
+        
+        if normDeltaTheta != 0 and self.normalise: 
+            deltaTheta = deltaTheta/normDeltaTheta
+        
+        return deltaTheta
+        
+    def derivativeUiApprox(self, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] VDot, numpy.ndarray[double, ndim=2, mode="c"] VDotDot, numpy.ndarray[double, ndim=2, mode="c"] WDot, numpy.ndarray[double, ndim=2, mode="c"] WDotDot, unsigned int i):
+        """
+        Find an approximation of delta phi/delta u_i using the simple objective without 
+        sigmoid functions. 
+        """
+        cdef unsigned int m = U.shape[0], n = V.shape[0]
+        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(self.k, numpy.float)
+
+        deltaTheta = VDotDot[i, :] - VDot[i, :] + WDotDot[i, :] + WDot[i, :] - scale(VDot, i, dot(VDotDot, i, U, i, self.k), self.k) - scale(VDotDot, i, dot(VDot, i, U, i, self.k), self.k)
+        deltaTheta /= m
+            
+        deltaTheta += scale(U, i, self.lmbdaU/m, self.k)
+                        
+        #Normalise gradient to have unit norm 
+        if self.normalise: 
+            normDeltaTheta = numpy.linalg.norm(deltaTheta)
+            
+            if normDeltaTheta != 0: 
+                deltaTheta = deltaTheta/normDeltaTheta
+        
+        return deltaTheta
+
+    def derivativeVi(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int j): 
+        """
+        delta phi/delta v_i using hinge loss. 
+        """
+        cdef unsigned int i = 0
+        cdef unsigned int k = U.shape[1]
+        cdef unsigned int p, q, numOmegai, numOmegaBari, t, ell
+        cdef unsigned int m = U.shape[0]
+        cdef unsigned int n = V.shape[0], ind
+        cdef unsigned int s = 0
+        cdef double uivp, uivq,  betaScale, ri, normTheta, gamma, kappa, hGamma, hKappa, normGp, normGq
+        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
+        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaBari
+        
+        for i in range(m): 
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
+            
+            betaScale = 0
+            normGp = 0
+            normGq = 0
+            
+            if j in omegai:                 
+                p = j 
+                uivp = dot(U, i, V, p, k)
+                
+                normGp = gp[omegai].sum()
+                normGq = 0
+                zeta = 0
+                kappa = 0 
+                
+                for q in omegaBari: 
+                    uivq = dot(U, i, V, q, k)
+                    gamma = uivp - uivq
+                    hGamma = 1-gamma 
+                    
+                    kappa += gq[q]*hGamma
+                    normGq += gq[q]
+                
+                if normGq != 0: 
+                    kappa /= normGq
+                    zeta /= normGq
+                    
+                if normGp != 0: 
+                    betaScale -= kappa*gp[p]/normGp
+            else:
+                q = j 
+                uivq = dot(U, i, V, q, k)
+                
+                normGp = 0 
+                normGq = gq[omegaBari].sum()
+                kappa = 0
+                
+                for p in omegai: 
+                    uivp = dot(U, i, V, p, k)
+                    gamma = uivp - uivq  
+                    hGamma = 1-gamma
+                    zeta = 0
+                    
+                    for ell in omegaBari:
+                        uivell = dot(U, i, V, ell, k)
+                        gamma2 = uivp - uivell  
+                    
+                    if normGq != 0: 
+                        zeta /= normGq
+                    
+                    kappa += gp[p]*gq[q]*hGamma
+                    normGp += gp[p]                    
+                    
+                if normGp*normGq != 0: 
+                    betaScale += kappa/(normGp*normGq)
+            
+            #print(betaScale, U[i, :])
+            deltaTheta += U[i, :]*betaScale 
+        
+        deltaTheta /= m
+        deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
+        
+        #Make gradient unit norm 
+        normTheta = numpy.linalg.norm(deltaTheta)
+        if normTheta != 0 and self.normalise: 
+            deltaTheta = deltaTheta/normTheta
+        
+        return deltaTheta        
+
+    def derivativeViApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] VDot, numpy.ndarray[double, ndim=2, mode="c"] VDotDot,  numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds, unsigned int j): 
+        """
+        delta phi/delta v_i  using the hinge loss. 
+        """
+        cdef unsigned int m = U.shape[0]
+        cdef unsigned int n = V.shape[0]
+        cdef unsigned int i, p, q
+        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(self.k, numpy.float)
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] rowInds = numpy.random.choice(permutedRowInds, min(self.numRowSamples, permutedRowInds.shape[0]), replace=False)
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
+        
+        for i in rowInds:
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            
+            if j in omegai: 
+                p = j
+                deltaTheta -= U[i, :]*gp[p]*(1 + dot(U, i, VDotDot, i, self.k) - dot(U, i, V, p, self.k))
+            else: 
+                q = j 
+                deltaTheta += U[i, :]*gq[q]*(1 + dot(U, i, V, q, self.k) - dot(U, i, VDot, i, self.k))
+
+        deltaTheta /= rowInds.shape[0]
+        deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
+        
+        #Make gradient unit norm
+        if self.normalise: 
+            normTheta = numpy.linalg.norm(deltaTheta)
+            
+            if normTheta != 0: 
+                deltaTheta = deltaTheta/normTheta
+        
+        return deltaTheta
+        
     def objective(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[unsigned int, ndim=1, mode="c"] allIndPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] allColInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, bint full=False):         
         """
         Note that distributions gp, gq and gi must be normalised to have sum 1. 
@@ -185,290 +379,7 @@ cdef class MaxAUCSquare(object):
         if full: 
             return objVector
         else: 
-            return objVector.sum()             
-    
-    def derivativeUi(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int i):
-        """
-        Find  delta phi/delta u_i using the hinge loss.  
-        """
-        cdef unsigned int p, q
-        cdef double uivp, uivq, gamma, kappa, ri
-        cdef double  normDeltaTheta, hGamma, zeta, normGp, normGq 
-        cdef unsigned int m = U.shape[0], n = V.shape[0]
-        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai
-        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaBari 
-        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(self.k, numpy.float)
-        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(self.k, numpy.float)
-          
-        omegai = colInds[indPtr[i]:indPtr[i+1]]
-        omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
-        normGp = 0
-        
-        for p in omegai: 
-            uivp = dot(U, i, V, p, self.k)
-            normGp += gp[p]
-            
-            deltaBeta = numpy.zeros(self.k, numpy.float)
-            kappa = 0
-            zeta = 0 
-            normGq = 0
-            
-            for q in omegaBari: 
-                uivq = dot(U, i, V, q, self.k)
-                
-                gamma = uivp - uivq
-                hGamma = 1-gamma 
-                
-                normGq += gq[q]
-                
-                deltaBeta += (V[q, :] - V[p, :])*gq[q]*hGamma
-             
-            deltaTheta += deltaBeta*gp[p]/normGq
-        
-        if normGp != 0:
-            deltaTheta /= m*normGp
-        deltaTheta += scale(U, i, self.lmbdaU/m, self.k)
-                    
-        #Normalise gradient to have unit norm 
-        normDeltaTheta = numpy.linalg.norm(deltaTheta)
-        
-        if normDeltaTheta != 0 and self.normalise: 
-            deltaTheta = deltaTheta/normDeltaTheta
-        
-        return deltaTheta
-        
-    def derivativeUiApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, unsigned int i):
-        """
-        Find an approximation of delta phi/delta u_i using the simple objective without 
-        sigmoid functions. 
-        """
-        cdef unsigned int p, q, ind, j, s
-        cdef double uivp, uivq, gamma, kappa, hGamma,
-        cdef double normDeltaTheta, normGp, normGq, zeta, nu
-        cdef unsigned int m = U.shape[0], n = V.shape[0]
-        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
-        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample
-        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(self.k, numpy.float)
-        cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(self.k, numpy.int)
-        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(self.k, numpy.float)
-             
-        omegai = colInds[indPtr[i]:indPtr[i+1]]
-        
-        #This ought to restrict omega to permutedColInds
-        #omegaiSample = numpy.intersect1d(omegai, permutedColInds, assume_unique=True)                
-        omegaiSample = uniformChoice(omegai, self.numAucSamples)   
-        normGp = 0
-        
-        for p in omegaiSample: 
-            uivp = dot(U, i, V, p, self.k)
-            normGp += gp[p]
-            
-            deltaBeta = numpy.zeros(self.k, numpy.float)
-            kappa = 0
-            zeta = 0 
-            normGq = 0
-            
-            for j in range(self.numAucSamples): 
-                q = inverseChoiceArray(omegai, permutedColInds) 
-                uivq = dot(U, i, V, q, self.k)
-                
-                hGamma = 1- uivp + uivq 
-                
-                nu = gq[q]*hGamma
-                normGq += gq[q]
-                zeta += nu
-                
-                deltaBeta += scale(V, q, nu, self.k) 
-                
-            deltaBeta -= scale(V, p, zeta, self.k)
-            deltaTheta += deltaBeta*gp[p]/normGq
-         
-        if normGp != 0:
-            deltaTheta /= m*normGp
-        deltaTheta += scale(U, i, self.lmbdaU/m, self.k)
-                        
-        #Normalise gradient to have unit norm 
-        if self.normalise: 
-            normDeltaTheta = numpy.linalg.norm(deltaTheta)
-            
-            if normDeltaTheta != 0: 
-                deltaTheta = deltaTheta/normDeltaTheta
-        
-        return deltaTheta
-
-    def derivativeVi(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int j): 
-        """
-        delta phi/delta v_i using hinge loss. 
-        """
-        cdef unsigned int i = 0
-        cdef unsigned int k = U.shape[1]
-        cdef unsigned int p, q, numOmegai, numOmegaBari, t, ell
-        cdef unsigned int m = U.shape[0]
-        cdef unsigned int n = V.shape[0], ind
-        cdef unsigned int s = 0
-        cdef double uivp, uivq,  betaScale, ri, normTheta, gamma, kappa, hGamma, hKappa, normGp, normGq
-        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(k, numpy.float)
-        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(k, numpy.float)
-        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
-        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaBari
-        
-        for i in range(m): 
-            omegai = colInds[indPtr[i]:indPtr[i+1]]
-            omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
-            
-            betaScale = 0
-            normGp = 0
-            normGq = 0
-            
-            if j in omegai:                 
-                p = j 
-                uivp = dot(U, i, V, p, k)
-                
-                normGp = gp[omegai].sum()
-                normGq = 0
-                zeta = 0
-                kappa = 0 
-                
-                for q in omegaBari: 
-                    uivq = dot(U, i, V, q, k)
-                    gamma = uivp - uivq
-                    hGamma = 1-gamma 
-                    
-                    kappa += gq[q]*hGamma
-                    normGq += gq[q]
-                
-                if normGq != 0: 
-                    kappa /= normGq
-                    zeta /= normGq
-                    
-                if normGp != 0: 
-                    betaScale -= kappa*gp[p]/normGp
-            else:
-                q = j 
-                uivq = dot(U, i, V, q, k)
-                
-                normGp = 0 
-                normGq = gq[omegaBari].sum()
-                kappa = 0
-                
-                for p in omegai: 
-                    uivp = dot(U, i, V, p, k)
-                    gamma = uivp - uivq  
-                    hGamma = 1-gamma
-                    zeta = 0
-                    
-                    for ell in omegaBari:
-                        uivell = dot(U, i, V, ell, k)
-                        gamma2 = uivp - uivell  
-                    
-                    if normGq != 0: 
-                        zeta /= normGq
-                    
-                    kappa += gp[p]*gq[q]*hGamma
-                    normGp += gp[p]                    
-                    
-                if normGp*normGq != 0: 
-                    betaScale += kappa/(normGp*normGq)
-            
-            #print(betaScale, U[i, :])
-            deltaTheta += U[i, :]*betaScale 
-        
-        deltaTheta /= m
-        deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
-        
-        #Make gradient unit norm 
-        normTheta = numpy.linalg.norm(deltaTheta)
-        if normTheta != 0 and self.normalise: 
-            deltaTheta = deltaTheta/normTheta
-        
-        return deltaTheta        
-
-    def derivativeViApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, unsigned int j): 
-        """
-        delta phi/delta v_i  using the hinge loss. 
-        """
-        cdef unsigned int m = U.shape[0]
-        cdef unsigned int n = V.shape[0]
-        cdef unsigned int i, p, q, s, ell
-        cdef double uivp, uivq, uivell, betaScale, normTheta, gamma, kappa, hGamma, zeta, normGqi, normGpi, gamma2, hGamma2, nu
-        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(self.k, numpy.float)
-        cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(self.k, numpy.float)
-        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] rowInds = numpy.random.choice(permutedRowInds, min(self.numRowSamples, permutedRowInds.shape[0]), replace=False)
-        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
-        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample
-        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaBari
-        cdef numpy.ndarray[double, ndim=1, mode="c"] uivqs = numpy.zeros(self.numAucSamples, numpy.float)
-        
-        for i in rowInds:
-            omegai = colInds[indPtr[i]:indPtr[i+1]]
-            #omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
-            
-            #Find an array not in omega but in permutedColInds 
-            omegaBari = numpy.zeros(self.numAucSamples, numpy.uint32)
-            for s in range(self.numAucSamples): 
-                omegaBari[s] = inverseChoiceArray(omegai, permutedColInds)
-                #Can compute uivqs here 
-                uivqs[s] = dot(U, i, V, omegaBari[s], self.k)
-
-            betaScale = 0
-            
-            if j in omegai:                 
-                p = j 
-                uivp = dot(U, i, V, p, self.k)
-                
-                normGqi = 0
-                zeta = 0
-                kappa = 0 
-                
-                for s, q in enumerate(omegaBari): 
-                    #uivq = dot(U, i, V, q, k)
-                    uivq = uivqs[s]
-                    hGamma = 1 - uivp + uivq
-                    
-                    nu = gq[q]*hGamma                    
-                    kappa += nu
-                    normGqi += gq[q]
-                
-                if normGqi != 0: 
-                    kappa /= normGqi
-                    zeta /= normGqi
-                    
-                if normGp[i] != 0: 
-                    betaScale -= kappa*gp[p]/normGp[i]
-            else:
-                q = j 
-                uivq = dot(U, i, V, q, self.k)
-                
-                normGpi = 0 
-                kappa = 0
-                
-                #This ought to restrict omega to permutedColInds
-                #omegaiSample = numpy.intersect1d(omegai, permutedColInds, assume_unique=True)
-                omegaiSample = uniformChoice(omegai, self.numAucSamples)
-                
-                for p in omegaiSample: 
-                    uivp = dot(U, i, V, p, self.k)
-                    hGamma = 1 - uivp + uivq
-                                        
-                    kappa += gp[p]*gq[q]*hGamma
-                    normGpi += gp[p]                    
-                    
-                if normGp[i]*normGpi != 0: 
-                    betaScale += kappa/(normGpi*normGq[i])
-            
-            deltaTheta += scale(U, i, betaScale, self.k) 
-        
-        deltaTheta /= rowInds.shape[0]
-        deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
-        
-        #Make gradient unit norm
-        if self.normalise: 
-            normTheta = numpy.linalg.norm(deltaTheta)
-            
-            if normTheta != 0: 
-                deltaTheta = deltaTheta/normTheta
-        
-        return deltaTheta
+            return objVector.sum()            
         
 
     def updateU(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, double sigma):  
@@ -494,16 +405,19 @@ cdef class MaxAUCSquare(object):
         cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(self.k)
         cdef numpy.ndarray[double, ndim=1, mode="c"] dVj = numpy.zeros(self.k)
     
+        #Compute expectations 
+        VDot, VDotDot, WDot, WDotDot = self.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
+    
         for s in range(numIterations):
             if s % self.printStep == 0: 
                 if newline:  
                     print(str(s) + " of " + str(numIterations))
                 else: 
                     print(str(s) + " ", end="")
-                            
+            
             i = permutedRowInds[s % permutedRowInds.shape[0]]   
             
-            dUi = self.derivativeUiApprox(indPtr, colInds, U, V, gp, gq, permutedColInds, i)
+            dUi = self.derivativeUiApprox(U, V, VDot, VDotDot, WDot, WDotDot, i)
             plusEquals(U, i, -sigma*dUi, self.k)
             normUi = numpy.linalg.norm(U[i,:])
             
@@ -517,7 +431,7 @@ cdef class MaxAUCSquare(object):
                 
             #Now update V   
             j = permutedColInds[s % permutedColInds.shape[0]]
-            dVj = self.derivativeViApprox(indPtr, colInds, U, V, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, j)
+            dVj = self.derivativeViApprox(indPtr, colInds, U, V, VDot, VDotDot, gp, gq, permutedRowInds, j)
             plusEquals(V, j, -sigma*dVj, self.k)
             normVj = numpy.linalg.norm(V[j,:])  
             
