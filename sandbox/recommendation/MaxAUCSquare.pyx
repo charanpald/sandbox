@@ -62,9 +62,9 @@ cdef class MaxAUCSquare(object):
             omegaiSample = uniformChoice(omegai, self.numAucSamples)
             gpNorm = 0       
             
-            omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
+            #omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
             
-            for j in omegai: 
+            for j in omegaiSample: 
                 VDot[i, :] += V[j, :]*gp[j]
                 WDot[i, :] += V[j, :]*gp[j]*dot(U, i, V, j, self.k)
                 gpNorm += gp[j]
@@ -74,9 +74,9 @@ cdef class MaxAUCSquare(object):
                 WDot[i, :] /= gpNorm 
             
             gqNorm = 0 
-            #for j in range(self.numAucSamples): 
-            #    q = inverseChoiceArray(omegai, permutedColInds)
-            for q in omegaBari: 
+            for j in range(self.numAucSamples): 
+                q = inverseChoiceArray(omegai, permutedColInds)
+                #for q in omegaBari: 
                 VDotDot[i, :] += V[q, :]*gq[q]
                 WDotDot[i, :] += V[q, :]*gq[q]*dot(U, i, V, q, self.k)
                 gqNorm += gq[q]
@@ -247,7 +247,7 @@ cdef class MaxAUCSquare(object):
         
         return deltaTheta        
 
-    def derivativeViApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] VDot, numpy.ndarray[double, ndim=2, mode="c"] VDotDot,  numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds, unsigned int j): 
+    def derivativeViApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] VDot, numpy.ndarray[double, ndim=2, mode="c"] VDotDot,  numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds, unsigned int j): 
         """
         delta phi/delta v_i  using the hinge loss. 
         """
@@ -263,10 +263,12 @@ cdef class MaxAUCSquare(object):
             
             if j in omegai: 
                 p = j
-                deltaTheta -= U[i, :]*gp[p]*(1 + dot(U, i, VDotDot, i, self.k) - dot(U, i, V, p, self.k))
-            else: 
+                if normGq[i] != 0 and normGp[i] != 0: 
+                    deltaTheta -= U[i, :]*gp[p]*(1 + dot(U, i, VDotDot, i, self.k) - dot(U, i, V, p, self.k))/normGp[i]
+            else:
                 q = j 
-                deltaTheta += U[i, :]*gq[q]*(1 + dot(U, i, V, q, self.k) - dot(U, i, VDot, i, self.k))
+                if normGp[i] != 0 and normGq[i] != 0: 
+                    deltaTheta += U[i, :]*gq[q]*(1 + dot(U, i, V, q, self.k) - dot(U, i, VDot, i, self.k))/normGq[i]
 
         deltaTheta /= rowInds.shape[0]
         deltaTheta += scale(V, j, self.lmbdaV/m, self.k)

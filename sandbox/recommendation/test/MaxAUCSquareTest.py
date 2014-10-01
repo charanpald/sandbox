@@ -435,13 +435,13 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         k = 3 
         X = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True)
         
-        #for i in range(m):
-        #    X[i, 0] = 1
-        #    X[i, 1] = 0
+        for i in range(m):
+            X[i, 0] = 1
+            X[i, 1] = 0
        
-        for i in range(m): 
-            for j in range(n): 
-                X[i, j] = 1
+        #for i in range(m): 
+        #    for j in range(n): 
+        #        X[i, j] = 1
        
         w = 0.1
         eps = 0.001
@@ -472,25 +472,21 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         maxLocalAuc = MaxLocalAUC(k, w)
         normGp, normGq = maxLocalAuc.computeNormGpq(indPtr, colInds, gp, gq, m)
         
-        numRuns = 200 
+        numRuns = 1 
         numTests = 5
 
         #Let's compare against using the exact derivative 
         for i in numpy.random.permutation(m)[0:numTests]: 
-            U = numpy.random.rand(X.shape[0], k)
-            V = numpy.random.rand(X.shape[1], k)
+            U = numpy.random.randn(X.shape[0], k)
+            V = numpy.random.randn(X.shape[1], k)
             
-            VDot, VDotDot, WDot, WDotDot = learner.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
-            print(V[i, :])
-            #print(VDot[i, :])
-            #print(VDotDot[i, :])
+            #U[2:, :] = 0
+            
             dv1 = numpy.zeros(k)
             for j in range(numRuns): 
                 VDot, VDotDot, WDot, WDotDot = learner.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
-                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, VDot, VDotDot, gp, gq, permutedRowInds, i)
-            print(VDot)
-            print(VDotDot)
-            print(numpy.mean(V, 0))
+                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, VDot, VDotDot, gp, gq, normGp, normGq, permutedRowInds, i)
+
 
             dv1 /= numRuns
             dv2 = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, i)   
@@ -509,10 +505,10 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
                 
                 dv3[j] = (obj1-obj2)/(2*eps)            
             
-            print(dv2, dv3)
+            #print(dv2, dv3)
             print(dv1/numpy.linalg.norm(dv1), dv2/numpy.linalg.norm(dv2), dv3/numpy.linalg.norm(dv3))
             
-            #nptst.assert_array_almost_equal(dv1, dv2, 2)
+            nptst.assert_array_almost_equal(dv1, dv2, 2)
             
         learner.lmbdaV = 0.5 
         
@@ -522,14 +518,15 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
     
             dv1 = numpy.zeros(k)
             for j in range(numRuns): 
-                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V,  gp, gq, normGp, normGq, permutedRowInds, permutedColInds, i)
+                VDot, VDotDot, WDot, WDotDot = learner.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
+                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, VDot, VDotDot, gp, gq, normGp, normGq, permutedRowInds, i)
             dv1 /= numRuns
             dv2 = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, i) 
             print(dv1, dv2)
             nptst.assert_array_almost_equal(dv1, dv2, 2)
             
         learner.numRowSamples = 10 
-        numRuns = 1000
+        numRuns = 100
         
         for i in numpy.random.permutation(m)[0:numTests]: 
             U = numpy.random.rand(X.shape[0], k)
@@ -537,7 +534,8 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
             
             dv1 = numpy.zeros(k)
             for j in range(numRuns): 
-                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, i)
+                VDot, VDotDot, WDot, WDotDot = learner.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
+                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, VDot, VDotDot, gp, gq, normGp, normGq, permutedRowInds, i)
             dv1 /= numRuns
             dv2 = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, i)  
             print(dv1, dv2)
@@ -546,7 +544,7 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         maxLocalAuc.numRowSamples = m 
         maxLocalAuc.numAucSamples = 20 
         maxLocalAuc.lmbdaV = 0
-        numRuns = 1000
+        numRuns = 100
         print("Final test")
         
         #for i in numpy.random.permutation(m)[0:numTests]: 
@@ -556,7 +554,8 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
             
             dv1 = numpy.zeros(k)
             for j in range(numRuns): 
-                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, i)
+                VDot, VDotDot, WDot, WDotDot = learner.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
+                dv1 += learner.derivativeViApprox(indPtr, colInds, U, V, VDot, VDotDot, gp, gq, normGp, normGq, permutedRowInds, i)
             dv1 /= numRuns
             #dv1 = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, i) 
             dv2 = learner.derivativeVi(indPtr, colInds, U, V, gp, gq, i)   
