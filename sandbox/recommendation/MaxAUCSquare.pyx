@@ -57,7 +57,7 @@ cdef class MaxAUCSquare(object):
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample 
         
-        for i in range(m): 
+        for i in permutedRowInds: 
             omegai = colInds[indPtr[i]:indPtr[i+1]]
             omegaiSample = uniformChoice(omegai, self.numAucSamples)
             gpNorm = 0       
@@ -254,6 +254,7 @@ cdef class MaxAUCSquare(object):
         cdef unsigned int m = U.shape[0]
         cdef unsigned int n = V.shape[0]
         cdef unsigned int i, p, q
+        cdef double zeta 
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(self.k, numpy.float)
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] rowInds = numpy.random.choice(permutedRowInds, min(self.numRowSamples, permutedRowInds.shape[0]), replace=False)
         cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
@@ -264,11 +265,13 @@ cdef class MaxAUCSquare(object):
             if j in omegai: 
                 p = j
                 if normGq[i] != 0 and normGp[i] != 0: 
-                    deltaTheta -= U[i, :]*gp[p]*(1 + dot(U, i, VDotDot, i, self.k) - dot(U, i, V, p, self.k))/normGp[i]
+                    zeta = (gp[p]/normGp[i])*(1 + dot(U, i, VDotDot, i, self.k) - dot(U, i, V, p, self.k))
+                    deltaTheta -= U[i, :]*zeta
             else:
                 q = j 
                 if normGp[i] != 0 and normGq[i] != 0: 
-                    deltaTheta += U[i, :]*gq[q]*(1 + dot(U, i, V, q, self.k) - dot(U, i, VDot, i, self.k))/normGq[i]
+                    zeta = (gq[q]/normGq[i])*(1 + dot(U, i, V, q, self.k) - dot(U, i, VDot, i, self.k))
+                    deltaTheta += U[i, :]*zeta
 
         deltaTheta /= rowInds.shape[0]
         deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
@@ -407,7 +410,7 @@ cdef class MaxAUCSquare(object):
         cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(self.k)
         cdef numpy.ndarray[double, ndim=1, mode="c"] dVj = numpy.zeros(self.k)
     
-        #Compute expectations 
+        #Compute expectations - bit of extra memory consumed in parallel case 
         VDot, VDotDot, WDot, WDotDot = self.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
     
         for s in range(numIterations):
@@ -433,7 +436,7 @@ cdef class MaxAUCSquare(object):
                 
             #Now update V   
             j = permutedColInds[s % permutedColInds.shape[0]]
-            dVj = self.derivativeViApprox(indPtr, colInds, U, V, VDot, VDotDot, gp, gq, permutedRowInds, j)
+            dVj = self.derivativeViApprox(indPtr, colInds, U, V, VDot, VDotDot, gp, gq, normGp, normGq, permutedRowInds, j)
             plusEquals(V, j, -sigma*dVj, self.k)
             normVj = numpy.linalg.norm(V[j,:])  
             

@@ -457,22 +457,22 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
         U = numpy.random.rand(X.shape[0], k)
         V = numpy.random.rand(X.shape[1], k)
              
-        #gp = numpy.random.rand(n)
-        gp = numpy.ones(n)
+        gp = numpy.random.rand(n)
+        #gp = numpy.ones(n)
         gp /= gp.sum()        
-        #gq = numpy.random.rand(n)
-        gq = numpy.ones(n)
+        gq = numpy.random.rand(n)
+        #gq = numpy.ones(n)
         gq /= gq.sum()     
         
-        #permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
-        #permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
-        permutedRowInds = numpy.arange(m, dtype=numpy.uint32)        
-        permutedColInds = numpy.arange(n, dtype=numpy.uint32)
+        permutedRowInds = numpy.array(numpy.random.permutation(m), numpy.uint32)
+        permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
+        #permutedRowInds = numpy.arange(m, dtype=numpy.uint32)        
+        #permutedColInds = numpy.arange(n, dtype=numpy.uint32)
         
         maxLocalAuc = MaxLocalAUC(k, w)
         normGp, normGq = maxLocalAuc.computeNormGpq(indPtr, colInds, gp, gq, m)
         
-        numRuns = 1 
+        numRuns = 10 
         numTests = 5
 
         #Let's compare against using the exact derivative 
@@ -508,7 +508,7 @@ class MaxLocalAUCCythonHingeTest(unittest.TestCase):
             #print(dv2, dv3)
             print(dv1/numpy.linalg.norm(dv1), dv2/numpy.linalg.norm(dv2), dv3/numpy.linalg.norm(dv3))
             
-            nptst.assert_array_almost_equal(dv1, dv2, 2)
+            nptst.assert_array_almost_equal(dv1, dv2, 1)
             
         learner.lmbdaV = 0.5 
         
