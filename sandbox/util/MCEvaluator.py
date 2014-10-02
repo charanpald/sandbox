@@ -258,10 +258,10 @@ class MCEvaluator(object):
         U = numpy.ascontiguousarray(U)
         V = numpy.ascontiguousarray(V)        
         
-        if r == None: 
+        if r is None: 
             r = SparseUtilsCython.computeR(U, V, w, numAucSamples)
         
-        if allArray == None: 
+        if allArray is None: 
             return MCEvaluatorCython.localAUCApprox(indPtr, colInds, indPtr, colInds, U, V, numAucSamples, r)
         else:
             allIndPtr, allColInd = allArray

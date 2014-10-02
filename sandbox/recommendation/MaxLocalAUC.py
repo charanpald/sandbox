@@ -777,7 +777,7 @@ class MaxLocalAUC(AbstractRecommender):
         printStr += " train: obj~" + str('%.4f' % trainMeasures[-1][0]) 
         printStr += " LAUC~" + str('%.4f' % trainMeasures[-1][1])         
         
-        if testIndPtr != None: 
+        if testIndPtr is not None: 
             testMeasuresRow = []
             testMeasuresRow.append(self.objectiveApprox((testIndPtr, testColInds), muU, muV, r, gi, gp, gq, allArray=(allIndPtr, allColInds)))
             testMeasuresRow.append(MCEvaluator.localAUCApprox((testIndPtr, testColInds), muU, muV, self.w, self.numRecordAucSamples, r, allArray=(allIndPtr, allColInds)))
@@ -894,12 +894,12 @@ class MaxLocalAUC(AbstractRecommender):
                 printStr = self.recordResults(muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime)    
                 logging.debug(printStr) 
                                 
-                if testIndPtr != None and testMeasures[-1][metricInd] >= bestMetric: 
+                if testIndPtr is not None and testMeasures[-1][metricInd] >= bestMetric: 
                     bestMetric = testMeasures[-1][metricInd]
                     logging.debug("Current best metric=" + str(bestMetric))
                     bestU = muU.copy() 
                     bestV = muV.copy() 
-                elif testIndPtr == None: 
+                elif testIndPtr is None: 
                     bestU = muU.copy() 
                     bestV = muV.copy()                     
                 
