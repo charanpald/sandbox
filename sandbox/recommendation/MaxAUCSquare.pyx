@@ -405,10 +405,13 @@ cdef class MaxAUCSquare(object):
         cdef unsigned int m = U.shape[0]
         cdef unsigned int n = V.shape[0]    
         cdef unsigned int i, j, s
-        cdef double normUi, normVj
+        cdef double normUi, normVj, factor1, factor2
         cdef bint newline = indPtr.shape[0] > 100000
         cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(self.k)
         cdef numpy.ndarray[double, ndim=1, mode="c"] dVj = numpy.zeros(self.k)
+    
+        factor1 = ind/float(ind+self.eta+1)
+        factor2 = (1+self.eta)/float(ind+self.eta+1)    
     
         #Compute expectations - bit of extra memory consumed in parallel case 
         VDot, VDotDot, WDot, WDotDot = self.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
@@ -430,7 +433,7 @@ cdef class MaxAUCSquare(object):
                 U[i,:] = scale(U, i, self.maxNorm/normUi, self.k)             
             
             if ind > self.startAverage: 
-                muU[i, :] = muU[i, :]*ind/float(ind+self.eta+1) + U[i, :]*(1+self.eta)/float(ind+self.eta+1)
+                muU[i, :] = muU[i, :]*factor1 + U[i, :]*factor2
             else: 
                 muU[i, :] = U[i, :]
                 
@@ -444,7 +447,7 @@ cdef class MaxAUCSquare(object):
                 V[j,:] = scale(V, j, self.maxNorm/normVj, self.k)        
             
             if ind > self.startAverage: 
-                muV[j, :] = muV[j, :]*ind/float(ind+self.eta+1) + V[j, :]*(1+self.eta)/float(ind+self.eta+1)
+                muV[j, :] = muV[j, :]*factor1 + V[j, :]*factor2
             else: 
                 muV[j, :] = V[j, :]
 
