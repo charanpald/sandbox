@@ -172,6 +172,7 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += " alpha=" + str(self.alpha) 
         outputStr += " beta=" + str(self.beta)
         outputStr += " eps=" + str(self.eps) 
+        outputStr += " eta=" + str(self.eta) 
         outputStr += " initialAlg=" + self.initialAlg
         outputStr += " itemExpP=" + str(self.itemExpP) 
         outputStr += " itemExpQ=" + str(self.itemExpQ) 
@@ -231,6 +232,7 @@ class MaxLocalAUC(AbstractRecommender):
         maxLocalAuc.alphas = self.alphas
         maxLocalAuc.beta = self.beta
         maxLocalAuc.eps = self.eps 
+        maxLocalAuc.eta = self.eta 
         maxLocalAuc.initialAlg = self.initialAlg
         maxLocalAuc.itemExpP = self.itemExpP
         maxLocalAuc.itemExpQ = self.itemExpQ
