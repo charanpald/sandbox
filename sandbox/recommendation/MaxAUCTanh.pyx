@@ -94,9 +94,9 @@ cdef class MaxAUCTanh(object):
             omegaiSample = uniformChoice(omegai, self.numAucSamples)
             gpNorm = 0       
             
-            #omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
+            omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
             
-            for j in omegaiSample: 
+            for j in omegai: 
                 VDot[i, :] += V[j, :]*gp[j]
                 WDot[i, :] += V[j, :]*gp[j]*dot(U, i, V, j, self.k)
                 gpNorm += gp[j]
@@ -106,9 +106,9 @@ cdef class MaxAUCTanh(object):
                 WDot[i, :] /= gpNorm 
             
             gqNorm = 0 
-            for j in range(self.numAucSamples): 
-                q = inverseChoiceArray(omegai, permutedColInds)
-                #for q in omegaBari: 
+            #for j in range(self.numAucSamples): 
+            #    q = inverseChoiceArray(omegai, permutedColInds)
+            for q in omegaBari: 
                 VDotDot[i, :] += V[q, :]*gq[q]
                 WDotDot[i, :] += V[q, :]*gq[q]*dot(U, i, V, q, self.k)
                 gqNorm += gq[q]
@@ -172,56 +172,27 @@ cdef class MaxAUCTanh(object):
         return deltaTheta
     
 
-    def derivativeUiApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, unsigned int i):
+    def derivativeUiApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] VDot, numpy.ndarray[double, ndim=2, mode="c"] VDotDot, numpy.ndarray[double, ndim=2, mode="c"] WDot, numpy.ndarray[double, ndim=2, mode="c"] WDotDot, numpy.ndarray[double, ndim=1, mode="c"] gp, unsigned int i):
         """
         Find an approximation of delta phi/delta u_i using the simple objective without 
         sigmoid functions. 
         """
-        cdef unsigned int p, q, ind, j, s
-        cdef double uivp, uivq, gamma, kappa, hGamma,
-        cdef double normDeltaTheta, normGp, normGq, zeta, nu
         cdef unsigned int m = U.shape[0], n = V.shape[0]
-        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegai 
-        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample
+        cdef double nu=0
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaTheta = numpy.zeros(self.k, numpy.float)
-        cdef numpy.ndarray[numpy.int_t, ndim=1, mode="c"] indsQ = numpy.zeros(self.k, numpy.int)
         cdef numpy.ndarray[numpy.float_t, ndim=1, mode="c"] deltaBeta = numpy.zeros(self.k, numpy.float)
-             
+        cdef numpy.ndarray[unsigned int, ndim=1, mode="c"] omegaiSample
+
         omegai = colInds[indPtr[i]:indPtr[i+1]]
-        
-        #This ought to restrict omega to permutedColInds
-        #omegaiSample = numpy.intersect1d(omegai, permutedColInds, assume_unique=True)                
-        omegaiSample = uniformChoice(omegai, self.numAucSamples)   
-        normGp = 0
-        
+        omegaiSample = uniformChoice(omegai, self.numAucSamples)
+
         for p in omegaiSample: 
-            uivp = dot(U, i, V, p, self.k)
-            normGp += gp[p]
-            
-            deltaBeta = numpy.zeros(self.k, numpy.float)
-            kappa = 0
-            zeta = 0 
-            normGq = 0
-            
-            for j in range(self.numAucSamples): 
-                q = inverseChoiceArray(omegai, permutedColInds) 
-                uivq = dot(U, i, V, q, self.k)
-                
-                gamma = uivp - uivq
-                hGamma = max(0, 1-gamma) 
-                
-                nu = gq[q]*hGamma
-                zeta += nu*hGamma
-                normGq += gq[q]
-                
-                
-                #deltaBeta += (V[q, :] - V[p, :])*(gq[q]*hGamma)
-                deltaBeta += scale(V, q, nu, self.k) - scale(V, p, nu, self.k)
-             
-            deltaTheta += deltaBeta*self.rho*(1 - tanh(self.rho*zeta/normGq)**2)*gp[p]/normGq
-         
-        if normGp != 0:
-            deltaTheta /= m*normGp
+            kappa = self.rankLoss(U, V, VDot, VDotDot, WDot, WDotDot, i, p)
+            deltaBeta = VDotDot[i, :] - V[p, :] + WDotDot[i, :] - scale(V, p, dot(VDotDot, i, U, i, self.k), self.k) - scale(VDotDot, i, dot(V, p, U, i, self.k), self.k) + scale(V, p, dot(V, p, U, i, self.k), self.k)
+            deltaTheta +=  deltaBeta*kappa*gp[p]
+            nu += gp[p] 
+   
+        deltaTheta *= self.rho/(m*nu)
         deltaTheta += scale(U, i, self.lmbdaU/m, self.k)
                         
         #Normalise gradient to have unit norm 
@@ -547,6 +518,16 @@ cdef class MaxAUCTanh(object):
             return objVector.sum() 
       
  
+    def rankLoss(self,numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] VDot, numpy.ndarray[double, ndim=2, mode="c"] VDotDot, numpy.ndarray[double, ndim=2, mode="c"] WDot, numpy.ndarray[double, ndim=2, mode="c"] WDotDot, unsigned int i, unsigned int p):
+        """
+        Given user i and relevant item p, let's compute the ranking loss 
+        """
+        cdef double kappa 
+        
+        kappa = 1 - 2*dot(U, i, V, p, self.k) + 2*dot(U, i, VDotDot, i, self.k) - 2*dot(U, i, V, p, self.k)*dot(U, i, VDotDot, i, self.k) + dot(U, i, V, p, self.k)**2 + dot(U, i, WDotDot, i, self.k)       
+        
+        return 1- square(tanh(self.rho*kappa))
+
     
     def updateU(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, double sigma):  
         """

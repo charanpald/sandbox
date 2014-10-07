@@ -1,5 +1,6 @@
 
 import sys
+from math import tanh
 from sandbox.recommendation.MaxAUCTanh import MaxAUCTanh
 from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC 
 from sandbox.util.SparseUtils import SparseUtils
@@ -151,7 +152,7 @@ class MaxAUCTanhTest(unittest.TestCase):
         learner.lmbdaU = 0
         learner.lmbdaV = 0
         learner.rho = 1.0
-        learner.numAucSamples = 100
+        learner.numAucSamples = 20
 
         U = numpy.random.rand(X.shape[0], k)
         V = numpy.random.rand(X.shape[1], k)
@@ -166,11 +167,12 @@ class MaxAUCTanhTest(unittest.TestCase):
         numTests = 5
         
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
+        permutedRowInds = numpy.arange(m, dtype=numpy.uint32)
         permutedColInds = numpy.arange(n, dtype=numpy.uint32)
 
         #Test with small number of AUC samples, but normalise 
         learner.numAucSamples = n
-        numRuns = 1000
+        numRuns = 500
         
         for i in numpy.random.permutation(m)[0:numTests]:  
             U = numpy.random.rand(X.shape[0], k)
@@ -178,14 +180,16 @@ class MaxAUCTanhTest(unittest.TestCase):
             
             du1 = numpy.zeros(k)
             for j in range(numRuns): 
-                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, gp, gq, permutedColInds, i)
+                VDot, VDotDot, WDot, WDotDot = learner.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
+                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, VDot, VDotDot, WDot, WDotDot, gp, i)
             du1 /= numRuns
             du2 = learner.derivativeUi(indPtr, colInds, U, V, gp, gq, i) 
-            #print(du1, du2)
+            print(du1, du2)
             print(du1/numpy.linalg.norm(du1), du2/numpy.linalg.norm(du2))
-            #print(numpy.linalg.norm(du1 - du2)/numpy.linalg.norm(du1))
-            self.assertTrue(numpy.linalg.norm(du1 - du2)/numpy.linalg.norm(du1) < 0.5)
+            nptst.assert_array_almost_equal(du1, du2, 3)
 
+        learner.lmbdaV = 0.5 
+    
         #Let's compare against using the exact derivative 
         for i in numpy.random.permutation(m)[0:numTests]:  
             U = numpy.random.rand(X.shape[0], k)
@@ -193,12 +197,13 @@ class MaxAUCTanhTest(unittest.TestCase):
             
             du1 = numpy.zeros(k)
             for j in range(numRuns): 
-                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, gp, gq, permutedColInds, i)
+                VDot, VDotDot, WDot, WDotDot = learner.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
+                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, VDot, VDotDot, WDot, WDotDot, gp, i)
             du1 /= numRuns
             du2 = learner.derivativeUi(indPtr, colInds, U, V, gp, gq, i)   
             
             print(du1/numpy.linalg.norm(du1), du2/numpy.linalg.norm(du2))
-            nptst.assert_array_almost_equal(du1, du2, 2)
+            nptst.assert_array_almost_equal(du1, du2, 3)
             
             
         learner.lmbdaV = 0.5 
@@ -210,10 +215,11 @@ class MaxAUCTanhTest(unittest.TestCase):
             
             du1 = numpy.zeros(k)
             for j in range(numRuns): 
-                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, gp, gq, permutedColInds, i)
+                VDot, VDotDot, WDot, WDotDot = learner.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
+                du1 += learner.derivativeUiApprox(indPtr, colInds, U, V, VDot, VDotDot, WDot, WDotDot, gp, i)
             du1 /= numRuns
             du2 = learner.derivativeUi(indPtr, colInds, U, V, gp, gq, i)   
-            nptst.assert_array_almost_equal(du1, du2, 2)
+            nptst.assert_array_almost_equal(du1, du2, 3)
             print(du1/numpy.linalg.norm(du1), du2/numpy.linalg.norm(du2))
             
             
@@ -586,7 +592,62 @@ class MaxAUCTanhTest(unittest.TestCase):
         print(normDvi)
         
         #U has a smaller scale than V but only by a factor of 5 
+        
+    @unittest.skip("")
+    def testRankLoss(self): 
+        m = 100 
+        n = 400 
+        k = 3 
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, csarray=True)
+        
+        w = 0.1
+        learner = MaxAUCTanh(k, w)
+        learner.normalise = False
+        learner.lmbdaU = 1.0
+        learner.lmbdaV = 1.0
+        learner.rho = 1.0
+        learner.numAucSamples = 10
+        
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
+        
+        permutedRowInds = numpy.arange(m, dtype=numpy.uint32)
+        permutedColInds = numpy.arange(n, dtype=numpy.uint32)
+        
+        U = numpy.random.rand(X.shape[0], k)
+        V = numpy.random.rand(X.shape[1], k)
+        
+        gp = numpy.random.rand(n)
+        gp /= gp.sum()        
+        gq = numpy.random.rand(n)
+        gq /= gq.sum() 
+        
+        VDot, VDotDot, WDot, WDotDot = learner.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
+        numRuns = 50
 
+        rowInds = numpy.random.choice(m, 5)        
+        
+        for i in rowInds: 
+            print(i)
+            omegai = colInds[indPtr[i]:indPtr[i+1]]
+            for p in numpy.random.choice(omegai, 5): 
+                kappa = 0
+                for j in range(numRuns):                 
+                    VDot, VDotDot, WDot, WDotDot = learner.computeMeansVW(indPtr, colInds, U, V, permutedRowInds, permutedColInds, gp, gq)
+                    kappa += learner.rankLoss(U, V, VDot, VDotDot, WDot, WDotDot, i, p)
+                kappa /= numRuns 
+                
+                #Now work out kappa manually 
+                omegaBari = numpy.setdiff1d(numpy.arange(n, dtype=numpy.uint32), omegai, assume_unique=True)
+                kappa2 = 0 
+                nu = 0 
+                for q in omegaBari: 
+                    kappa2 += gq[q]*(1- U[i, :].T.dot(V[p, :]) + U[i, :].T.dot(V[q, :]))**2  
+                    nu += gq[q] 
+                
+                kappa2 = 1 - tanh(kappa2/nu)**2
+                
+                self.assertAlmostEquals(kappa, kappa2, 1)
+                print(kappa, kappa2)
         
         
 if __name__ == "__main__":
