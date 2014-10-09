@@ -60,7 +60,7 @@ cdef itemRank(numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, n
 
 cdef class MaxAUCTanh(object): 
     cdef public unsigned int k, printStep, numAucSamples, numRowSamples, startAverage
-    cdef public double lmbdaU, lmbdaV, maxNorm, rho, w, eta
+    cdef public double lmbdaU, lmbdaV, maxNorm, rho, w, eta, rhoBar
     cdef public bint normalise
     
     def __init__(self, unsigned int k=8, double lmbdaU=0.0, double lmbdaV=1.0, bint normalise=True, unsigned int numAucSamples=10, unsigned int numRowSamples=30, unsigned int startAverage=30, double rho=0.5):        
@@ -74,6 +74,7 @@ cdef class MaxAUCTanh(object):
         self.numRowSamples = numRowSamples
         self.printStep = 1000
         self.rho = rho
+        self.rhoBar = rho
         self.startAverage = startAverage 
     
     def derivativeUi(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int i):
@@ -522,7 +523,7 @@ cdef class MaxAUCTanh(object):
         cdef unsigned int m = U.shape[0]
         cdef unsigned int n = V.shape[0]    
         cdef unsigned int i, j, s
-        cdef double normUi, normVj
+        cdef double normUi, normVj, maxNormUi=0, maxNormVj=0
         cdef bint newline = indPtr.shape[0] > 100000
         cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(self.k)
         cdef numpy.ndarray[double, ndim=1, mode="c"] dVj = numpy.zeros(self.k)
@@ -548,6 +549,9 @@ cdef class MaxAUCTanh(object):
             else: 
                 muU[i, :] = U[i, :]
                 
+            if normUi > maxNormUi: 
+                maxNormUi = normUi 
+                
             #Now update V   
             j = permutedColInds[s % permutedColInds.shape[0]]
             dVj = self.derivativeViApprox(indPtr, colInds, U, V, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, j)
@@ -562,6 +566,12 @@ cdef class MaxAUCTanh(object):
             else: 
                 muV[j, :] = V[j, :]
 
+            if normVj > maxNormVj: 
+                maxNormVj = normVj 
+                
+        #Update rho 
+        self.rho = self.rhoBar/(1+maxNormUi*maxNormVj)**2
+        print("rho=" + str(self.rho))
 
         
     def updateV(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, double sigma): 
