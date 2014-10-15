@@ -522,8 +522,8 @@ cdef class MaxAUCTanh(object):
     def updateUVApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, unsigned int ind, unsigned int numIterations, double sigma): 
         cdef unsigned int m = U.shape[0]
         cdef unsigned int n = V.shape[0]    
-        cdef unsigned int i, j, s
-        cdef double normUi, normVj, maxNormUi=0, maxNormVj=0
+        cdef unsigned int i, j, s, j1, j2
+        cdef double normUi, normVj, muH = 0
         cdef bint newline = indPtr.shape[0] > 100000
         cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(self.k)
         cdef numpy.ndarray[double, ndim=1, mode="c"] dVj = numpy.zeros(self.k)
@@ -549,9 +549,6 @@ cdef class MaxAUCTanh(object):
             else: 
                 muU[i, :] = U[i, :]
                 
-            if normUi > maxNormUi: 
-                maxNormUi = normUi 
-                
             #Now update V   
             j = permutedColInds[s % permutedColInds.shape[0]]
             dVj = self.derivativeViApprox(indPtr, colInds, U, V, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, j)
@@ -566,11 +563,13 @@ cdef class MaxAUCTanh(object):
             else: 
                 muV[j, :] = V[j, :]
 
-            if normVj > maxNormVj: 
-                maxNormVj = normVj 
+            #Let's compute an average h() value 
+            j1 = numpy.random.choice(permutedColInds)
+            j2 = numpy.random.choice(permutedColInds)
+            muH += max(0, 1 - dot(U, i, V, j1, self.k) + dot(U, i, V, j2, self.k))**2 / float(numIterations)
                 
         #Update rho 
-        self.rho = self.rhoBar/(1+maxNormUi*maxNormVj)**2
+        self.rho = self.rhoBar/muH
         print("rho=" + str(self.rho))
 
         
