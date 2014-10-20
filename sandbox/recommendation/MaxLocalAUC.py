@@ -853,7 +853,7 @@ class MaxLocalAUC(AbstractRecommender):
         indPtr, colInds = SparseUtils.getOmegaListPtr(trainX)
         allIndPtr, allColInds = SparseUtils.getOmegaListPtr(X)
 
-        if U==None or V==None:
+        if type(U) != numpy.ndarray and type(V) != numpy.ndarray:
             U, V = self.initUV(trainX)
             
         if self.metric == "f1": 
