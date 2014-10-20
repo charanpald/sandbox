@@ -490,6 +490,20 @@ class SparseUtils(object):
             return newX
 
     @staticmethod
+    def pruneMatrixRowAndCols(X, minNnzRows, minNnzCols): 
+        nnz = X.nnz 
+        lastNnz = nnz + 1        
+        
+        while nnz != lastNnz: 
+            lastNnz = X.nnz
+            X = SparseUtils.pruneMatrixRows(X, minNnzRows=minNnzRows)
+            X = SparseUtils.pruneMatrixCols(X, minNnz=minNnzCols)
+            nnz = X.nnz
+            logging.debug("Current and previous nnz: " + str((nnz, lastNnz)))
+            
+        return X 
+
+    @staticmethod
     def hellingerDistances(X, v):
         """
         Compute the Hellinger distances beween the rows of matrix X and a vector
