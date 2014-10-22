@@ -1,5 +1,6 @@
 import numpy 
 import logging
+import scipy.interpolate
 from sandbox.util.Util import Util 
 from sandbox.util.SparseUtils import SparseUtils 
 from sandbox.util.SparseUtilsCython import SparseUtilsCython 
@@ -311,7 +312,7 @@ class MCEvaluator(object):
         return localAuc        
         
     @staticmethod 
-    def averageRocCurve(X, U, V): 
+    def averageRocCurve(X, U, V, trainX=None): 
         """
         Compute the average ROC curve for the rows of X given preductions based 
         on U V^T. 
@@ -324,9 +325,26 @@ class MCEvaluator(object):
         for i in range(m): 
             trueXi = X[i, :].toarray().ravel()
             predXi = U[i, :].T.dot(V.T)
-            fpr, tpr, thresholds = sklearn.metrics.roc_curve(trueXi, predXi)
+        
+            if trainX != None: 
+                inds = trainX[i, :].toarray().ravel()==0
+                trueXi = trueXi[inds]
+                predXi = predXi[inds]
+                
+                #We have to interpolate to ensure we get the right number of points 
+                fpr, tpr, thresholds = sklearn.metrics.roc_curve(trueXi, predXi)
+                fpr = numpy.insert(fpr, 0, 0)
+                tpr = numpy.insert(tpr, 0, 0)
 
-            #Sometimes the fpr and trp are not length m (not sure why) so make them fit 
+                f = scipy.interpolate.interp1d(fpr, tpr, kind="nearest", bounds_error=False, fill_value=0.0)
+                fpr = numpy.linspace(0.0, 1.0, n)
+                tpr = f(fpr)
+
+            else: 
+            
+                fpr, tpr, thresholds = sklearn.metrics.roc_curve(trueXi, predXi)
+
+            #Sometimes the fpr and trp are not length n (not sure why) so make them fit 
             fprs += fpr[0:n] 
             tprs += tpr[0:n] 
             

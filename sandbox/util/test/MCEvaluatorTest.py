@@ -7,6 +7,7 @@ import numpy.testing as nptst
 from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.Util import Util 
+from sandbox.util.Sampling import Sampling 
 
 class  MCEvaluatorTest(unittest.TestCase):
     def setUp(self): 
@@ -304,6 +305,7 @@ class  MCEvaluatorTest(unittest.TestCase):
         localAuc2 = MCEvaluator.localAUCApprox(SparseUtils.getOmegaListPtr(X), U, V, w, sampleSize)
         self.assertAlmostEqual(localAuc2, localAuc, 2)       
        
+
     def testAverageRocCurve(self): 
         m = 50
         n = 20
@@ -313,6 +315,22 @@ class  MCEvaluatorTest(unittest.TestCase):
         X, U, s, V, wv = SparseUtils.generateSparseBinaryMatrix((m,n), k, w, csarray=True, verbose=True, indsPerRow=200)
         
         fpr, tpr = MCEvaluator.averageRocCurve(X, U, V)
+        
+        import matplotlib 
+        matplotlib.use("GTK3Agg")
+        import matplotlib.pyplot as plt   
+        #plt.plot(fpr, tpr)  
+        #plt.show()
+        
+        #Now try case where we have a training set 
+        folds = 1
+        testSize = 5
+        trainTestXs = Sampling.shuffleSplitRows(X, folds, testSize)
+        trainX, testX = trainTestXs[0]
+        
+        fpr, tpr = MCEvaluator.averageRocCurve(testX, U, V, trainX=trainX)
+        #plt.plot(fpr, tpr)  
+        #plt.show()
         
     @unittest.skip("") 
     def testAverageAuc(self): 
