@@ -331,18 +331,16 @@ class MCEvaluator(object):
                 trueXi = trueXi[inds]
                 predXi = predXi[inds]
                 
-                #We have to interpolate to ensure we get the right number of points 
-                fpr, tpr, thresholds = sklearn.metrics.roc_curve(trueXi, predXi)
+            #We have to interpolate to ensure we get the right number of points 
+            fpr, tpr, thresholds = sklearn.metrics.roc_curve(trueXi, predXi)
+            
+            if fpr[0] != 0 or tpr[0] != 0: 
                 fpr = numpy.insert(fpr, 0, 0)
                 tpr = numpy.insert(tpr, 0, 0)
-
-                f = scipy.interpolate.interp1d(fpr, tpr, kind="nearest", bounds_error=False, fill_value=0.0)
-                fpr = numpy.linspace(0.0, 1.0, n)
-                tpr = f(fpr)
-
-            else: 
-            
-                fpr, tpr, thresholds = sklearn.metrics.roc_curve(trueXi, predXi)
+    
+            f = scipy.interpolate.interp1d(fpr, tpr, kind="nearest", bounds_error=False, fill_value=0.0)
+            fpr = numpy.linspace(0.0, 1.0, n)
+            tpr = f(fpr)
 
             #Sometimes the fpr and trp are not length n (not sure why) so make them fit 
             fprs += fpr[0:n] 
