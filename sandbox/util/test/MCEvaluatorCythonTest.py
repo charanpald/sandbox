@@ -69,6 +69,8 @@ class  MCEvaluatorCythonTest(unittest.TestCase):
         orderedItems = numpy.array(orderedItems, numpy.int32)
         
         (indPtr, colInds) = X.nonzeroRowsPtr()
+        indPtr = numpy.array(indPtr, numpy.uint32)
+        colInds = numpy.array(colInds, numpy.uint32)
         rrs = MCEvaluatorCython.reciprocalRankAtk(indPtr, colInds, orderedItems)
         
         rrs2 = numpy.zeros(m)
@@ -105,6 +107,9 @@ class  MCEvaluatorCythonTest(unittest.TestCase):
         itemCounts = numpy.array(X.sum(0)+1, numpy.int32) 
         
         (indPtr, colInds) = X.nonzeroRowsPtr()
+        
+        indPtr = numpy.array(indPtr, numpy.uint32)
+        colInds = numpy.array(colInds, numpy.uint32)
         
         k = 5
         orderedItems = numpy.random.randint(0, n, m*k)

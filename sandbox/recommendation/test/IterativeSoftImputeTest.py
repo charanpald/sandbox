@@ -57,7 +57,7 @@ class IterativeSoftImputeTest(unittest.TestCase):
             U, s, V = Z
             Xhat = (U*s).dot(V.T)
             
-            nptst.assert_array_almost_equal(Xhat, self.matrixList[i].todense())
+            nptst.assert_array_almost_equal(Xhat, numpy.array(self.matrixList[i].todense()))
         
         #Compare solution with that of SoftImpute class 
         lmbdaList = [0.1, 0.2, 0.5, 1.0]
@@ -172,7 +172,7 @@ class IterativeSoftImputeTest(unittest.TestCase):
             U, s, V = Z
             Xhat = (U*s).dot(V.T)
             
-            nptst.assert_array_almost_equal(Xhat, self.matrixList[i].todense())
+            nptst.assert_array_almost_equal(Xhat, numpy.array(self.matrixList[i].todense()))
         
         #Try case with iterativeSoftImpute.postProcessSamples < X.nnz 
         matrixIterator = iter(self.matrixList)
@@ -244,6 +244,7 @@ class IterativeSoftImputeTest(unittest.TestCase):
         k = 15
 
         iterativeSoftImpute = IterativeSoftImpute(lmbda, k=None, svdAlg="propack", updateAlg="zero")
+        iterativeSoftImpute.numProcesses = 1
         rhos = numpy.linspace(0.5, 0.001, 20)
         ks = numpy.array([k], numpy.int)
         folds = 3

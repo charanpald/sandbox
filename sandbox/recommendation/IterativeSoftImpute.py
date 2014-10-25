@@ -244,7 +244,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
                     Y = X - ZOmega
                     #Y = Y.tocsc()
                     #del ZOmega
-                    Y = csarray.fromScipySparse(Y, storagetype="row")
+                    Y = csarray(Y, storagetype="row")
                     gc.collect()
                     
                     #os.system('taskset -p 0xffffffff %d' % os.getpid())
@@ -505,7 +505,7 @@ class IterativeSoftImpute(AbstractMatrixCompleter):
                
         #Fix for versions of numpy < 1.7 
         inds = numpy.unique(numpy.random.randint(0, X.data.shape[0], numpy.min([self.postProcessSamples, X.data.shape[0]]))) 
-        a = X.data[inds]
+        a = numpy.array(X[X.nonzero()]).ravel()[inds]
             
         B = numpy.zeros((a.shape[0], U.shape[1])) 
             

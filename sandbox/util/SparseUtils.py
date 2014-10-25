@@ -313,7 +313,7 @@ class SparseUtils(object):
             mu[inds] = 0
 
         vals = SparseUtilsCython.partialOuterProduct(rowInds, colInds, numpy.array(mu, numpy.float), numpy.ones(X.shape[1]))
-        X.data = numpy.array(X.data - vals, numpy.float)
+        X[X.nonzero()] = numpy.array(X[X.nonzero()] - vals, numpy.float)
 
         return X, mu
 
@@ -338,7 +338,7 @@ class SparseUtils(object):
             mu[inds] = 0
 
         vals = SparseUtilsCython.partialOuterProduct(rowInds, colInds, numpy.ones(X.shape[0]), numpy.array(mu, numpy.float))
-        X.data = numpy.array(X.data - vals, numpy.float)
+        X[X.nonzero()] = numpy.array(X[X.nonzero()] - vals, numpy.float)
 
         return X, mu
 
@@ -357,7 +357,7 @@ class SparseUtils(object):
         colInds = numpy.array(colInds, numpy.int32)
 
         vals = SparseUtilsCython.partialOuterProduct(rowInds, colInds, numpy.array(mu, numpy.float), numpy.ones(X.shape[1]))
-        X.data += vals
+        X[rowInds, colInds] = numpy.array(X[rowInds, colInds] + vals, numpy.float)
 
         return X
 
@@ -373,7 +373,7 @@ class SparseUtils(object):
 
         vals1 = SparseUtilsCython.partialOuterProduct(rowInds, colInds, numpy.array(mu1, numpy.float), numpy.ones(X.shape[1]))
         vals2 = SparseUtilsCython.partialOuterProduct(rowInds, colInds, numpy.ones(X.shape[0]), numpy.array(mu2, numpy.float))
-        X.data += vals1 + vals2
+        X[rowInds, colInds] = X[rowInds, colInds] + vals1 + vals2
 
         return X
 
@@ -390,7 +390,7 @@ class SparseUtils(object):
             rowInds, colInds = X.nonzero()
             rowInds = rowInds[inds]
             colInds = colInds[inds]
-            vals = X.data[inds]
+            vals = numpy.array(X[X.nonzero()]).ravel()[inds]
             
             if scipy.sparse.isspmatrix_csc(X): 
                 return scipy.sparse.csc_matrix((vals, (rowInds, colInds)), X.shape)

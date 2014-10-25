@@ -206,7 +206,7 @@ class SparseUtilsCythonTest(unittest.TestCase):
         rowInds, colInds = X.nonzero()
         
         for i in range(rowInds.shape[0]): 
-            self.assertEquals(X[rowInds[i], colInds[i]], X.data[i])
+            self.assertEquals(X[rowInds[i], colInds[i]], numpy.array(X[X.nonzero()]).ravel()[i])
         
         mu2 = numpy.array(X.sum(1)).ravel()
         numNnz = numpy.zeros(X.shape[0])
