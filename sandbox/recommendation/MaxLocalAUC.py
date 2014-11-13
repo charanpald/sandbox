@@ -127,6 +127,8 @@ class MaxLocalAUC(AbstractRecommender):
         
         self.alpha = alpha #Initial learning rate 
         self.beta = 0.75
+        self.bound = False
+        self.delta = 0.05
         self.eps = eps 
         self.eta = 5
         self.initialAlg = "rand"
@@ -137,6 +139,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.lmbdaU = lmbdaU 
         self.lmbdaV = lmbdaV 
         self.maxIterations = maxIterations
+        self.maxNorm = 100
         self.metric = "f1"
         self.normalise = True
         self.numAucSamples = 10
@@ -180,6 +183,7 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += " lmbdaU=" + str(self.lmbdaU) 
         outputStr += " lmbdaV=" + str(self.lmbdaV) 
         outputStr += " maxIterations=" + str(self.maxIterations)
+        outputStr += " maxNorm=" + str(self.maxNorm)
         outputStr += " metric=" + str(self.metric)
         outputStr += " normalise=" + str(self.normalise)
         outputStr += " numAucSamples=" + str(self.numAucSamples) 
@@ -198,6 +202,38 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += super(MaxLocalAUC, self).__str__()
         
         return outputStr     
+    
+    def computeBound(self, X, U, V, trainExp, B, delta): 
+        """
+        Compute a lower bound on the expectation of the loss based on Rademacher 
+        theory.
+        """
+        m, n = X.shape
+        R = max(numpy.linalg.norm(U), numpy.linalg.norm(V))
+        
+        X = X.toarray()
+        Xs = X.sum(1)
+        E = (X.T / Xs).T
+        
+        EBar = numpy.ones(X.shape) - X
+        EBar = (EBar.T / (EBar.sum(1))).T
+        
+        P, sigmaM, Q = numpy.linalg.svd(E - EBar)
+        sigmaM = numpy.flipud(numpy.sort(sigmaM))[0:self.k]
+        
+        omegaSum = 0  
+        
+        for i in range(m): 
+            omegaSum += 1.0/(Xs[i] * (n-Xs[i])**2)
+        
+        rademacherTerm = 2*B*R**2/m * numpy.sum(sigmaM) + (2*numpy.log(1/delta)*(n-1)**2/m**2) * omegaSum     
+        secondTerm = (numpy.log(1/delta)*(n-1)**2/(2*m**2)) * omegaSum  
+        expectationBound = trainExp + rademacherTerm + secondTerm 
+        
+        print(2*B*R**2/m * numpy.sum(sigmaM), (2*numpy.log(1/delta)*(n-1)**2/m**2) * omegaSum )
+        print(trainExp, rademacherTerm, secondTerm)
+        
+        return expectationBound
     
     def computeGipq(self, X): 
         m, n = X.shape 
@@ -274,7 +310,8 @@ class MaxLocalAUC(AbstractRecommender):
         else: 
             raise ValueError("Unknown objective: " + self.loss)
     
-        learnerCython.eta = self.eta            
+        learnerCython.eta = self.eta      
+        learnerCython.maxNorm = self.maxNorm
             
         return learnerCython
         
@@ -810,6 +847,12 @@ class MaxLocalAUC(AbstractRecommender):
             
         printStr += " ||U||=" + str('%.3f' % numpy.linalg.norm(muU))
         printStr += " ||V||=" + str('%.3f' %  numpy.linalg.norm(muV))
+        
+        if self.bound: 
+            trainObj = objArr.sum()
+            B = 4 
+            expectationBound = self.computeBound(trainX, muU, muV, trainObj, B, self.delta)
+            printStr += " bound=" + str('%.3f' %  expectationBound)
         
         return printStr
     
