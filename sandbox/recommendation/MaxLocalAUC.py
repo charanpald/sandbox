@@ -209,7 +209,8 @@ class MaxLocalAUC(AbstractRecommender):
         theory.
         """
         m, n = X.shape
-        R = max(numpy.linalg.norm(U), numpy.linalg.norm(V))
+        Ru = numpy.linalg.norm(U)
+        Rv = numpy.linalg.norm(V)
         
         X = X.toarray()
         Xs = X.sum(1)
@@ -219,19 +220,19 @@ class MaxLocalAUC(AbstractRecommender):
         EBar = (EBar.T / (EBar.sum(1))).T
         
         P, sigmaM, Q = numpy.linalg.svd(E - EBar)
-        sigmaM = numpy.flipud(numpy.sort(sigmaM))[0:self.k]
+        sigma1 = numpy.max(sigmaM)
         
         omegaSum = 0  
         
         for i in range(m): 
             omegaSum += 1.0/(Xs[i] * (n-Xs[i])**2)
         
-        rademacherTerm = 2*B*R**2/m * numpy.sum(sigmaM) + (2*numpy.log(1/delta)*(n-1)**2/m**2) * omegaSum     
-        secondTerm = (numpy.log(1/delta)*(n-1)**2/(2*m**2)) * omegaSum  
+        rademacherTerm = 2*B*Ru*Rv*sigma1/m  + numpy.sqrt((2*numpy.log(1/delta)*(n-1)**2/m**2) * omegaSum)     
+        secondTerm = numpy.sqrt((numpy.log(1/delta)*(n-1)**2/(2*m**2)) * omegaSum)  
         expectationBound = trainExp + rademacherTerm + secondTerm 
         
-        print(2*B*R**2/m * numpy.sum(sigmaM), (2*numpy.log(1/delta)*(n-1)**2/m**2) * omegaSum )
-        print(trainExp, rademacherTerm, secondTerm)
+        #print(B,Ru,Rv,m,sigma1 )
+        #print(trainExp, rademacherTerm, secondTerm)
         
         return expectationBound
     
@@ -853,6 +854,7 @@ class MaxLocalAUC(AbstractRecommender):
             B = 4 
             expectationBound = self.computeBound(trainX, muU, muV, trainObj, B, self.delta)
             printStr += " bound=" + str('%.3f' %  expectationBound)
+            trainMeasures[-1].append(expectationBound)
         
         return printStr
     
