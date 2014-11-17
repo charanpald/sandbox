@@ -153,6 +153,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.q = 3
         self.rate = "constant"
         self.recordStep = 10
+        self.reg = False
         self.rho = 1.0
         self.startAverage = 30
         self.stochastic = stochastic
@@ -194,6 +195,7 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr += " rate=" + str(self.rate) 
         outputStr += " recordStep=" + str(self.recordStep)
         outputStr += " rho=" + str(self.rho) 
+        outputStr += " reg=" + str(self.reg) 
         outputStr += " startAverage=" + str(self.startAverage) 
         outputStr += " stochastic=" + str(self.stochastic)
         outputStr += " t0=" + str(self.t0) 
@@ -287,6 +289,7 @@ class MaxLocalAUC(AbstractRecommender):
         maxLocalAuc.parallelStep = self.parallelStep
         maxLocalAuc.rate = self.rate
         maxLocalAuc.recordStep = self.recordStep
+        maxLocalAuc.reg = self.reg
         maxLocalAuc.rho = self.rho 
         maxLocalAuc.startAverage = self.startAverage
         maxLocalAuc.stochastic = self.stochastic
@@ -627,10 +630,10 @@ class MaxLocalAUC(AbstractRecommender):
         V = numpy.ascontiguousarray(V)        
         
         if allArray == None: 
-            return self.learnerCython.objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, gp, gq, full=full)         
+            return self.learnerCython.objectiveApprox(indPtr, colInds, indPtr, colInds, U,  V, gp, gq, full=full, reg=self.reg)         
         else:
             allIndPtr, allColInds = allArray
-            return self.learnerCython.objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, gp, gq, full=full)
+            return self.learnerCython.objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, gp, gq, full=full, reg=self.reg)
      
 
     def parallelLearnModel(self, X, verbose=False, U=None, V=None): 
