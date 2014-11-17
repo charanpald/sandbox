@@ -153,7 +153,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.q = 3
         self.rate = "constant"
         self.recordStep = 10
-        self.reg = False
+        self.reg = True
         self.rho = 1.0
         self.startAverage = 30
         self.stochastic = stochastic
@@ -172,40 +172,17 @@ class MaxLocalAUC(AbstractRecommender):
         self.alphas = 2.0**-numpy.arange(-2.0, 4.0)
     
     def __str__(self): 
-        outputStr = "MaxLocalAUC: k=" + str(self.k) 
-        outputStr += " alpha=" + str(self.alpha) 
-        outputStr += " beta=" + str(self.beta)
-        outputStr += " eps=" + str(self.eps) 
-        outputStr += " initialAlg=" + self.initialAlg
-        outputStr += " itemExpP=" + str(self.itemExpP) 
-        outputStr += " itemExpQ=" + str(self.itemExpQ) 
-        outputStr += " itemFactors=" + str(self.itemFactors) 
-        outputStr += " loss=" + str(self.loss)
-        outputStr += " lmbdaU=" + str(self.lmbdaU) 
-        outputStr += " lmbdaV=" + str(self.lmbdaV) 
-        outputStr += " maxIterations=" + str(self.maxIterations)
-        outputStr += " maxNorm=" + str(self.maxNorm)
-        outputStr += " metric=" + str(self.metric)
-        outputStr += " normalise=" + str(self.normalise)
-        outputStr += " numAucSamples=" + str(self.numAucSamples) 
-        outputStr += " numRecordAucSamples=" + str(self.numRecordAucSamples)
-        outputStr += " numRowSamples=" + str(self.numRowSamples) 
-        outputStr += " parallelSGD=" + str(self.parallelSGD) 
-        outputStr += " parallelStep=" + str(self.parallelStep) 
-        outputStr += " rate=" + str(self.rate) 
-        outputStr += " recordStep=" + str(self.recordStep)
-        outputStr += " rho=" + str(self.rho) 
-        outputStr += " reg=" + str(self.reg) 
-        outputStr += " startAverage=" + str(self.startAverage) 
-        outputStr += " stochastic=" + str(self.stochastic)
-        outputStr += " t0=" + str(self.t0) 
-        outputStr += " validationUsers=" + str(self.validationUsers)
-        outputStr += " w=" + str(self.w) 
-        outputStr += super(MaxLocalAUC, self).__str__()
+        outputStr = "MaxLocalAUC: "
+
+        attributes = vars(self)
+        
+        for key, item in sorted(attributes.iteritems()):
+            if isinstance(item, int) or isinstance(item, float) or isinstance(item, str) or isinstance(item, bool): 
+                outputStr += key + "=" + str(item) + " " 
         
         return outputStr     
     
-    def computeBound(self, X, U, V, trainExp, B, delta): 
+    def computeBound(self, X, U, V, trainExp, delta): 
         """
         Compute a lower bound on the expectation of the loss based on Rademacher 
         theory.
@@ -228,6 +205,13 @@ class MaxLocalAUC(AbstractRecommender):
         
         for i in range(m): 
             omegaSum += 1.0/(Xs[i] * (n-Xs[i])**2)
+            
+        if self.loss in ["hinge", "square"]: 
+            B = 4 
+        elif self.loss in ["logistic", "sigmoid"]: 
+            B = 1
+        else: 
+            raise ValueError("Unsupported loss: " + self.loss)
         
         rademacherTerm = 2*B*Ru*Rv*sigma1/m  + numpy.sqrt((2*numpy.log(1/delta)*(n-1)**2/m**2) * omegaSum)     
         secondTerm = numpy.sqrt((numpy.log(1/delta)*(n-1)**2/(2*m**2)) * omegaSum)  
@@ -266,35 +250,7 @@ class MaxLocalAUC(AbstractRecommender):
         maxLocalAuc = MaxLocalAUC(k=self.k, w=self.w, lmbdaU=self.lmbdaU, lmbdaV=self.lmbdaV)
         self.copyParams(maxLocalAuc)
 
-        maxLocalAuc.alpha = self.alpha
-        maxLocalAuc.alphas = self.alphas
-        maxLocalAuc.beta = self.beta
-        maxLocalAuc.eps = self.eps 
-        maxLocalAuc.initialAlg = self.initialAlg
-        maxLocalAuc.itemExpP = self.itemExpP
-        maxLocalAuc.itemExpQ = self.itemExpQ
-        maxLocalAuc.itemFactors = self.itemFactors
-        maxLocalAuc.ks = self.ks
-        maxLocalAuc.loss = self.loss 
-        maxLocalAuc.lmbdas = self.lmbdas
-        maxLocalAuc.lmbdaU = self.lmbdaU
-        maxLocalAuc.lmbdaV = self.lmbdaV
-        maxLocalAuc.maxIterations = self.maxIterations
-        maxLocalAuc.metric = self.metric
-        maxLocalAuc.normalise = self.normalise
-        maxLocalAuc.numAucSamples = self.numAucSamples
-        maxLocalAuc.numRecordAucSamples = self.numRecordAucSamples
-        maxLocalAuc.numRowSamples = self.numRowSamples
-        maxLocalAuc.parallelSGD = self.parallelSGD
-        maxLocalAuc.parallelStep = self.parallelStep
-        maxLocalAuc.rate = self.rate
-        maxLocalAuc.recordStep = self.recordStep
-        maxLocalAuc.reg = self.reg
-        maxLocalAuc.rho = self.rho 
-        maxLocalAuc.startAverage = self.startAverage
-        maxLocalAuc.stochastic = self.stochastic
-        maxLocalAuc.t0 = self.t0
-        maxLocalAuc.validationUsers = self.validationUsers
+        maxLocalAuc.__dict__.update(self.__dict__)
                             
         return maxLocalAuc    
         
@@ -854,8 +810,8 @@ class MaxLocalAUC(AbstractRecommender):
         
         if self.bound: 
             trainObj = objArr.sum()
-            B = 4 
-            expectationBound = self.computeBound(trainX, muU, muV, trainObj, B, self.delta)
+
+            expectationBound = self.computeBound(trainX, muU, muV, trainObj, self.delta)
             printStr += " bound=" + str('%.3f' %  expectationBound)
             trainMeasures[-1].append(expectationBound)
         
