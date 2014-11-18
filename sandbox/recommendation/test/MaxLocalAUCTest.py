@@ -158,6 +158,34 @@ class MaxLocalAUCTest(unittest.TestCase):
             a = numpy.setdiff1d(omegai, omegai2)
             
             self.assertEquals(numpy.intersect1d(a, colSubset).shape[0], 0)
+            
+    def testOverfit(self): 
+        """
+        See if we can get a zero objective on the hinge loss 
+        """
+        m = 10 
+        n = 20 
+        k = 5 
+        
+        u = 0.5
+        w = 1-u
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, w, csarray=True)
+        
+        eps = 0.001
+        k = 10
+        maxLocalAuc = MaxLocalAUC(k, u, eps=eps, stochastic=True)
+        maxLocalAuc.rate = "constant"
+        maxLocalAuc.maxIterations = 500
+        maxLocalAuc.numProcesses = 1
+        maxLocalAuc.loss = "hinge"
+        maxLocalAuc.validationUsers = 0
+        maxLocalAuc.lmbdaU = 0 
+        maxLocalAuc.lmbdaV = 0        
+        
+        print("Overfit example")
+        U, V, trainMeasures, testMeasures, iterations, time = maxLocalAuc.learnModel(X, verbose=True)
+        
+        self.assertAlmostEquals(trainMeasures[-1, 0], 0, 3)
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
