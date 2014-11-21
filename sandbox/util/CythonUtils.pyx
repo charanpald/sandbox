@@ -174,6 +174,8 @@ cdef inline numpy.ndarray[unsigned int, ndim=1, mode="c"] uniformChoice(numpy.nd
     
     if inds.shape[0] == 0: 
         return numpy.array([], numpy.uint32)
+    elif inds.shape[0] <= numSamples: 
+        return inds 
     else: 
         for j in range(numSamples):
             i = numpy.random.randint(0, inds.shape[0])
