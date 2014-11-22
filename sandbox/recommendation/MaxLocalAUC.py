@@ -149,7 +149,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.loss = "hinge" 
         self.p = 10 
         self.parallelSGD = False
-        self.parallelStep = 2
+        self.parallelStep = 5
         self.q = 3
         self.rate = "constant"
         self.recordStep = 10
