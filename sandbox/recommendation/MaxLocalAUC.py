@@ -875,7 +875,12 @@ class MaxLocalAUC(AbstractRecommender):
         trainMeasures = []
         testMeasures = []        
         loopInd = 0
-        numIterations = trainX.nnz/self.numAucSamples
+        lastObj = 0 
+        currentObj = lastObj - 2*self.eps
+        
+        #Try alternative number of iterations 
+        #numIterations = trainX.nnz/self.numAucSamples
+        numIterations = max(m, n)
         
         self.learnerCython = self.getCythonLearner()
         
@@ -888,7 +893,7 @@ class MaxLocalAUC(AbstractRecommender):
         gi, gp, gq = self.computeGipq(X)
         normGp, normGq = self.computeNormGpq(indPtr, colInds, gp, gq, m)
     
-        while loopInd < self.maxIterations: 
+        while loopInd < self.maxIterations and abs(lastObj - currentObj) > self.eps: 
             sigma = self.getSigma(loopInd)
 
             if loopInd % self.recordStep == 0: 
@@ -905,7 +910,12 @@ class MaxLocalAUC(AbstractRecommender):
                     bestV = muV.copy() 
                 elif testIndPtr is None: 
                     bestU = muU.copy() 
-                    bestV = muV.copy()                     
+                    bestV = muV.copy() 
+
+                #Compute objective averaged over last 5 recorded steps 
+                trainMeasuresArr = numpy.array(trainMeasures)
+                lastObj = currentObj
+                currentObj = numpy.mean(trainMeasuresArr[-5:, 0])   
                 
             U  = numpy.ascontiguousarray(U)
             self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, loopInd, sigma, numIterations)                       
@@ -915,16 +925,21 @@ class MaxLocalAUC(AbstractRecommender):
         totalTime = time.time() - startTime
         printStr = "\nFinished, time=" + str('%.1f' % totalTime) + " "
         printStr += self.recordResults(muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime)
-        logging.debug(printStr)
+        
+        logging.debug(printStr)        
+        logging.debug("Final difference in objectives: " + str(abs(lastObj - currentObj)))
          
         self.U = bestU 
         self.V = bestV
         self.gi = gi
         self.gp = gp
         self.gq = gq
+        
+        trainMeasures = numpy.array(trainMeasures)
+        testMeasures = numpy.array(testMeasures)
          
         if verbose:     
-            return self.U, self.V, numpy.array(trainMeasures), numpy.array(testMeasures), loopInd, totalTime
+            return self.U, self.V, trainMeasures, testMeasures, loopInd, totalTime
         else: 
             return self.U, self.V    
     
