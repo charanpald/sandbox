@@ -772,7 +772,7 @@ class MaxLocalAUC(AbstractRecommender):
         objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=True)
         if trainMeasures == None: 
             trainMeasures = []
-        trainMeasures.append([objArr.sum(), MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r), time.time()-startTime]) 
+        trainMeasures.append([objArr.sum(), MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r), time.time()-startTime, loopInd]) 
         
         printStr = "iter " + str(loopInd) + ":"
         printStr += " sigma=" + str('%.4f' % sigma)
