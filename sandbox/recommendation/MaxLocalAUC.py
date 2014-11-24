@@ -140,6 +140,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.lmbdaV = lmbdaV 
         self.maxIterations = maxIterations
         self.maxNorm = 100
+        self.maxNormTanh = 10  #Max norm for tahn losses 
         self.metric = "f1"
         self.normalise = True
         self.numAucSamples = 10
@@ -271,7 +272,11 @@ class MaxLocalAUC(AbstractRecommender):
             raise ValueError("Unknown objective: " + self.loss)
     
         learnerCython.eta = self.eta      
-        learnerCython.maxNorm = self.maxNorm
+        
+        if self.loss == "tanh": 
+            learnerCython.maxNorm = self.maxNormTanh
+        else: 
+            learnerCython.maxNorm = self.maxNorm
             
         return learnerCython
         
