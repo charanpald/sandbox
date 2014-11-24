@@ -22,45 +22,10 @@ cdef extern from "math.h":
     double sqrt(double x)
     double fmax(double x, double y)
 
-cdef computeOmegaProbs(unsigned int i, numpy.ndarray[int, ndim=1, mode="c"] omegai, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V): 
-    cdef numpy.ndarray[double, ndim=1, mode="c"] uiVOmegai
-    cdef numpy.ndarray[double, ndim=1, mode="c"] colIndsCumProbs
-    cdef double ri, z = 5
-    
-    uiVOmegai = U[i, :].T.dot(V[omegai, :].T)
-    #Check this line when omegai.shape < z 
-    ri = numpy.sort(uiVOmegai)[-min(z, uiVOmegai.shape[0])]
-    colIndsCumProbs = numpy.array(uiVOmegai >= ri, numpy.float)
-    colIndsCumProbs /= colIndsCumProbs.sum()
-    colIndsCumProbs = numpy.cumsum(colIndsCumProbs)
-    
-    return colIndsCumProbs
-
-cdef itemRank(numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[int, ndim=1, mode="c"] omegai, unsigned int i, double uivp, unsigned int numOmegaBari): 
-    """
-    Use the sampling scheme from k-order paper to get an estimate of the rank of an item 
-    """
-
-    cdef unsigned int rank = 0
-    cdef unsigned int k = U.shape[1]
-    cdef unsigned int n = V.shape[0]
-    cdef unsigned int q
-    cdef double uivq 
-
-    while True: 
-        q = inverseChoice(omegai, n) 
-        rank += 1
-        uivq = dot(U, i, V, q, k)
-        
-        if rank >= numOmegaBari or uivq <= uivp - 1: 
-            break 
-        
-    return rank+1
-
 
 cdef class MaxAUCTanh(object): 
     cdef public unsigned int k, printStep, numAucSamples, numRowSamples, startAverage
-    cdef public double lmbdaU, lmbdaV, maxNorm, rho, w, eta, rhoBar
+    cdef public double lmbdaU, lmbdaV, maxNorm, rho, w, eta
     cdef public bint normalise
     
     def __init__(self, unsigned int k=8, double lmbdaU=0.0, double lmbdaV=1.0, bint normalise=True, unsigned int numAucSamples=10, unsigned int numRowSamples=30, unsigned int startAverage=30, double rho=0.5):        
@@ -74,7 +39,6 @@ cdef class MaxAUCTanh(object):
         self.numRowSamples = numRowSamples
         self.printStep = 1000
         self.rho = rho
-        self.rhoBar = rho
         self.startAverage = startAverage 
     
     def derivativeUi(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, unsigned int i):
@@ -114,7 +78,7 @@ cdef class MaxAUCTanh(object):
                 
                 deltaBeta += (V[q, :] - V[p, :])*gq[q]*hGamma
              
-            deltaTheta += self.rho*deltaBeta*(1 - tanh(self.rho*zeta/normGq)**2)*gp[p]/normGq
+            deltaTheta += self.rho*deltaBeta*(1 - tanh(0.5*self.rho*zeta/normGq)**2)*gp[p]/normGq
         
         if normGp != 0:
             deltaTheta /= m*normGp
@@ -175,7 +139,7 @@ cdef class MaxAUCTanh(object):
                 #deltaBeta += (V[q, :] - V[p, :])*(gq[q]*hGamma)
                 deltaBeta += scale(V, q, nu, self.k) - scale(V, p, nu, self.k)
              
-            deltaTheta += deltaBeta*self.rho*(1 - tanh(self.rho*zeta/normGq)**2)*gp[p]/normGq
+            deltaTheta += deltaBeta*self.rho*(1 - tanh(0.5*self.rho*zeta/normGq)**2)*gp[p]/normGq
          
         if normGp != 0:
             deltaTheta /= m*normGp
@@ -238,7 +202,7 @@ cdef class MaxAUCTanh(object):
                     zeta /= normGq
                     
                 if normGp != 0: 
-                    betaScale -= self.rho*kappa*(1 - tanh(self.rho*zeta)**2)*gp[p]/normGp
+                    betaScale -= self.rho*kappa*(1 - tanh(0.5*self.rho*zeta)**2)*gp[p]/normGp
             else:
                 q = j 
                 uivq = dot(U, i, V, q, k)
@@ -262,7 +226,7 @@ cdef class MaxAUCTanh(object):
                     if normGq != 0: 
                         zeta /= normGq
                     
-                    kappa += gp[p]*gq[q]*hGamma * self.rho*(1- tanh(self.rho*zeta)**2)
+                    kappa += gp[p]*gq[q]*hGamma * self.rho*(1- tanh(0.5*self.rho*zeta)**2)
                     normGp += gp[p]                    
                     
                 if normGp*normGq != 0: 
@@ -335,7 +299,7 @@ cdef class MaxAUCTanh(object):
                     zeta /= normGqi
                     
                 if normGp[i] != 0: 
-                    betaScale -= kappa*self.rho*(1 - square(tanh(self.rho*zeta)))*gp[p]/normGp[i]
+                    betaScale -= kappa*self.rho*(1 - square(0.5*tanh(self.rho*zeta)))*gp[p]/normGp[i]
             else:
                 q = j 
                 uivq = dot(U, i, V, q, self.k)
@@ -364,7 +328,7 @@ cdef class MaxAUCTanh(object):
                     if normGq[i] != 0: 
                         zeta /= normGq[i]
                     
-                    kappa += gp[p]*gq[q]*hGamma * self.rho*(1- square(tanh(self.rho*zeta)))
+                    kappa += gp[p]*gq[q]*hGamma * self.rho*(1- square(tanh(0.5*self.rho*zeta)))
                     normGpi += gp[p]                    
                     
                 if normGp[i]*normGpi != 0: 
@@ -439,12 +403,12 @@ cdef class MaxAUCTanh(object):
                     kappa += square(hGamma)*gq[q]
                 
                 if normGq != 0: 
-                    partialObj += gp[p]*tanh(self.rho*kappa/normGq)
+                    partialObj += gp[p]*tanh(0.5*self.rho*kappa/normGq)
                
             if normGp != 0: 
                 objVector[i] = partialObj/normGp
         
-        objVector /= 2*m  
+        objVector /= m  
         if reg: 
             objVector += (0.5/m)*((self.lmbdaV/m)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
         
@@ -491,12 +455,12 @@ cdef class MaxAUCTanh(object):
                     kappa += gq[q]*square(hGamma)
                 
                 if normGq != 0: 
-                    partialObj += gp[p]*tanh(self.rho*kappa/normGq)
+                    partialObj += gp[p]*tanh(0.5*self.rho*kappa/normGq)
                
             if normGp != 0: 
                 objVector[i] = partialObj/normGp
         
-        objVector /= 2*m
+        objVector /= m
         if reg: 
             objVector += (0.5/m)*((self.lmbdaV/m)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
         
@@ -525,7 +489,7 @@ cdef class MaxAUCTanh(object):
         cdef unsigned int m = U.shape[0]
         cdef unsigned int n = V.shape[0]    
         cdef unsigned int i, j, s, j1, j2
-        cdef double normUi, normVj, muH = 0
+        cdef double normUi, normVj
         cdef bint newline = indPtr.shape[0] > 100000
         cdef numpy.ndarray[double, ndim=1, mode="c"] dUi = numpy.zeros(self.k)
         cdef numpy.ndarray[double, ndim=1, mode="c"] dVj = numpy.zeros(self.k)
@@ -564,15 +528,6 @@ cdef class MaxAUCTanh(object):
                 muV[j, :] = muV[j, :]*ind/float(ind+self.eta+1) + V[j, :]*(1+self.eta)/float(ind+self.eta+1)
             else: 
                 muV[j, :] = V[j, :]
-
-            #Let's compute an average h() value 
-            j1 = numpy.random.choice(permutedColInds)
-            j2 = numpy.random.choice(permutedColInds)
-            muH += max(0, 1 - dot(U, i, V, j1, self.k) + dot(U, i, V, j2, self.k))**2 / float(numIterations)
-                
-        #Update rho 
-        self.rho = self.rhoBar/muH
-        print("rho=" + str(self.rho))
 
         
     def updateV(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, double sigma): 
