@@ -329,7 +329,7 @@ class Sampling(object):
             
         if prune: 
             tempX = X[userInds, :]
-            colInds = numpy.arange(n, dtype=numpy.int)[tempX.sum(0)!=0]
+            colInds = numpy.arange(n, dtype=numpy.int)[numpy.array(tempX.sum(0)).ravel()!=0]
             return tempX[:, colInds], userInds
         else:   
             return X[userInds, :], userInds
