@@ -29,20 +29,22 @@ class MaxLocalAUCProfile(object):
         #Profile full gradient descent 
         #X, U, V = DatasetUtils.syntheticDataset1(u=0.001, m=1000, n=2000)
         #X, U, V = DatasetUtils.syntheticDataset1()
-        X, U, V = DatasetUtils.syntheticDataset1(u=0.2, sd=0.2)
+        #X, U, V = DatasetUtils.syntheticDataset1(u=0.2, sd=0.2)
+        X = DatasetUtils.flixster()
     
         u = 0.2
         w = 1-u
         eps = 10**-6
         alpha = 0.5
         maxLocalAuc = MaxLocalAUC(self.k, w, alpha=alpha, eps=eps, stochastic=True)
-        maxLocalAuc.maxIterations = 10
+        maxLocalAuc.maxIterations = 2
         maxLocalAuc.initialAlg = "rand"
         maxLocalAuc.rate = "constant"
-        maxLocalAuc.parallelSGD = False
-        maxLocalAuc.numProcesses = 1
+        maxLocalAuc.parallelSGD = True
+        maxLocalAuc.numProcesses = 8
         maxLocalAuc.numAucSamples = 10
-        maxLocalAuc.loss = "square"
+        maxLocalAuc.loss = "hinge"
+        maxLocalAuc.validationUsers = 0.0
         print(maxLocalAuc)
                 
         ProfileUtils.profile('maxLocalAuc.learnModel(X)', globals(), locals())
