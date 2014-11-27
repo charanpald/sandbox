@@ -401,6 +401,9 @@ class MaxLocalAUC(AbstractRecommender):
         
         return meanObjs, stdObjs  
 
+    
+        
+
 
     def modelParamsStr(self): 
         outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alpha=" + str(self.alpha)
@@ -475,22 +478,7 @@ class MaxLocalAUC(AbstractRecommender):
         meanTestMetrics = numpy.mean(testMetrics, 4)
         stdTestMetrics = numpy.std(testMetrics, 4)
         
-        logging.debug("t0s=" + str(self.t0s)) 
-        logging.debug("ks=" + str(self.ks)) 
-        logging.debug("lmbdas=" + str(self.lmbdas)) 
-        logging.debug("alphas=" + str(self.alphas))         
-        logging.debug("Mean metrics =" + str(meanTestMetrics))
-        logging.debug("Std metrics =" + str(stdTestMetrics))
-        
-        self.t0 = self.t0s[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[0]]
-        self.k = self.ks[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[1]]
-        self.lmbdaU = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[2]]
-        self.lmbdaV = self.lmbdas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[2]]
-        self.alpha = self.alphas[numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)[3]]
-        
-        logging.debug("Model parameters: k=" + str(self.k) + " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) +  " max=" + str(numpy.max(meanTestMetrics)))
-         
-        return meanTestMetrics, stdTestMetrics
+        return self.setModelParams(meanTestMetrics, stdTestMetrics)
 
     def modelSelectRandom(self, X, colProbs=None, testX=None): 
         """
@@ -828,6 +816,25 @@ class MaxLocalAUC(AbstractRecommender):
         """
         pass 
         
+    def setModelParams(self, meanTestMetrics, stdTestMetrics): 
+        logging.debug("t0s=" + str(self.t0s)) 
+        logging.debug("ks=" + str(self.ks)) 
+        logging.debug("lmbdas=" + str(self.lmbdas)) 
+        logging.debug("alphas=" + str(self.alphas))         
+        logging.debug("Mean metrics =" + str(meanTestMetrics))
+        logging.debug("Std metrics =" + str(stdTestMetrics))
+        
+        unraveledInds = numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)      
+        
+        self.t0 = self.t0s[unraveledInds[0]]
+        self.k = self.ks[unraveledInds[1]]
+        self.lmbdaU = self.lmbdas[unraveledInds[2]]
+        self.lmbdaV = self.lmbdas[unraveledInds[2]]
+        self.alpha = self.alphas[unraveledInds[3]]
+        
+        logging.debug("Model parameters: k=" + str(self.k) + " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) +  " max=" + str(numpy.max(meanTestMetrics)))
+         
+        return meanTestMetrics, stdTestMetrics
     
     def singleLearnModel(self, X, verbose=False, U=None, V=None): 
         """
