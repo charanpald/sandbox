@@ -133,8 +133,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.eta = 5
         self.initialAlg = "rand"
         self.itemExpP = 0.0 #Sample from power law between 0 and 1 
-        self.itemExpQ = 0.5     
-        self.itemFactors = False
+        self.itemExpQ = 0.0    
         self.k = k 
         self.lmbdaU = lmbdaU 
         self.lmbdaV = lmbdaV 
@@ -713,13 +712,13 @@ class MaxLocalAUC(AbstractRecommender):
 
         for i in range(numBlocks): 
             for j in range(numBlocks): 
-                blockRowInds = numpy.sort(numpy.array(permutedRowInds[i*rowBlockSize:(i+1)*rowBlockSize], numpy.int))
-                blockColInds = numpy.sort(numpy.array(permutedColInds[j*colBlockSize:(j+1)*colBlockSize], numpy.int))  
-                block = X[blockRowInds, :][:, blockColInds]
+                #blockRowInds = numpy.sort(numpy.array(permutedRowInds[i*rowBlockSize:(i+1)*rowBlockSize], numpy.int))
+                #blockColInds = numpy.sort(numpy.array(permutedColInds[j*colBlockSize:(j+1)*colBlockSize], numpy.int))  
+                #block = X[blockRowInds, :][:, blockColInds]
                 
-                gradientsPerBlock[i,j] = max(numpy.ceil(float(block.nnz)/self.numAucSamples), 1)
+                gradientsPerBlock[i, j] = max(rowBlockSize, colBlockSize)
         
-        assert gradientsPerBlock.sum() >= X.nnz/self.numAucSamples
+        #assert gradientsPerBlock.sum() >= X.nnz/self.numAucSamples
 
         #Compute omega for each col block 
         omegasList = []
