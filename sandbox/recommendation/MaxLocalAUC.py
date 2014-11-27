@@ -94,7 +94,7 @@ def restrictOmega(indPtr, colInds, colIndsSubset):
     
     for i in range(m): 
         omegai = colInds[indPtr[i]:indPtr[i+1]]
-        newOmegai = numpy.intersect1d(omegai, colIndsSubset)
+        newOmegai = numpy.intersect1d(omegai, colIndsSubset, assume_unique=True)
         
         newIndPtr[i] = ptr 
         newIndPtr[i+1] = ptr + newOmegai.shape[0]
