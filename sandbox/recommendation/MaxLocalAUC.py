@@ -711,14 +711,11 @@ class MaxLocalAUC(AbstractRecommender):
         permutedColInds = numpy.array(numpy.random.permutation(n), numpy.uint32)
 
         for i in range(numBlocks): 
-            for j in range(numBlocks): 
-                #blockRowInds = numpy.sort(numpy.array(permutedRowInds[i*rowBlockSize:(i+1)*rowBlockSize], numpy.int))
-                #blockColInds = numpy.sort(numpy.array(permutedColInds[j*colBlockSize:(j+1)*colBlockSize], numpy.int))  
-                #block = X[blockRowInds, :][:, blockColInds]
-                
-                gradientsPerBlock[i, j] = max(rowBlockSize, colBlockSize)
+            for j in range(numBlocks):                 
+                gradientsPerBlock[i, j] = numpy.ceil(float(max(m, n))/(numBlocks**2))
         
-        #assert gradientsPerBlock.sum() >= X.nnz/self.numAucSamples
+        assert gradientsPerBlock.sum() >= max(m,n)
+        #print(gradientsPerBlock.sum())
 
         #Compute omega for each col block 
         omegasList = []
