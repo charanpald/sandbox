@@ -43,6 +43,7 @@ class MaxLocalAUCProfile(object):
         maxLocalAuc.parallelSGD = True
         maxLocalAuc.numProcesses = 8
         maxLocalAuc.numAucSamples = 10
+        maxLocalAuc.numRowSamples = 10
         maxLocalAuc.loss = "hinge"
         maxLocalAuc.validationUsers = 0.0
         print(maxLocalAuc)
