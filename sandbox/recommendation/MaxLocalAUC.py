@@ -149,7 +149,8 @@ class MaxLocalAUC(AbstractRecommender):
         self.loss = "hinge" 
         self.p = 10 
         self.parallelSGD = False
-        self.parallelStep = 2
+        self.parallelStep = 5 #Number of iterations for each parallel updateUV
+        self.printStep = 10000
         self.q = 3
         self.rate = "constant"
         self.recordStep = 10
@@ -271,6 +272,7 @@ class MaxLocalAUC(AbstractRecommender):
             raise ValueError("Unknown objective: " + self.loss)
     
         learnerCython.eta = self.eta      
+        learnerCython.printStep = self.printStep 
         
         if self.loss == "tanh": 
             learnerCython.maxNorm = self.maxNormTanh
