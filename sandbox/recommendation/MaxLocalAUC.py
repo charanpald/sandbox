@@ -149,7 +149,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.loss = "hinge" 
         self.p = 10 
         self.parallelSGD = False
-        self.parallelStep = 5 #Number of iterations for each parallel updateUV
+        self.parallelStep = 1 #Number of iterations for each parallel updateUV (smaller gives better convergence)
         self.printStep = 10000
         self.q = 3
         self.rate = "constant"
