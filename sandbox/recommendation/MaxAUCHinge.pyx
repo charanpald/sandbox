@@ -88,7 +88,7 @@ cdef class MaxAUCHinge(object):
         
         objVector /= 2*m  
         if reg: 
-            objVector += (0.5/m)*((self.lmbdaV/m)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
+            objVector += (0.5/m)*((self.lmbdaV)*numpy.linalg.norm(V)**2 + (self.lmbdaU)*numpy.linalg.norm(U)**2) 
         
         if full: 
             return objVector
@@ -140,7 +140,7 @@ cdef class MaxAUCHinge(object):
         
         objVector /= 2*m
         if reg: 
-            objVector += (0.5/m)*((self.lmbdaV/m)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
+            objVector += (0.5/m)*((self.lmbdaV)*numpy.linalg.norm(V)**2 + (self.lmbdaU)*numpy.linalg.norm(U)**2) 
         
         if full: 
             return objVector
@@ -187,7 +187,7 @@ cdef class MaxAUCHinge(object):
         
         if normGp != 0:
             deltaTheta /= m*normGp
-        deltaTheta += scale(U, i, self.lmbdaU/m, self.k)
+        deltaTheta += scale(U, i, self.lmbdaU, self.k)
                     
         #Normalise gradient to have unit norm 
         normDeltaTheta = numpy.linalg.norm(deltaTheta)
@@ -244,7 +244,7 @@ cdef class MaxAUCHinge(object):
          
         if normGp != 0:
             deltaTheta /= m*normGp
-        deltaTheta += scale(U, i, self.lmbdaU/m, self.k)
+        deltaTheta += scale(U, i, self.lmbdaU, self.k)
                         
         #Normalise gradient to have unit norm 
         if self.normalise: 
@@ -333,7 +333,7 @@ cdef class MaxAUCHinge(object):
             deltaTheta += U[i, :]*betaScale 
         
         deltaTheta /= m
-        deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
+        deltaTheta += scale(V, j, self.lmbdaV, self.k)
         
         #Make gradient unit norm 
         normTheta = numpy.linalg.norm(deltaTheta)
@@ -423,7 +423,7 @@ cdef class MaxAUCHinge(object):
             deltaTheta += scale(U, i, betaScale, self.k) 
         
         deltaTheta /= rowInds.shape[0]
-        deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
+        deltaTheta += scale(V, j, self.lmbdaV, self.k)
         
         #Make gradient unit norm
         if self.normalise: 
