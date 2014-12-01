@@ -38,7 +38,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         U, V = maxLocalAuc.learnModel(X)
 
 
-    @unittest.skip("")
+    #@unittest.skip("")
     def testParallelLearnModel(self): 
         numpy.random.seed(21)
         m = 500 
@@ -59,7 +59,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc.rate = "optimal"
         maxLocalAuc.t0 = 2.0
         maxLocalAuc.validationUsers = 0.0
-        maxLocalAuc.numProcesses = 1
+        maxLocalAuc.numProcesses = 4
         
         os.system('taskset -p 0xffffffff %d' % os.getpid())
         print(X.nnz/maxLocalAuc.numAucSamples)

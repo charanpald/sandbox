@@ -630,6 +630,8 @@ class MaxLocalAUC(AbstractRecommender):
         trainMeasures = []
         testMeasures = []        
         loopInd = 0
+        lastObj = 0 
+        currentObj = lastObj - 2*self.eps
            
         numBlocks = self.numProcesses+1 
         gi, gp, gq = self.computeGipq(X)
@@ -662,7 +664,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.learnerCython = self.getCythonLearner()
         nextRecord = 0 
 
-        while loopInd < self.maxIterations: 
+        while loopInd < self.maxIterations and abs(lastObj - currentObj) > self.eps:  
             if loopInd >= nextRecord: 
                 if loopInd != 0: 
                     print("")  
@@ -678,6 +680,11 @@ class MaxLocalAUC(AbstractRecommender):
                     bestU = muU2.copy() 
                     bestV = muV2.copy()  
                     
+                #Compute objective averaged over last 5 recorded steps 
+                trainMeasuresArr = numpy.array(trainMeasures)
+                lastObj = currentObj
+                currentObj = numpy.mean(trainMeasuresArr[-5:, 0])                       
+                    
                 nextRecord += self.recordStep
             
             iterationsPerBlock = sharedmem.zeros((numBlocks, numBlocks))
@@ -692,6 +699,7 @@ class MaxLocalAUC(AbstractRecommender):
         printStr = "Finished, time=" + str('%.1f' % totalTime) + " "
         printStr += self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime)
         logging.debug(printStr)
+        logging.debug("Final difference in objectives: " + str(abs(lastObj - currentObj)))
                           
         self.U = bestU 
         self.V = bestV
