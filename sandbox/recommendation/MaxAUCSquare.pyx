@@ -128,7 +128,7 @@ cdef class MaxAUCSquare(object):
         
         if normGp != 0:
             deltaTheta /= m*normGp
-        deltaTheta += scale(U, i, self.lmbdaU, self.k)
+        deltaTheta += scale(U, i, self.lmbdaU/m, self.k)
                     
         #Normalise gradient to have unit norm 
         normDeltaTheta = numpy.linalg.norm(deltaTheta)
@@ -149,7 +149,7 @@ cdef class MaxAUCSquare(object):
         deltaTheta = VDotDot[i, :] - VDot[i, :] + WDotDot[i, :] + WDot[i, :] - scale(VDot, i, dot(VDotDot, i, U, i, self.k), self.k) - scale(VDotDot, i, dot(VDot, i, U, i, self.k), self.k)
         deltaTheta /= m
             
-        deltaTheta += scale(U, i, self.lmbdaU, self.k)
+        deltaTheta += scale(U, i, self.lmbdaU/m, self.k)
                         
         #Normalise gradient to have unit norm 
         if self.normalise: 
@@ -238,7 +238,7 @@ cdef class MaxAUCSquare(object):
             deltaTheta += U[i, :]*betaScale 
         
         deltaTheta /= m
-        deltaTheta += scale(V, j, self.lmbdaV, self.k)
+        deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
         
         #Make gradient unit norm 
         normTheta = numpy.linalg.norm(deltaTheta)
@@ -274,7 +274,7 @@ cdef class MaxAUCSquare(object):
                     deltaTheta += U[i, :]*zeta
 
         deltaTheta /= rowInds.shape[0]
-        deltaTheta += scale(V, j, self.lmbdaV, self.k)
+        deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
         
         #Make gradient unit norm
         if self.normalise: 
@@ -329,7 +329,7 @@ cdef class MaxAUCSquare(object):
         
         objVector /= 2*m  
         if reg: 
-            objVector += (0.5/m)*((self.lmbdaV)*numpy.linalg.norm(V)**2 + (self.lmbdaU)*numpy.linalg.norm(U)**2) 
+            objVector += (0.5/m)*((self.lmbdaV/m)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
         
         if full: 
             return objVector
@@ -381,7 +381,7 @@ cdef class MaxAUCSquare(object):
         
         objVector /= 2*m
         if reg: 
-            objVector += (0.5/m)*((self.lmbdaV)*numpy.linalg.norm(V)**2 + (self.lmbdaU)*numpy.linalg.norm(U)**2) 
+            objVector += (0.5/m)*((self.lmbdaV/m)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
         
         if full: 
             return objVector
