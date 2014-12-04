@@ -756,3 +756,13 @@ class Util(object):
         inds = numpy.argsort(A, axis=1)
         return inds[:, 0:N]
       
+      
+    @staticmethod 
+    def setupScript(): 
+        """
+        Set up logger and basic parameters for a script 
+        """
+        root = logging.getLogger()
+        root.setLevel(logging.DEBUG)
+        numpy.random.seed(21)        
+        numpy.set_printoptions(precision=3, suppress=True, linewidth=150)
