@@ -96,7 +96,33 @@ class MaxLocalAUCTest(unittest.TestCase):
         
         #maxLocalAuc.parallelSGD = True
         #maxLocalAuc.modelSelect(X)
-            
+           
+    #@unittest.skip("")
+    def testModelSelect2(self): 
+        m = 10 
+        n = 20 
+        k = 5 
+        
+        u = 0.5
+        w = 1-u
+        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, w, csarray=True)
+        
+        os.system('taskset -p 0xffffffff %d' % os.getpid())
+        
+        eps = 0.001
+        k = 5
+        maxLocalAuc = MaxLocalAUC(k, w, eps=eps, stochastic=True)
+        maxLocalAuc.maxIterations = 5
+        maxLocalAuc.numProcesses = 8
+        maxLocalAuc.recordStep = 1
+        maxLocalAuc.validationSize = 3
+        maxLocalAuc.metric = "f1"
+        maxLocalAuc.rate = "constant"
+        maxLocalAuc.ks = numpy.array([4, 8])
+        
+        print("got here")
+        maxLocalAuc.modelSelect2(X)
+        print("got here2")           
 
     @unittest.skip("")
     def testLearningRateSelect(self): 
