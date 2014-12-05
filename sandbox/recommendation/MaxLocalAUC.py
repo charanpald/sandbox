@@ -403,7 +403,7 @@ class MaxLocalAUC(AbstractRecommender):
 
 
     def modelParamsStr(self): 
-        outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alpha=" + str(self.alpha)
+        outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " maxNorm=" + str(self.maxNorm) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alpha=" + str(self.alpha)
         return outputStr 
 
     def modelSelect(self, X, colProbs=None, testX=None): 
