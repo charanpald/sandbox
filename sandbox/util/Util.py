@@ -764,5 +764,6 @@ class Util(object):
         """
         root = logging.getLogger()
         root.setLevel(logging.DEBUG)
+        logging.basicConfig(stream=sys.stdout)
         numpy.random.seed(21)        
         numpy.set_printoptions(precision=3, suppress=True, linewidth=150)
