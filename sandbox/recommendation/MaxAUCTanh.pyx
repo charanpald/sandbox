@@ -236,7 +236,7 @@ cdef class MaxAUCTanh(object):
             deltaTheta += U[i, :]*betaScale 
         
         deltaTheta /= m
-        deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
+        deltaTheta += scale(V, j, self.lmbdaV/n, self.k)
         
         #Make gradient unit norm 
         normTheta = numpy.linalg.norm(deltaTheta)
@@ -337,7 +337,7 @@ cdef class MaxAUCTanh(object):
             deltaTheta += scale(U, i, betaScale, self.k) 
         
         deltaTheta /= rowInds.shape[0]
-        deltaTheta += scale(V, j, self.lmbdaV/m, self.k)
+        deltaTheta += scale(V, j, self.lmbdaV/n, self.k)
         
         #Make gradient unit norm
         if self.normalise: 
@@ -410,7 +410,7 @@ cdef class MaxAUCTanh(object):
         
         objVector /= m  
         if reg: 
-            objVector += (0.5/m)*((self.lmbdaV/m)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
+            objVector += (0.5/m)*((self.lmbdaV/n)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
         
         if full: 
             return objVector
@@ -462,7 +462,7 @@ cdef class MaxAUCTanh(object):
         
         objVector /= m
         if reg: 
-            objVector += (0.5/m)*((self.lmbdaV/m)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
+            objVector += (0.5/m)*((self.lmbdaV/n)*numpy.linalg.norm(V)**2 + (self.lmbdaU/m)*numpy.linalg.norm(U)**2) 
         
         if full: 
             return objVector
