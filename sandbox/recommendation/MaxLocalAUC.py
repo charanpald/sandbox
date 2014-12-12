@@ -139,7 +139,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.lmbdaV = lmbdaV 
         self.maxIterations = maxIterations
         self.maxNorm = 100
-        self.maxNorms = 2.0**numpy.arange(-2, 3)
+        self.maxNorms = 2.0**numpy.arange(-2, 2, 0.5)
         self.metric = "f1"
         self.normalise = True
         self.numAucSamples = 10
