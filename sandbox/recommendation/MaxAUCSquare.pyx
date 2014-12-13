@@ -28,7 +28,7 @@ cdef extern from "math.h":
     
 cdef class MaxAUCSquare(object):
     cdef public unsigned int k, printStep, numAucSamples, numRowSamples, startAverage
-    cdef public double lmbdaU, lmbdaV, maxNorm, rho, w, eta
+    cdef public double lmbdaU, lmbdaV, maxNormU, maxNormV, rho, w, eta
     cdef public bint normalise    
     
     def __init__(self, unsigned int k=8, double lmbdaU=0.0, double lmbdaV=1.0, bint normalise=True, unsigned int numAucSamples=10, unsigned int numRowSamples=30, unsigned int startAverage=30, double rho=0.5):      
@@ -36,7 +36,8 @@ cdef class MaxAUCSquare(object):
         self.k = k 
         self.lmbdaU = lmbdaU
         self.lmbdaV = lmbdaV
-        self.maxNorm = 100
+        self.maxNormU = 100
+        self.maxNormV = 100
         self.normalise = normalise 
         self.numAucSamples = numAucSamples
         self.numRowSamples = numRowSamples
@@ -428,8 +429,8 @@ cdef class MaxAUCSquare(object):
             plusEquals(U, i, -sigma*dUi, self.k)
             normUi = numpy.linalg.norm(U[i,:])
             
-            if normUi >= self.maxNorm: 
-                U[i,:] = scale(U, i, self.maxNorm/normUi, self.k)             
+            if normUi >= self.maxNormU: 
+                U[i,:] = scale(U, i, self.maxNormU/normUi, self.k)             
             
             if ind > self.startAverage: 
                 muU[i, :] = muU[i, :]*ind/float(ind+self.eta+1) + U[i, :]*(1+self.eta)/float(ind+self.eta+1)
@@ -442,8 +443,8 @@ cdef class MaxAUCSquare(object):
             plusEquals(V, j, -sigma*dVj, self.k)
             normVj = numpy.linalg.norm(V[j,:])  
             
-            if normVj >= self.maxNorm: 
-                V[j,:] = scale(V, j, self.maxNorm/normVj, self.k)        
+            if normVj >= self.maxNormV: 
+                V[j,:] = scale(V, j, self.maxNormV/normVj, self.k)        
             
             if ind > self.startAverage: 
                 muV[j, :] = muV[j, :]*ind/float(ind+self.eta+1) + V[j, :]*(1+self.eta)/float(ind+self.eta+1)

@@ -138,7 +138,8 @@ class MaxLocalAUC(AbstractRecommender):
         self.lmbdaU = lmbdaU 
         self.lmbdaV = lmbdaV 
         self.maxIterations = maxIterations
-        self.maxNorm = 100
+        self.maxNormU = 100
+        self.maxNormV = 100
         self.maxNorms = 2.0**numpy.arange(-2, 2, 0.5)
         self.metric = "f1"
         self.normalise = True
@@ -273,7 +274,8 @@ class MaxLocalAUC(AbstractRecommender):
     
         learnerCython.eta = self.eta      
         learnerCython.printStep = self.printStep 
-        learnerCython.maxNorm = self.maxNorm
+        learnerCython.maxNormU = self.maxNormU
+        learnerCython.maxNormV = self.maxNormV
             
         return learnerCython
         
@@ -317,13 +319,9 @@ class MaxLocalAUC(AbstractRecommender):
             raise ValueError("Unknown initialisation: " + str(self.initialAlg))  
          
         U = numpy.ascontiguousarray(U)
-        #maxNorm = numpy.sqrt(numpy.max(numpy.sum(U**2, 1)))
-        #U = U/maxNorm  
-        
+
         V = numpy.ascontiguousarray(V) 
-        #maxNorm = numpy.sqrt(numpy.max(numpy.sum(V**2, 1)))
-        #V = V/maxNorm
-        
+
         return U, V    
 
         
@@ -403,7 +401,7 @@ class MaxLocalAUC(AbstractRecommender):
 
 
     def modelParamsStr(self): 
-        outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " maxNorm=" + str(self.maxNorm) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alpha=" + str(self.alpha)
+        outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " maxNormU=" + str(self.maxNormU) + " maxNormV=" + str(self.maxNormV) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alpha=" + str(self.alpha)
         return outputStr 
 
     def modelSelect(self, X, colProbs=None, testX=None): 
@@ -507,7 +505,8 @@ class MaxLocalAUC(AbstractRecommender):
                         for t, t0 in enumerate(self.t0s):
                             maxLocalAuc = self.copy()
                             maxLocalAuc.k = k    
-                            maxLocalAuc.maxNorm = maxNorm
+                            maxLocalAuc.maxNormU = maxNorm
+                            maxLocalAuc.maxNormV = maxNorm
                             maxLocalAuc.alpha = alpha 
                             maxLocalAuc.t0 = t0 
                         
@@ -819,8 +818,8 @@ class MaxLocalAUC(AbstractRecommender):
         self.lmbdaV = self.lmbdas[unraveledInds[2]]
         self.alpha = self.alphas[unraveledInds[3]]
         
-        logging.debug("Model parameters: k=" + str(self.k) + " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) +  " max=" + str(numpy.max(meanTestMetrics)))
-         
+        logging.debug("Model parameters:" + str(self.modelParamsStr()) +  " max=" + str(numpy.max(meanTestMetrics)))
+        
         return meanTestMetrics, stdTestMetrics
     
     def setModelParams2(self, meanTestMetrics, stdTestMetrics): 
@@ -835,10 +834,11 @@ class MaxLocalAUC(AbstractRecommender):
         
         self.t0 = self.t0s[unraveledInds[0]]
         self.k = self.ks[unraveledInds[1]]
-        self.maxNorm = self.maxNorms[unraveledInds[2]]
+        self.maxNormU = self.maxNorms[unraveledInds[2]]
+        self.maxNormV = self.maxNorms[unraveledInds[2]]
         self.alpha = self.alphas[unraveledInds[3]]
         
-        logging.debug("Model parameters: k=" + str(self.k) + " maxNorm=" + str(self.maxNorm) + " alpha=" + str(self.alpha) + " t0=" + str(self.t0) +  " max=" + str(numpy.max(meanTestMetrics)))
+        logging.debug("Model parameters:" + str(self.modelParamsStr()) +  " max=" + str(numpy.max(meanTestMetrics)))
          
         return meanTestMetrics, stdTestMetrics    
     
