@@ -279,6 +279,15 @@ class MaxLocalAUC(AbstractRecommender):
             
         return learnerCython
         
+    def getEvaluationMethod(self): 
+        if self.metric == "mrr":
+            evaluationMethod = computeTestMRR
+        elif self.metric == "f1": 
+            evaluationMethod = computeTestF1
+        else: 
+            raise ValueError("Invalid metric: " + self.metric)
+        return evaluationMethod 
+        
     def getSigma(self, ind): 
         if self.rate == "constant": 
             sigma = self.alpha 
@@ -291,6 +300,26 @@ class MaxLocalAUC(AbstractRecommender):
             raise ValueError("Invalid rate: " + self.rate)
             
         return sigma     
+    
+    def imap(self, evaluationMethod, paramList):
+        if self.parallelSGD: 
+            numProcesses = 1
+        else:
+            numProcesses = self.numProcesses
+        
+        if numProcesses != 1: 
+            pool = multiprocessing.Pool(processes=numProcesses, maxtasksperchild=100)
+            resultsIterator = pool.imap(evaluationMethod, paramList, self.chunkSize)
+        else: 
+            import itertools
+            resultsIterator = itertools.imap(evaluationMethod, paramList)   
+            
+        resultsIterator2 = iter(list(resultsIterator))
+            
+        if numProcesses != 1: 
+            pool.terminate()
+            
+        return resultsIterator2
     
     def initUV(self, X): 
         m = X.shape[0]
@@ -440,25 +469,8 @@ class MaxLocalAUC(AbstractRecommender):
                         
                             paramList.append((trainX, testX, maxLocalAuc))
             
-        logging.debug("Set parameters")
-        if self.metric == "mrr":
-            evaluationMethod = computeTestMRR
-        elif self.metric == "f1": 
-            evaluationMethod = computeTestF1
-        else: 
-            raise ValueError("Invalid metric: " + self.metric)
-            
-        if self.parallelSGD: 
-            numProcesses = 1
-        else:
-            numProcesses = self.numProcesses
-        
-        if numProcesses != 1: 
-            pool = multiprocessing.Pool(processes=numProcesses, maxtasksperchild=100)
-            resultsIterator = pool.imap(evaluationMethod, paramList, self.chunkSize)
-        else: 
-            import itertools
-            resultsIterator = itertools.imap(evaluationMethod, paramList)
+        evaluationMethod = self.getEvaluationMethod()
+        resultsIterator = self.imap(evaluationMethod, paramList)
         
         for i, k in enumerate(self.ks):
             for icv in range(len(trainTestXs)): 
@@ -466,9 +478,6 @@ class MaxLocalAUC(AbstractRecommender):
                     for s, alpha in enumerate(self.alphas): 
                         for t, t0 in enumerate(self.t0s):
                             testMetrics[t, i, j, s, icv] = resultsIterator.next()
-        
-        if numProcesses != 1: 
-            pool.terminate()
         
         meanTestMetrics = numpy.mean(testMetrics, 4)
         stdTestMetrics = numpy.std(testMetrics, 4)
@@ -512,25 +521,8 @@ class MaxLocalAUC(AbstractRecommender):
                         
                             paramList.append((trainX, testX, maxLocalAuc))
             
-        logging.debug("Set parameters")
-        if self.metric == "mrr":
-            evaluationMethod = computeTestMRR
-        elif self.metric == "f1": 
-            evaluationMethod = computeTestF1
-        else: 
-            raise ValueError("Invalid metric: " + self.metric)
-            
-        if self.parallelSGD: 
-            numProcesses = 1
-        else:
-            numProcesses = self.numProcesses
-        
-        if numProcesses != 1: 
-            pool = multiprocessing.Pool(processes=numProcesses, maxtasksperchild=100)
-            resultsIterator = pool.imap(evaluationMethod, paramList, self.chunkSize)
-        else: 
-            import itertools
-            resultsIterator = itertools.imap(evaluationMethod, paramList)
+        evaluationMethod = self.getEvaluationMethod()
+        resultsIterator = self.imap(evaluationMethod, paramList)
         
         for i, k in enumerate(self.ks):
             for icv in range(len(trainTestXs)): 
@@ -539,13 +531,58 @@ class MaxLocalAUC(AbstractRecommender):
                         for t, t0 in enumerate(self.t0s):
                             testMetrics[t, i, j, s, icv] = resultsIterator.next()
         
-        if numProcesses != 1: 
-            pool.terminate()
-        
         meanTestMetrics = numpy.mean(testMetrics, 4)
         stdTestMetrics = numpy.std(testMetrics, 4)
         
         return self.setModelParams2(meanTestMetrics, stdTestMetrics)
+
+    def modelSelectUV(self, X, colProbs=None, testX=None): 
+        """
+        Perform model selection on X and return the best parameters. This time we 
+        choose lambdas independently 
+        """
+        m, n = X.shape
+        if testX==None:
+            trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
+        else: 
+            trainTestXs = [[X, testX]]
+
+        testMetrics = numpy.zeros((self.alphas.shape[0], self.ks.shape[0], self.lmbdas.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
+        
+        logging.debug("Performing model selection UV")
+        paramList = []        
+        
+        for i, k in enumerate(self.ks): 
+            self.k = k
+            
+            for icv, (trainX, testX) in enumerate(trainTestXs):
+                U, V = self.initUV(trainX)
+                for r, alpha in enumerate(self.alphas): 
+                    for s, lmbdaU in enumerate(self.lmbdas): 
+                        for t, lmbdaV in enumerate(self.lmbdas): 
+                        
+                                maxLocalAuc = self.copy()
+                                maxLocalAuc.k = k    
+                                maxLocalAuc.lmbdaU = lmbdaU
+                                maxLocalAuc.lmbdaV = lmbdaV
+                                maxLocalAuc.alpha = alpha 
+                            
+                                paramList.append((trainX, testX, maxLocalAuc))
+                
+        evaluationMethod = self.getEvaluationMethod()
+        resultsIterator = self.imap(evaluationMethod, paramList)
+            
+        for i, k in enumerate(self.ks): 
+            for icv, (trainX, testX) in enumerate(trainTestXs):
+                for r, alpha in enumerate(self.alphas): 
+                    for s, lmbdaU in enumerate(self.lmbdas): 
+                        for t, lmbdaV in enumerate(self.lmbdas): 
+                            testMetrics[r, i, s, t, icv] = resultsIterator.next()
+        
+        meanTestMetrics = numpy.mean(testMetrics, 4)
+        stdTestMetrics = numpy.std(testMetrics, 4)
+        
+        return self.setModelParamsUV(meanTestMetrics, stdTestMetrics)
 
     def objectiveApprox(self, positiveArray, U, V, r, gi, gp, gq, allArray=None, full=False): 
         """
@@ -841,6 +878,24 @@ class MaxLocalAUC(AbstractRecommender):
         logging.debug("Model parameters:" + str(self.modelParamsStr()) +  " max=" + str(numpy.max(meanTestMetrics)))
          
         return meanTestMetrics, stdTestMetrics    
+    
+    def setModelParamsUV(self, meanTestMetrics, stdTestMetrics): 
+        logging.debug("alphas=" + str(self.alphas))  
+        logging.debug("ks=" + str(self.ks)) 
+        logging.debug("lmbdas=" + str(self.lmbdas)) 
+        logging.debug("Mean metrics =" + str(meanTestMetrics))
+        logging.debug("Std metrics =" + str(stdTestMetrics))
+        
+        unraveledInds = numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)      
+        
+        self.alpha = self.alphas[unraveledInds[1]]
+        self.k = self.ks[unraveledInds[1]]
+        self.lmbdaU = self.lmbdas[unraveledInds[2]]
+        self.lmbdaV = self.lmbdas[unraveledInds[3]]
+        
+        logging.debug("Model parameters:" + str(self.modelParamsStr()) +  " max=" + str(numpy.max(meanTestMetrics)))
+         
+        return meanTestMetrics, stdTestMetrics       
     
     def singleLearnModel(self, X, verbose=False, U=None, V=None): 
         """
