@@ -584,6 +584,54 @@ class MaxLocalAUC(AbstractRecommender):
         
         return self.setModelParamsUV(meanTestMetrics, stdTestMetrics)
 
+    def modelSelectUV2(self, X, colProbs=None, testX=None): 
+        """
+        Perform model selection on X and return the best parameters. This time we 
+        choose maxNorms independently 
+        """
+        m, n = X.shape
+        if testX==None:
+            trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
+        else: 
+            trainTestXs = [[X, testX]]
+
+        testMetrics = numpy.zeros((self.alphas.shape[0], self.ks.shape[0], self.maxNorms.shape[0], self.maxNorms.shape[0], len(trainTestXs)))
+        
+        logging.debug("Performing model selection UV")
+        paramList = []        
+        
+        for i, k in enumerate(self.ks): 
+            self.k = k
+            
+            for icv, (trainX, testX) in enumerate(trainTestXs):
+                U, V = self.initUV(trainX)
+                for r, alpha in enumerate(self.alphas): 
+                    for s, maxNormU in enumerate(self.maxNorms): 
+                        for t, maxNormV in enumerate(self.maxNorms): 
+                        
+                                maxLocalAuc = self.copy()
+                                maxLocalAuc.k = k    
+                                maxLocalAuc.maxNormU = maxNormU
+                                maxLocalAuc.maxNormV = maxNormV
+                                maxLocalAuc.alpha = alpha 
+                            
+                                paramList.append((trainX, testX, maxLocalAuc))
+                
+        evaluationMethod = self.getEvaluationMethod()
+        resultsIterator = self.imap(evaluationMethod, paramList)
+            
+        for i, k in enumerate(self.ks): 
+            for icv, (trainX, testX) in enumerate(trainTestXs):
+                for r, alpha in enumerate(self.alphas): 
+                    for s, maxNormU in enumerate(self.maxNorms): 
+                        for t, maxNormV in enumerate(self.maxNorms):
+                            testMetrics[r, i, s, t, icv] = resultsIterator.next()
+        
+        meanTestMetrics = numpy.mean(testMetrics, 4)
+        stdTestMetrics = numpy.std(testMetrics, 4)
+        
+        return self.setModelParamsUV2(meanTestMetrics, stdTestMetrics)
+
     def objectiveApprox(self, positiveArray, U, V, r, gi, gp, gq, allArray=None, full=False): 
         """
         Compute the estimated local AUC for the score functions UV^T relative to X with 
@@ -892,6 +940,24 @@ class MaxLocalAUC(AbstractRecommender):
         self.k = self.ks[unraveledInds[1]]
         self.lmbdaU = self.lmbdas[unraveledInds[2]]
         self.lmbdaV = self.lmbdas[unraveledInds[3]]
+        
+        logging.debug("Model parameters:" + str(self.modelParamsStr()) +  " max=" + str(numpy.max(meanTestMetrics)))
+         
+        return meanTestMetrics, stdTestMetrics       
+    
+    def setModelParamsUV2(self, meanTestMetrics, stdTestMetrics): 
+        logging.debug("alphas=" + str(self.alphas))  
+        logging.debug("ks=" + str(self.ks)) 
+        logging.debug("maxNorms=" + str(self.maxNorms)) 
+        logging.debug("Mean metrics =" + str(meanTestMetrics))
+        logging.debug("Std metrics =" + str(stdTestMetrics))
+        
+        unraveledInds = numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)      
+        
+        self.alpha = self.alphas[unraveledInds[1]]
+        self.k = self.ks[unraveledInds[1]]
+        self.maxNormU = self.maxNorms[unraveledInds[2]]
+        self.maxNormV = self.maxNorms[unraveledInds[3]]
         
         logging.debug("Model parameters:" + str(self.modelParamsStr()) +  " max=" + str(numpy.max(meanTestMetrics)))
          

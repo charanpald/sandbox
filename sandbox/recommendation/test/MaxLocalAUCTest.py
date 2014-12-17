@@ -144,7 +144,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc.metric = "f1"
         maxLocalAuc.rate = "constant"
         maxLocalAuc.ks = numpy.array([4, 8])
-        maxLocalAuc.modelSelectUV(X)
+        maxLocalAuc.modelSelectUV2(X)
 
     @unittest.skip("")
     def testLearningRateSelect(self): 
