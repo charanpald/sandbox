@@ -597,7 +597,7 @@ class MaxLocalAUC(AbstractRecommender):
 
         testMetrics = numpy.zeros((self.alphas.shape[0], self.ks.shape[0], self.maxNorms.shape[0], self.maxNorms.shape[0], len(trainTestXs)))
         
-        logging.debug("Performing model selection UV")
+        logging.debug("Performing model selection UV maxNorm")
         paramList = []        
         
         for i, k in enumerate(self.ks): 
