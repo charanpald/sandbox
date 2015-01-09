@@ -936,7 +936,7 @@ class MaxLocalAUC(AbstractRecommender):
         
         unraveledInds = numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)      
         
-        self.alpha = self.alphas[unraveledInds[1]]
+        self.alpha = self.alphas[unraveledInds[0]]
         self.k = self.ks[unraveledInds[1]]
         self.lmbdaU = self.lmbdas[unraveledInds[2]]
         self.lmbdaV = self.lmbdas[unraveledInds[3]]
@@ -954,7 +954,7 @@ class MaxLocalAUC(AbstractRecommender):
         
         unraveledInds = numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)      
         
-        self.alpha = self.alphas[unraveledInds[1]]
+        self.alpha = self.alphas[unraveledInds[0]]
         self.k = self.ks[unraveledInds[1]]
         self.maxNormU = self.maxNorms[unraveledInds[2]]
         self.maxNormV = self.maxNorms[unraveledInds[3]]
