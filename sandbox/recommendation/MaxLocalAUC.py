@@ -60,14 +60,14 @@ def updateUVBlock(sharedArgs, methodArgs):
         blockColInds = permutedColInds[colInd*colBlockSize:(colInd+1)*colBlockSize]
         
         ind = iterationsPerBlock[rowInd, colInd] + loopInd
-        sigma = learner.getSigma(ind)
+        sigma = learner.getSigma(ind, scale=max(U.shape[0], V.shape[0]))
           
         lock.release()
     
         #Now update U and V based on the block 
         if foundBlock: 
             ind = iterationsPerBlock[rowInd, colInd] + loopInd
-            sigma = learner.getSigma(ind)
+            sigma = learner.getSigma(ind, scale=max(U.shape[0], V.shape[0]))
             numIterations = gradientsPerBlock[rowInd, colInd]
             
             indPtr2, colInds2 = omegasList[colInd]
@@ -105,7 +105,7 @@ def restrictOmega(indPtr, colInds, colIndsSubset):
     return newIndPtr, newColInds
       
 class MaxLocalAUC(AbstractRecommender): 
-    def __init__(self, k, w, alpha=0.05, eps=10**-4, lmbdaU=0, lmbdaV=1, maxIterations=50, stochastic=False, numProcesses=None): 
+    def __init__(self, k, w=0.9, alpha=0.05, eps=10**-6, lmbdaU=0, lmbdaV=1, maxIterations=50, stochastic=False, numProcesses=None): 
         """
         Create an object for  maximising the local AUC with a penalty term using the matrix
         decomposition UV.T 
@@ -288,14 +288,18 @@ class MaxLocalAUC(AbstractRecommender):
             raise ValueError("Invalid metric: " + self.metric)
         return evaluationMethod 
         
-    def getSigma(self, ind): 
+    def getSigma(self, ind, scale=None): 
+        if self.normalise: 
+            alpha = self.alpha 
+        else: 
+            alpha = self.alpha * scale 
+        
         if self.rate == "constant": 
-            sigma = self.alpha 
+            sigma = alpha 
         elif self.rate == "optimal":
-            #t0 = self.lmbdaV  
             t0 = self.t0
             
-            sigma = self.alpha/((1 + self.alpha*t0*ind)**self.beta)
+            sigma = alpha/((1 + alpha*t0*ind)**self.beta)
         else: 
             raise ValueError("Invalid rate: " + self.rate)
             
@@ -826,7 +830,7 @@ class MaxLocalAUC(AbstractRecommender):
 
     def recordResults(self, muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime): 
         
-        sigma = self.getSigma(loopInd)        
+        sigma = self.getSigma(loopInd, scale=max(muU.shape[0], muV.shape[0]))        
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
         objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=True)
         if trainMeasures == None: 
@@ -1033,7 +1037,7 @@ class MaxLocalAUC(AbstractRecommender):
         normGp, normGq = self.computeNormGpq(indPtr, colInds, gp, gq, m)
     
         while loopInd < self.maxIterations and abs(lastObj - currentObj) > self.eps: 
-            sigma = self.getSigma(loopInd)
+            sigma = self.getSigma(loopInd, scale=max(m, n))
 
             if loopInd % self.recordStep == 0: 
                 if loopInd != 0 and self.stochastic: 
