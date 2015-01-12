@@ -60,14 +60,14 @@ def updateUVBlock(sharedArgs, methodArgs):
         blockColInds = permutedColInds[colInd*colBlockSize:(colInd+1)*colBlockSize]
         
         ind = iterationsPerBlock[rowInd, colInd] + loopInd
-        sigma = learner.getSigma(ind, scale=max(U.shape[0], V.shape[0]))
+        sigma = learner.getSigma(ind)
           
         lock.release()
     
         #Now update U and V based on the block 
         if foundBlock: 
             ind = iterationsPerBlock[rowInd, colInd] + loopInd
-            sigma = learner.getSigma(ind, scale=max(U.shape[0], V.shape[0]))
+            sigma = learner.getSigma(ind)
             numIterations = gradientsPerBlock[rowInd, colInd]
             
             indPtr2, colInds2 = omegasList[colInd]
@@ -288,11 +288,9 @@ class MaxLocalAUC(AbstractRecommender):
             raise ValueError("Invalid metric: " + self.metric)
         return evaluationMethod 
         
-    def getSigma(self, ind, scale=None): 
-        if self.normalise: 
-            alpha = self.alpha 
-        else: 
-            alpha = self.alpha * scale 
+    def getSigma(self, ind): 
+
+        alpha = self.alpha 
         
         if self.rate == "constant": 
             sigma = alpha 
@@ -830,7 +828,7 @@ class MaxLocalAUC(AbstractRecommender):
 
     def recordResults(self, muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime): 
         
-        sigma = self.getSigma(loopInd, scale=max(muU.shape[0], muV.shape[0]))        
+        sigma = self.getSigma(loopInd)        
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
         objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=True)
         if trainMeasures == None: 
@@ -1037,7 +1035,7 @@ class MaxLocalAUC(AbstractRecommender):
         normGp, normGq = self.computeNormGpq(indPtr, colInds, gp, gq, m)
     
         while loopInd < self.maxIterations and abs(lastObj - currentObj) > self.eps: 
-            sigma = self.getSigma(loopInd, scale=max(m, n))
+            sigma = self.getSigma(loopInd)
 
             if loopInd % self.recordStep == 0: 
                 if loopInd != 0 and self.stochastic: 
