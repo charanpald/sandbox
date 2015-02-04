@@ -21,7 +21,7 @@ from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.Sampling import Sampling 
 from sandbox.util.SparseUtilsCython import SparseUtilsCython
 from sandbox.util.SparseUtils import SparseUtils
-
+from sklearn.grid_search import ParameterGrid
 
 def computeObjective(args): 
     """
@@ -427,12 +427,8 @@ class MaxLocalAUC(AbstractRecommender):
         
         return meanObjs, stdObjs  
 
-    
-        
-
-
     def modelParamsStr(self): 
-        outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " maxNormU=" + str(self.maxNormU) + " maxNormV=" + str(self.maxNormV) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alpha=" + str(self.alpha)
+        outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " maxNormU=" + str(self.maxNormU) + " maxNormV=" + str(self.maxNormV) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alpha=" + str(self.alpha) + " t0=" + str(self.t0)
         return outputStr 
 
     def modelSelect(self, X, colProbs=None, testX=None): 
@@ -549,7 +545,7 @@ class MaxLocalAUC(AbstractRecommender):
         else: 
             trainTestXs = [[X, testX]]
 
-        testMetrics = numpy.zeros((self.alphas.shape[0], self.ks.shape[0], self.lmbdas.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
+        testMetrics = numpy.zeros((self.t0s.shape[0], self.alphas.shape[0], self.ks.shape[0], self.lmbdas.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection UV")
         paramList = []        
@@ -559,30 +555,33 @@ class MaxLocalAUC(AbstractRecommender):
             
             for icv, (trainX, testX) in enumerate(trainTestXs):
                 U, V = self.initUV(trainX)
-                for r, alpha in enumerate(self.alphas): 
-                    for s, lmbdaU in enumerate(self.lmbdas): 
-                        for t, lmbdaV in enumerate(self.lmbdas): 
-                        
-                                maxLocalAuc = self.copy()
-                                maxLocalAuc.k = k    
-                                maxLocalAuc.lmbdaU = lmbdaU
-                                maxLocalAuc.lmbdaV = lmbdaV
-                                maxLocalAuc.alpha = alpha 
+                for p, t0 in enumerate(self.t0s): 
+                    for r, alpha in enumerate(self.alphas): 
+                        for s, lmbdaU in enumerate(self.lmbdas): 
+                            for t, lmbdaV in enumerate(self.lmbdas): 
                             
-                                paramList.append((trainX, testX, maxLocalAuc))
+                                    maxLocalAuc = self.copy()
+                                    maxLocalAuc.k = k    
+                                    maxLocalAuc.lmbdaU = lmbdaU
+                                    maxLocalAuc.lmbdaV = lmbdaV
+                                    maxLocalAuc.alpha = alpha 
+                                    maxLocalAuc.t0 = t0 
+                                
+                                    paramList.append((trainX, testX, maxLocalAuc))
                 
         evaluationMethod = self.getEvaluationMethod()
         resultsIterator = self.imap(evaluationMethod, paramList)
             
         for i, k in enumerate(self.ks): 
             for icv, (trainX, testX) in enumerate(trainTestXs):
-                for r, alpha in enumerate(self.alphas): 
-                    for s, lmbdaU in enumerate(self.lmbdas): 
-                        for t, lmbdaV in enumerate(self.lmbdas): 
-                            testMetrics[r, i, s, t, icv] = resultsIterator.next()
+                for p, t0 in enumerate(self.t0s): 
+                    for r, alpha in enumerate(self.alphas): 
+                        for s, lmbdaU in enumerate(self.lmbdas): 
+                            for t, lmbdaV in enumerate(self.lmbdas): 
+                                testMetrics[p, r, i, s, t, icv] = resultsIterator.next()
         
-        meanTestMetrics = numpy.mean(testMetrics, 4)
-        stdTestMetrics = numpy.std(testMetrics, 4)
+        meanTestMetrics = numpy.mean(testMetrics, 5)
+        stdTestMetrics = numpy.std(testMetrics, 5)
         
         return self.setModelParamsUV(meanTestMetrics, stdTestMetrics)
 
@@ -930,6 +929,7 @@ class MaxLocalAUC(AbstractRecommender):
         return meanTestMetrics, stdTestMetrics    
     
     def setModelParamsUV(self, meanTestMetrics, stdTestMetrics): 
+        logging.debug("t0s=" + str(self.t0s)) 
         logging.debug("alphas=" + str(self.alphas))  
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdas=" + str(self.lmbdas)) 
@@ -938,10 +938,11 @@ class MaxLocalAUC(AbstractRecommender):
         
         unraveledInds = numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)      
         
-        self.alpha = self.alphas[unraveledInds[0]]
-        self.k = self.ks[unraveledInds[1]]
-        self.lmbdaU = self.lmbdas[unraveledInds[2]]
-        self.lmbdaV = self.lmbdas[unraveledInds[3]]
+        self.t0 = self.t0s[unraveledInds[0]]
+        self.alpha = self.alphas[unraveledInds[1]]
+        self.k = self.ks[unraveledInds[2]]
+        self.lmbdaU = self.lmbdas[unraveledInds[3]]
+        self.lmbdaV = self.lmbdas[unraveledInds[4]]
         
         logging.debug("Model parameters:" + str(self.modelParamsStr()) +  " max=" + str(numpy.max(meanTestMetrics)))
          
