@@ -449,7 +449,7 @@ cdef class MaxAUCSigmoid(object):
         
         U -= sigma*dU        
         
-    def updateUVApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, unsigned int ind, unsigned int numIterations, double sigma): 
+    def updateUVApprox(self, numpy.ndarray[unsigned int, ndim=1, mode="c"] indPtr, numpy.ndarray[unsigned int, ndim=1, mode="c"] colInds, numpy.ndarray[double, ndim=2, mode="c"] U, numpy.ndarray[double, ndim=2, mode="c"] V, numpy.ndarray[double, ndim=2, mode="c"] muU, numpy.ndarray[double, ndim=2, mode="c"] muV, numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedRowInds,  numpy.ndarray[unsigned int, ndim=1, mode="c"] permutedColInds, numpy.ndarray[double, ndim=1, mode="c"] gp, numpy.ndarray[double, ndim=1, mode="c"] gq, numpy.ndarray[double, ndim=1, mode="c"] normGp, numpy.ndarray[double, ndim=1, mode="c"] normGq, unsigned int ind, unsigned int numIterations, double sigmaU, double sigmaV): 
         cdef unsigned int m = U.shape[0]
         cdef unsigned int n = V.shape[0]    
         cdef unsigned int i, j, s
@@ -468,7 +468,7 @@ cdef class MaxAUCSigmoid(object):
             i = permutedRowInds[s % permutedRowInds.shape[0]]   
             
             dUi = self.derivativeUiApprox(indPtr, colInds, U, V, gp, gq, permutedColInds, i)
-            plusEquals(U, i, -sigma*dUi, self.k)
+            plusEquals(U, i, -sigmaU*dUi, self.k)
             normUi = numpy.linalg.norm(U[i,:])
             
             if normUi >= self.maxNormU: 
@@ -482,7 +482,7 @@ cdef class MaxAUCSigmoid(object):
             #Now update V   
             j = permutedColInds[s % permutedColInds.shape[0]]
             dVj = self.derivativeViApprox(indPtr, colInds, U, V, gp, gq, normGp, normGq, permutedRowInds, permutedColInds, j)
-            plusEquals(V, j, -sigma*dVj, self.k)
+            plusEquals(V, j, -sigmaV*dVj, self.k)
             normVj = numpy.linalg.norm(V[j,:])  
             
             if normVj >= self.maxNormV: 

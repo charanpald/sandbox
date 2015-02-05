@@ -60,19 +60,21 @@ def updateUVBlock(sharedArgs, methodArgs):
         blockColInds = permutedColInds[colInd*colBlockSize:(colInd+1)*colBlockSize]
         
         ind = iterationsPerBlock[rowInd, colInd] + loopInd
-        sigma = learner.getSigma(ind)
+        sigmaU = learner.getSigma(ind, learner.alphaU)
+        sigmaV = learner.getSigma(ind, learner.alphaV)
           
         lock.release()
     
         #Now update U and V based on the block 
         if foundBlock: 
             ind = iterationsPerBlock[rowInd, colInd] + loopInd
-            sigma = learner.getSigma(ind)
+            sigmaU = learner.getSigma(ind, learner.alphaU)
+            sigmaV = learner.getSigma(ind, learner.alphaV)
             numIterations = gradientsPerBlock[rowInd, colInd]
             
             indPtr2, colInds2 = omegasList[colInd]
 
-            learner.updateUV(indPtr2, colInds2, U, V, muU, muV, blockRowInds, blockColInds, gp, gq, normGp, normGq, ind, sigma, numIterations)
+            learner.updateUV(indPtr2, colInds2, U, V, muU, muV, blockRowInds, blockColInds, gp, gq, normGp, normGq, ind, sigmaU, sigmaV, numIterations)
         else: 
             time.sleep(3)
 
@@ -125,7 +127,8 @@ class MaxLocalAUC(AbstractRecommender):
         super(MaxLocalAUC, self).__init__(numProcesses)
         
         
-        self.alpha = alpha #Initial learning rate 
+        self.alphaU = alpha #Initial learning rate 
+        self.alphaV = alpha
         self.beta = 0.75
         self.bound = False
         self.delta = 0.05
@@ -288,10 +291,7 @@ class MaxLocalAUC(AbstractRecommender):
             raise ValueError("Invalid metric: " + self.metric)
         return evaluationMethod 
         
-    def getSigma(self, ind): 
-
-        alpha = self.alpha 
-        
+    def getSigma(self, ind, alpha):    
         if self.rate == "constant": 
             sigma = alpha 
         elif self.rate == "optimal":
@@ -428,7 +428,7 @@ class MaxLocalAUC(AbstractRecommender):
         return meanObjs, stdObjs  
 
     def modelParamsStr(self): 
-        outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " maxNormU=" + str(self.maxNormU) + " maxNormV=" + str(self.maxNormV) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alpha=" + str(self.alpha) + " t0=" + str(self.t0)
+        outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " maxNormU=" + str(self.maxNormU) + " maxNormV=" + str(self.maxNormV) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alphaU=" + str(self.alphaU) + " alphaV=" + str(self.alphaV) + " t0=" + str(self.t0)
         return outputStr 
 
     def modelSelect(self, X, colProbs=None, testX=None): 
@@ -545,7 +545,7 @@ class MaxLocalAUC(AbstractRecommender):
         else: 
             trainTestXs = [[X, testX]]
 
-        testMetrics = numpy.zeros((self.t0s.shape[0], self.alphas.shape[0], self.ks.shape[0], self.lmbdas.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
+        testMetrics = numpy.zeros((self.alphas.shape[0], self.alphas.shape[0], self.ks.shape[0], self.lmbdas.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
         
         logging.debug("Performing model selection UV")
         paramList = []        
@@ -555,8 +555,8 @@ class MaxLocalAUC(AbstractRecommender):
             
             for icv, (trainX, testX) in enumerate(trainTestXs):
                 U, V = self.initUV(trainX)
-                for p, t0 in enumerate(self.t0s): 
-                    for r, alpha in enumerate(self.alphas): 
+                for p, alphaU in enumerate(self.alphas):
+                    for r, alphaV in enumerate(self.alphas): 
                         for s, lmbdaU in enumerate(self.lmbdas): 
                             for t, lmbdaV in enumerate(self.lmbdas): 
                             
@@ -564,8 +564,8 @@ class MaxLocalAUC(AbstractRecommender):
                                     maxLocalAuc.k = k    
                                     maxLocalAuc.lmbdaU = lmbdaU
                                     maxLocalAuc.lmbdaV = lmbdaV
-                                    maxLocalAuc.alpha = alpha 
-                                    maxLocalAuc.t0 = t0 
+                                    maxLocalAuc.alphaU = alphaU 
+                                    maxLocalAuc.alphaV = alphaV 
                                 
                                     paramList.append((trainX, testX, maxLocalAuc))
                 
@@ -574,8 +574,8 @@ class MaxLocalAUC(AbstractRecommender):
             
         for i, k in enumerate(self.ks): 
             for icv, (trainX, testX) in enumerate(trainTestXs):
-                for p, t0 in enumerate(self.t0s): 
-                    for r, alpha in enumerate(self.alphas): 
+                for p, alphaU in enumerate(self.alphas):
+                    for r, alphaV in enumerate(self.alphas): 
                         for s, lmbdaU in enumerate(self.lmbdas): 
                             for t, lmbdaV in enumerate(self.lmbdas): 
                                 testMetrics[p, r, i, s, t, icv] = resultsIterator.next()
@@ -827,7 +827,8 @@ class MaxLocalAUC(AbstractRecommender):
 
     def recordResults(self, muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime): 
         
-        sigma = self.getSigma(loopInd)        
+        sigmaU = self.getSigma(loopInd, self.alphaU) 
+        sigmaV = self.getSigma(loopInd, self.alphaV) 
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
         objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=True)
         if trainMeasures == None: 
@@ -835,7 +836,8 @@ class MaxLocalAUC(AbstractRecommender):
         trainMeasures.append([objArr.sum(), MCEvaluator.localAUCApprox((indPtr, colInds), muU, muV, self.w, self.numRecordAucSamples, r), time.time()-startTime, loopInd]) 
         
         printStr = "iter " + str(loopInd) + ":"
-        printStr += " sigma=" + str('%.4f' % sigma)
+        printStr += " sigmaU=" + str('%.4f' % sigmaU)
+        printStr += " sigmaV=" + str('%.4f' % sigmaV)
         printStr += " train: obj~" + str('%.4f' % trainMeasures[-1][0]) 
         printStr += " LAUC~" + str('%.4f' % trainMeasures[-1][1])         
         
@@ -929,7 +931,6 @@ class MaxLocalAUC(AbstractRecommender):
         return meanTestMetrics, stdTestMetrics    
     
     def setModelParamsUV(self, meanTestMetrics, stdTestMetrics): 
-        logging.debug("t0s=" + str(self.t0s)) 
         logging.debug("alphas=" + str(self.alphas))  
         logging.debug("ks=" + str(self.ks)) 
         logging.debug("lmbdas=" + str(self.lmbdas)) 
@@ -938,8 +939,8 @@ class MaxLocalAUC(AbstractRecommender):
         
         unraveledInds = numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)      
         
-        self.t0 = self.t0s[unraveledInds[0]]
-        self.alpha = self.alphas[unraveledInds[1]]
+        self.alphaU = self.alphas[unraveledInds[0]]
+        self.alphaV = self.alphas[unraveledInds[1]]
         self.k = self.ks[unraveledInds[2]]
         self.lmbdaU = self.lmbdas[unraveledInds[3]]
         self.lmbdaV = self.lmbdas[unraveledInds[4]]
@@ -1036,7 +1037,8 @@ class MaxLocalAUC(AbstractRecommender):
         normGp, normGq = self.computeNormGpq(indPtr, colInds, gp, gq, m)
     
         while loopInd < self.maxIterations and abs(lastObj - currentObj) > self.eps: 
-            sigma = self.getSigma(loopInd)
+            sigmaU = self.getSigma(loopInd, self.alphaU)
+            sigmaV = self.getSigma(loopInd, self.alphaV)
 
             if loopInd % self.recordStep == 0: 
                 if loopInd != 0 and self.stochastic: 
@@ -1060,7 +1062,7 @@ class MaxLocalAUC(AbstractRecommender):
                 currentObj = numpy.mean(trainMeasuresArr[-5:, 0])   
                 
             U  = numpy.ascontiguousarray(U)
-            self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, loopInd, sigma, numIterations)                       
+            self.updateUV(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, loopInd, sigmaU, sigmaV, numIterations)                       
             loopInd += 1
             
         #Compute quantities for last U and V 
@@ -1086,15 +1088,15 @@ class MaxLocalAUC(AbstractRecommender):
             return self.U, self.V    
     
     
-    def updateUV(self, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, ind, sigma, numIterations): 
+    def updateUV(self, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, ind, sigmaU, sigmaV, numIterations): 
         """
         Find the derivative with respect to V or part of it. 
         """
         if not self.stochastic:    
-            self.learnerCython.updateU(indPtr, colInds, U, V, gp, gq, sigma)
-            self.learnerCython.updateV(indPtr, colInds, U, V, gp, gq, sigma)
+            self.learnerCython.updateU(indPtr, colInds, U, V, gp, gq, sigmaU)
+            self.learnerCython.updateV(indPtr, colInds, U, V, gp, gq, sigmaV)
             
             muU[:] = U[:] 
             muV[:] = V[:]
         else: 
-            self.learnerCython.updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, ind, numIterations, sigma)
+            self.learnerCython.updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, ind, numIterations, sigmaU, sigmaV)
