@@ -64,14 +64,10 @@ class MaxLocalAUCTest(unittest.TestCase):
         os.system('taskset -p 0xffffffff %d' % os.getpid())
         print(X.nnz/maxLocalAuc.numAucSamples)
         U, V = maxLocalAuc.parallelLearnModel(X)
-        
-        
-        
-        #U, V = maxLocalAuc.learnModel(X)
 
 
     @unittest.skip("")
-    def testModelSelect(self): 
+    def testModelSelectMaxNorm(self): 
         m = 10 
         n = 20 
         k = 5 
@@ -91,14 +87,11 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc.validationSize = 3
         maxLocalAuc.metric = "f1"
         
-        maxLocalAuc.modelSelect(X)
-        
-        
-        #maxLocalAuc.parallelSGD = True
-        #maxLocalAuc.modelSelect(X)
+        maxLocalAuc.modelSelectNorm(X)
+
            
     @unittest.skip("")
-    def testModelSelect2(self): 
+    def testModelSelectLmbda(self): 
         m = 10 
         n = 20 
         k = 5 
@@ -119,34 +112,10 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc.metric = "f1"
         maxLocalAuc.rate = "constant"
         maxLocalAuc.ks = numpy.array([4, 8])
-        maxLocalAuc.modelSelect2(X)
+        maxLocalAuc.modelSelectLmbda(X)
         
-    #@unittest.skip("")
-    def testModelSelectUV(self): 
-        m = 10 
-        n = 20 
-        k = 5 
-        
-        u = 0.5
-        w = 1-u
-        X = SparseUtils.generateSparseBinaryMatrix((m, n), k, w, csarray=True)
-        
-        os.system('taskset -p 0xffffffff %d' % os.getpid())
-        
-        eps = 0.001
-        k = 5
-        maxLocalAuc = MaxLocalAUC(k, w, eps=eps, stochastic=True)
-        maxLocalAuc.alphas = numpy.array([0.125, 0.0625])
-        maxLocalAuc.maxIterations = 5
-        maxLocalAuc.numProcesses = 8
-        maxLocalAuc.recordStep = 1
-        maxLocalAuc.validationSize = 3
-        maxLocalAuc.metric = "f1"
-        maxLocalAuc.rate = "constant"
-        maxLocalAuc.ks = numpy.array([4, 8])
-        maxLocalAuc.modelSelectUV2(X)
 
-    @unittest.skip("")
+    #@unittest.skip("")
     def testLearningRateSelect(self): 
         m = 10 
         n = 20 
@@ -234,6 +203,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         U, V, trainMeasures, testMeasures, iterations, time = maxLocalAuc.learnModel(X, verbose=True)
         
         self.assertAlmostEquals(trainMeasures[-1, 0], 0, 3)
+
 
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']

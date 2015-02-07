@@ -1,4 +1,5 @@
 import array
+import itertools
 import logging
 import multiprocessing 
 import numpy 
@@ -27,10 +28,10 @@ def computeObjective(args):
     """
     Compute the objective for a particular parameter set. Used to set a learning rate. 
     """
-    X, U, V, maxLocalAuc = args 
-    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.singleLearnModel(X, U=U, V=V, verbose=True)
+    X, testX, maxLocalAuc = args 
+    U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.singleLearnModel(X, verbose=True)
     obj = trainMeasures[-1, 0]
-    logging.debug("Final objective: " + str(obj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
+    logging.debug("Final objective: " + str(obj) + " with t0=" + str(maxLocalAuc.t0) + " and alphaU=" + str(maxLocalAuc.alphaU) + " and alphaV=" + str(maxLocalAuc.alphaV))
     return obj
           
 def updateUVBlock(sharedArgs, methodArgs): 
@@ -126,7 +127,6 @@ class MaxLocalAUC(AbstractRecommender):
         """
         super(MaxLocalAUC, self).__init__(numProcesses)
         
-        
         self.alphaU = alpha #Initial learning rate 
         self.alphaV = alpha
         self.beta = 0.75
@@ -143,7 +143,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.maxIterations = maxIterations
         self.maxNormU = 100
         self.maxNormV = 100
-        self.maxNorms = 2.0**numpy.arange(-2, 2, 0.5)
+        self.maxNorms = 2.0**numpy.arange(0, 8)
         self.metric = "f1"
         self.normalise = True
         self.numAucSamples = 10
@@ -168,7 +168,7 @@ class MaxLocalAUC(AbstractRecommender):
                
         #Model selection parameters 
         self.ks = 2**numpy.arange(3, 8)
-        self.lmbdas = 10.0**numpy.arange(-0.5, 1.5, 0.25)
+        self.lmbdas = 2.0**numpy.arange(-6, -1)
         self.rhos = numpy.array([0, 0.1, 0.5, 1.0])
         self.itemExps = numpy.array([0, 0.25, 0.5, 0.75, 1.0])
         
@@ -259,7 +259,6 @@ class MaxLocalAUC(AbstractRecommender):
                             
         return maxLocalAuc    
         
-
     def getCythonLearner(self): 
         
         if self.loss == "tanh": 
@@ -303,26 +302,6 @@ class MaxLocalAUC(AbstractRecommender):
             
         return sigma     
     
-    def imap(self, evaluationMethod, paramList):
-        if self.parallelSGD: 
-            numProcesses = 1
-        else:
-            numProcesses = self.numProcesses
-        
-        if numProcesses != 1: 
-            pool = multiprocessing.Pool(processes=numProcesses, maxtasksperchild=100)
-            resultsIterator = pool.imap(evaluationMethod, paramList, self.chunkSize)
-        else: 
-            import itertools
-            resultsIterator = itertools.imap(evaluationMethod, paramList)   
-            
-        resultsIterator2 = iter(list(resultsIterator))
-            
-        if numProcesses != 1: 
-            pool.terminate()
-            
-        return resultsIterator2
-    
     def initUV(self, X): 
         m = X.shape[0]
         n = X.shape[1]        
@@ -355,7 +334,6 @@ class MaxLocalAUC(AbstractRecommender):
 
         return U, V    
 
-        
     def learnModel(self, X, verbose=False, U=None, V=None, randSeed=None):
         if randSeed != None: 
             logging.warn("Seeding random number generator")   
@@ -370,268 +348,31 @@ class MaxLocalAUC(AbstractRecommender):
         """
         Let's set the initial learning rate. 
         """        
-        m, n = X.shape
-
-        #Constant rate ignores t0 
-        if self.rate == "constant": 
-            self.t0s = numpy.array([1.0])    
-
-        numInitialUVs = self.folds
-        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
-        objectives = numpy.zeros((self.t0s.shape[0], self.alphas.shape[0], numInitialUVs))
-        
-        paramList = []   
-        logging.debug("t0s=" + str(self.t0s))
-        logging.debug("alphas=" + str(self.alphas))
-        logging.debug(self)
-        
-        for k in range(numInitialUVs):
-            U, V = self.initUV(X)
-                        
-            for i, t0 in enumerate(self.t0s): 
-                for j, alpha in enumerate(self.alphas): 
-                    maxLocalAuc = self.copy()
-                    maxLocalAuc.t0 = t0
-                    maxLocalAuc.alpha = alpha 
-                    paramList.append((X, U, V, maxLocalAuc))
-                    
-        if self.numProcesses != 1: 
-            pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
-            resultsIterator = pool.imap(computeObjective, paramList, self.chunkSize)
-        else: 
-            import itertools
-            resultsIterator = itertools.imap(computeObjective, paramList)
-        
-        for k in range(numInitialUVs):
-            for i, t0 in enumerate(self.t0s): 
-                for j, alpha in enumerate(self.alphas):  
-                    objectives[i, j, k] += resultsIterator.next()
-            
-        if self.numProcesses != 1: 
-            pool.terminate()
-            
-        meanObjs = numpy.mean(objectives, 2) 
-        stdObjs = numpy.std(objectives, 2) 
-        logging.debug("t0s=" + str(self.t0s))
-        logging.debug("alphas=" + str(self.alphas))
-        logging.debug("meanObjs=" + str(meanObjs))
-        logging.debug("stdObjs=" + str(stdObjs))
-        
-        t0 = self.t0s[numpy.unravel_index(numpy.argmin(meanObjs), meanObjs.shape)[0]]
-        alpha = self.alphas[numpy.unravel_index(numpy.argmin(meanObjs), meanObjs.shape)[1]]
-        
-        logging.debug("Learning rate parameters: t0=" + str(t0) + " alpha=" + str(alpha))
-        
-        self.t0 = t0 
-        self.alpha = alpha 
-        
-        return meanObjs, stdObjs  
+        evaluationMethod = computeObjective
+        paramGrid = {"alphaU": self.alphas, "alphaV": self.alphas}        
+        self.parallelGridSearch(X, paramGrid, evaluationMethod, minVal=True)
 
     def modelParamsStr(self): 
         outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " maxNormU=" + str(self.maxNormU) + " maxNormV=" + str(self.maxNormV) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alphaU=" + str(self.alphaU) + " alphaV=" + str(self.alphaV) + " t0=" + str(self.t0)
         return outputStr 
 
-    def modelSelect(self, X, colProbs=None, testX=None): 
-        """
-        Perform model selection on X and return the best parameters. 
-        """
-        m, n = X.shape
-        if testX==None:
-            trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
-        else: 
-            trainTestXs = [[X, testX]]
-
-        #Constant rate ignores t0 
-        if self.rate == "constant": 
-            self.t0s = numpy.array([1.0])            
-            
-        testMetrics = numpy.zeros((self.t0s.shape[0], self.ks.shape[0], self.lmbdas.shape[0], self.alphas.shape[0], len(trainTestXs)))
-        
-        logging.debug("Performing model selection")
-        paramList = []        
-        
-        for i, k in enumerate(self.ks): 
-            self.k = k
-            
-            for icv, (trainX, testX) in enumerate(trainTestXs):
-                U, V = self.initUV(trainX)
-                for j, lmbda in enumerate(self.lmbdas): 
-                    for s, alpha in enumerate(self.alphas): 
-                        for t, t0 in enumerate(self.t0s):
-                            maxLocalAuc = self.copy()
-                            maxLocalAuc.k = k    
-                            maxLocalAuc.lmbdaU = lmbda
-                            maxLocalAuc.lmbdaV = lmbda
-                            maxLocalAuc.alpha = alpha 
-                            maxLocalAuc.t0 = t0 
-                        
-                            paramList.append((trainX, testX, maxLocalAuc))
-            
-        evaluationMethod = self.getEvaluationMethod()
-        resultsIterator = self.imap(evaluationMethod, paramList)
-        
-        for i, k in enumerate(self.ks):
-            for icv in range(len(trainTestXs)): 
-                for j, lmbda in enumerate(self.lmbdas): 
-                    for s, alpha in enumerate(self.alphas): 
-                        for t, t0 in enumerate(self.t0s):
-                            testMetrics[t, i, j, s, icv] = resultsIterator.next()
-        
-        meanTestMetrics = numpy.mean(testMetrics, 4)
-        stdTestMetrics = numpy.std(testMetrics, 4)
-        
-        return self.setModelParams(meanTestMetrics, stdTestMetrics)
-
-    def modelSelect2(self, X, colProbs=None, testX=None): 
+    def modelSelectNorm(self, X, testX=None): 
         """
         Perform model selection on X and return the best parameters. This time we 
         choose maxNorm values instead of lambdas. 
         """
-        m, n = X.shape
-        if testX==None:
-            trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
-        else: 
-            trainTestXs = [[X, testX]]
+        evaluationMethod = self.getEvaluationMethod() 
+        paramGrid = {"maxNormU": self.maxNorms, "maxNormV": self.maxNorms}        
+        self.parallelGridSearch(X, paramGrid, evaluationMethod, testX, minVal=False)
 
-        #Constant rate ignores t0 
-        if self.rate == "constant": 
-            self.t0s = numpy.array([1.0])            
-            
-        testMetrics = numpy.zeros((self.t0s.shape[0], self.ks.shape[0], self.maxNorms.shape[0], self.alphas.shape[0], len(trainTestXs)))
-        
-        logging.debug("Performing model selection 2")
-        paramList = []        
-        
-        for i, k in enumerate(self.ks): 
-            self.k = k
-            
-            for icv, (trainX, testX) in enumerate(trainTestXs):
-                U, V = self.initUV(trainX)
-                for j, maxNorm in enumerate(self.maxNorms): 
-                    for s, alpha in enumerate(self.alphas): 
-                        for t, t0 in enumerate(self.t0s):
-                            maxLocalAuc = self.copy()
-                            maxLocalAuc.k = k    
-                            maxLocalAuc.maxNormU = maxNorm
-                            maxLocalAuc.maxNormV = maxNorm
-                            maxLocalAuc.alpha = alpha 
-                            maxLocalAuc.t0 = t0 
-                        
-                            paramList.append((trainX, testX, maxLocalAuc))
-            
-        evaluationMethod = self.getEvaluationMethod()
-        resultsIterator = self.imap(evaluationMethod, paramList)
-        
-        for i, k in enumerate(self.ks):
-            for icv in range(len(trainTestXs)): 
-                for j, maxNorm in enumerate(self.maxNorms): 
-                    for s, alpha in enumerate(self.alphas): 
-                        for t, t0 in enumerate(self.t0s):
-                            testMetrics[t, i, j, s, icv] = resultsIterator.next()
-        
-        meanTestMetrics = numpy.mean(testMetrics, 4)
-        stdTestMetrics = numpy.std(testMetrics, 4)
-        
-        return self.setModelParams2(meanTestMetrics, stdTestMetrics)
-
-    def modelSelectUV(self, X, colProbs=None, testX=None): 
-        """
-        Perform model selection on X and return the best parameters. This time we 
-        choose lambdas independently 
-        """
-        m, n = X.shape
-        if testX==None:
-            trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
-        else: 
-            trainTestXs = [[X, testX]]
-
-        testMetrics = numpy.zeros((self.alphas.shape[0], self.alphas.shape[0], self.ks.shape[0], self.lmbdas.shape[0], self.lmbdas.shape[0], len(trainTestXs)))
-        
-        logging.debug("Performing model selection UV")
-        paramList = []        
-        
-        for i, k in enumerate(self.ks): 
-            self.k = k
-            
-            for icv, (trainX, testX) in enumerate(trainTestXs):
-                U, V = self.initUV(trainX)
-                for p, alphaU in enumerate(self.alphas):
-                    for r, alphaV in enumerate(self.alphas): 
-                        for s, lmbdaU in enumerate(self.lmbdas): 
-                            for t, lmbdaV in enumerate(self.lmbdas): 
-                            
-                                    maxLocalAuc = self.copy()
-                                    maxLocalAuc.k = k    
-                                    maxLocalAuc.lmbdaU = lmbdaU
-                                    maxLocalAuc.lmbdaV = lmbdaV
-                                    maxLocalAuc.alphaU = alphaU 
-                                    maxLocalAuc.alphaV = alphaV 
-                                
-                                    paramList.append((trainX, testX, maxLocalAuc))
-                
-        evaluationMethod = self.getEvaluationMethod()
-        resultsIterator = self.imap(evaluationMethod, paramList)
-            
-        for i, k in enumerate(self.ks): 
-            for icv, (trainX, testX) in enumerate(trainTestXs):
-                for p, alphaU in enumerate(self.alphas):
-                    for r, alphaV in enumerate(self.alphas): 
-                        for s, lmbdaU in enumerate(self.lmbdas): 
-                            for t, lmbdaV in enumerate(self.lmbdas): 
-                                testMetrics[p, r, i, s, t, icv] = resultsIterator.next()
-        
-        meanTestMetrics = numpy.mean(testMetrics, 5)
-        stdTestMetrics = numpy.std(testMetrics, 5)
-        
-        return self.setModelParamsUV(meanTestMetrics, stdTestMetrics)
-
-    def modelSelectUV2(self, X, colProbs=None, testX=None): 
+    def modelSelectLmbda(self, X, testX=None): 
         """
         Perform model selection on X and return the best parameters. This time we 
         choose maxNorms independently 
         """
-        m, n = X.shape
-        if testX==None:
-            trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize, colProbs=colProbs)
-        else: 
-            trainTestXs = [[X, testX]]
-
-        testMetrics = numpy.zeros((self.alphas.shape[0], self.ks.shape[0], self.maxNorms.shape[0], self.maxNorms.shape[0], len(trainTestXs)))
-        
-        logging.debug("Performing model selection UV maxNorm")
-        paramList = []        
-        
-        for i, k in enumerate(self.ks): 
-            self.k = k
-            
-            for icv, (trainX, testX) in enumerate(trainTestXs):
-                U, V = self.initUV(trainX)
-                for r, alpha in enumerate(self.alphas): 
-                    for s, maxNormU in enumerate(self.maxNorms): 
-                        for t, maxNormV in enumerate(self.maxNorms): 
-                        
-                                maxLocalAuc = self.copy()
-                                maxLocalAuc.k = k    
-                                maxLocalAuc.maxNormU = maxNormU
-                                maxLocalAuc.maxNormV = maxNormV
-                                maxLocalAuc.alpha = alpha 
-                            
-                                paramList.append((trainX, testX, maxLocalAuc))
-                
-        evaluationMethod = self.getEvaluationMethod()
-        resultsIterator = self.imap(evaluationMethod, paramList)
-            
-        for i, k in enumerate(self.ks): 
-            for icv, (trainX, testX) in enumerate(trainTestXs):
-                for r, alpha in enumerate(self.alphas): 
-                    for s, maxNormU in enumerate(self.maxNorms): 
-                        for t, maxNormV in enumerate(self.maxNorms):
-                            testMetrics[r, i, s, t, icv] = resultsIterator.next()
-        
-        meanTestMetrics = numpy.mean(testMetrics, 4)
-        stdTestMetrics = numpy.std(testMetrics, 4)
-        
-        return self.setModelParamsUV2(meanTestMetrics, stdTestMetrics)
+        evaluationMethod = self.getEvaluationMethod() 
+        paramGrid = {"lmbdaU": self.lmbdas, "lmbdaV": self.lmbdas}        
+        self.parallelGridSearch(X, paramGrid, evaluationMethod, testX, minVal=False)
 
     def objectiveApprox(self, positiveArray, U, V, r, gi, gp, gq, allArray=None, full=False): 
         """
@@ -651,6 +392,58 @@ class MaxLocalAUC(AbstractRecommender):
             allIndPtr, allColInds = allArray
             return self.learnerCython.objectiveApprox(indPtr, colInds, allIndPtr, allColInds, U,  V, gp, gq, full=full, reg=self.reg)
      
+    def parallelGridSearch(self, X, paramDict, evaluationMethod, testX=None, minVal=True):
+        """
+        Perform parallel model selection using any learner. 
+        """
+        m, n = X.shape
+        if testX==None:
+            trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize)
+        else: 
+            trainTestXs = [[X, testX]]        
+
+        gridSize = [] 
+        gridInds = [] 
+        for key in paramDict.keys(): 
+            gridSize.append(paramDict[key].shape[0])
+            gridInds.append(numpy.arange(paramDict[key].shape[0])) 
+            
+        meanMetrics = numpy.zeros(tuple(gridSize))
+        paramList = []
+        
+        for icv, (trainX, testX) in enumerate(trainTestXs):
+            indexIter = itertools.product(*gridInds)
+            
+            for inds in indexIter: 
+                learner = self.copy()               
+            
+                for i, (key, val) in enumerate(paramDict.items()):
+                    setattr(learner, key, val[inds[i]])
+                
+                paramList.append((trainX, testX, learner))
+            
+        if self.numProcesses != 1: 
+            pool = multiprocessing.Pool(processes=self.numProcesses, maxtasksperchild=100)
+            resultsIterator = pool.imap(evaluationMethod, paramList, self.chunkSize)
+        else: 
+            resultsIterator = itertools.imap(evaluationMethod, paramList)
+        
+        for icv, (trainX, testX) in enumerate(trainTestXs):
+            indexIter = itertools.product(*gridInds)
+            for inds in indexIter: 
+                metric = resultsIterator.next()
+                meanMetrics[inds] += metric/float(self.folds)
+
+        if self.numProcesses != 1:
+            pool.terminate()
+
+        reusltDict, bestMetric = self.setBestLearner(meanMetrics, paramDict, minVal)
+        
+        logging.debug("Param dict: " + str(paramDict))
+        logging.debug("Mean metrics: " + str(meanMetrics))
+        logging.debug("Best parameters: " + str(reusltDict) + " with metric value " + str(bestMetric))
+
+        return meanMetrics     
 
     def parallelLearnModel(self, X, verbose=False, U=None, V=None): 
         """
@@ -884,88 +677,24 @@ class MaxLocalAUC(AbstractRecommender):
         
         return printStr
     
-    def regularisationPath(self, X): 
+    def setBestLearner(self, meanMetrics, paramDict, minVal=True): 
         """
-        Compute a complete regularisation path for lambda. 
+        Given a grid of errors, paramDict and examples, labels, find the 
+        best learner.
         """
-        pass 
-        
-    def setModelParams(self, meanTestMetrics, stdTestMetrics): 
-        logging.debug("t0s=" + str(self.t0s)) 
-        logging.debug("ks=" + str(self.ks)) 
-        logging.debug("lmbdas=" + str(self.lmbdas)) 
-        logging.debug("alphas=" + str(self.alphas))         
-        logging.debug("Mean metrics =" + str(meanTestMetrics))
-        logging.debug("Std metrics =" + str(stdTestMetrics))
-        
-        unraveledInds = numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)      
-        
-        self.t0 = self.t0s[unraveledInds[0]]
-        self.k = self.ks[unraveledInds[1]]
-        self.lmbdaU = self.lmbdas[unraveledInds[2]]
-        self.lmbdaV = self.lmbdas[unraveledInds[2]]
-        self.alpha = self.alphas[unraveledInds[3]]
-        
-        logging.debug("Model parameters:" + str(self.modelParamsStr()) +  " max=" + str(numpy.max(meanTestMetrics)))
-        
-        return meanTestMetrics, stdTestMetrics
-    
-    def setModelParams2(self, meanTestMetrics, stdTestMetrics): 
-        logging.debug("t0s=" + str(self.t0s)) 
-        logging.debug("ks=" + str(self.ks)) 
-        logging.debug("maxNorms=" + str(self.maxNorms)) 
-        logging.debug("alphas=" + str(self.alphas))         
-        logging.debug("Mean metrics =" + str(meanTestMetrics))
-        logging.debug("Std metrics =" + str(stdTestMetrics))
-        
-        unraveledInds = numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)      
-        
-        self.t0 = self.t0s[unraveledInds[0]]
-        self.k = self.ks[unraveledInds[1]]
-        self.maxNormU = self.maxNorms[unraveledInds[2]]
-        self.maxNormV = self.maxNorms[unraveledInds[2]]
-        self.alpha = self.alphas[unraveledInds[3]]
-        
-        logging.debug("Model parameters:" + str(self.modelParamsStr()) +  " max=" + str(numpy.max(meanTestMetrics)))
-         
-        return meanTestMetrics, stdTestMetrics    
-    
-    def setModelParamsUV(self, meanTestMetrics, stdTestMetrics): 
-        logging.debug("alphas=" + str(self.alphas))  
-        logging.debug("ks=" + str(self.ks)) 
-        logging.debug("lmbdas=" + str(self.lmbdas)) 
-        logging.debug("Mean metrics =" + str(meanTestMetrics))
-        logging.debug("Std metrics =" + str(stdTestMetrics))
-        
-        unraveledInds = numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)      
-        
-        self.alphaU = self.alphas[unraveledInds[0]]
-        self.alphaV = self.alphas[unraveledInds[1]]
-        self.k = self.ks[unraveledInds[2]]
-        self.lmbdaU = self.lmbdas[unraveledInds[3]]
-        self.lmbdaV = self.lmbdas[unraveledInds[4]]
-        
-        logging.debug("Model parameters:" + str(self.modelParamsStr()) +  " max=" + str(numpy.max(meanTestMetrics)))
-         
-        return meanTestMetrics, stdTestMetrics       
-    
-    def setModelParamsUV2(self, meanTestMetrics, stdTestMetrics): 
-        logging.debug("alphas=" + str(self.alphas))  
-        logging.debug("ks=" + str(self.ks)) 
-        logging.debug("maxNorms=" + str(self.maxNorms)) 
-        logging.debug("Mean metrics =" + str(meanTestMetrics))
-        logging.debug("Std metrics =" + str(stdTestMetrics))
-        
-        unraveledInds = numpy.unravel_index(numpy.argmax(meanTestMetrics), meanTestMetrics.shape)      
-        
-        self.alpha = self.alphas[unraveledInds[0]]
-        self.k = self.ks[unraveledInds[1]]
-        self.maxNormU = self.maxNorms[unraveledInds[2]]
-        self.maxNormV = self.maxNorms[unraveledInds[3]]
-        
-        logging.debug("Model parameters:" + str(self.modelParamsStr()) +  " max=" + str(numpy.max(meanTestMetrics)))
-         
-        return meanTestMetrics, stdTestMetrics       
+        if minVal: 
+            bestInds = numpy.unravel_index(numpy.argmin(meanMetrics), meanMetrics.shape)
+        else: 
+            bestInds = numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)
+               
+        valueDict = {}              
+               
+        for i, (key, val) in enumerate(paramDict.items()):
+            bestVal = val[bestInds[i]]
+            setattr(self, key, bestVal)
+            valueDict[key] = bestVal
+            
+        return valueDict, meanMetrics[bestInds]     
     
     def singleLearnModel(self, X, verbose=False, U=None, V=None): 
         """
@@ -1086,7 +815,6 @@ class MaxLocalAUC(AbstractRecommender):
             return self.U, self.V, trainMeasures, testMeasures, loopInd, totalTime
         else: 
             return self.U, self.V    
-    
     
     def updateUV(self, indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, ind, sigmaU, sigmaV, numIterations): 
         """
