@@ -134,6 +134,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.delta = 0.05
         self.eps = eps 
         self.eta = 5
+        self.folds = 2
         self.initialAlg = "rand"
         self.itemExpP = 0.0 #Sample from power law between 0 and 1 
         self.itemExpQ = 0.0    
@@ -168,13 +169,13 @@ class MaxLocalAUC(AbstractRecommender):
                
         #Model selection parameters 
         self.ks = 2**numpy.arange(3, 8)
-        self.lmbdas = 2.0**numpy.arange(-6, -1)
+        self.lmbdas = 2.0**numpy.arange(-6, -3)
         self.rhos = numpy.array([0, 0.1, 0.5, 1.0])
         self.itemExps = numpy.array([0, 0.25, 0.5, 0.75, 1.0])
         
         #Learning rate selection 
         self.t0s = 2.0**-numpy.arange(0.0, 5.0)
-        self.alphas = 2.0**-numpy.arange(-2.0, 4.0)
+        self.alphas = 2.0**-numpy.arange(0, 3)
     
     def __str__(self): 
         outputStr = "MaxLocalAUC: "
@@ -356,23 +357,37 @@ class MaxLocalAUC(AbstractRecommender):
         outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " maxNormU=" + str(self.maxNormU) + " maxNormV=" + str(self.maxNormV) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alphaU=" + str(self.alphaU) + " alphaV=" + str(self.alphaV) + " t0=" + str(self.t0)
         return outputStr 
 
-    def modelSelectNorm(self, X, testX=None): 
+    def modelSelectNorm(self, X=None, testX=None, meanMetrics=None): 
         """
         Perform model selection on X and return the best parameters. This time we 
         choose maxNorm values instead of lambdas. 
         """
+        minVal = False
         evaluationMethod = self.getEvaluationMethod() 
-        paramGrid = {"alphaU": self.alphas, "alphaV": self.alphas, "maxNormU": self.maxNorms, "maxNormV": self.maxNorms}        
-        self.parallelGridSearch(X, paramGrid, evaluationMethod, testX, minVal=False)
+        paramDict = {"alphaU": self.alphas, "alphaV": self.alphas, "maxNormU": self.maxNorms, "maxNormV": self.maxNorms}    
+        
+        if meanMetrics == None: 
+            meanMetrics = self.parallelGridSearch(X, paramDict, evaluationMethod, testX, minVal=minVal)
+        else: 
+            resultDict, bestMetric = self.setBestLearner(meanMetrics, paramDict, minVal)
+        
+        return meanMetrics, paramDict
 
-    def modelSelectLmbda(self, X, testX=None): 
+    def modelSelectLmbda(self, X=None, testX=None, meanMetrics=None): 
         """
         Perform model selection on X and return the best parameters. This time we 
         choose maxNorms independently 
         """
+        minVal = False
         evaluationMethod = self.getEvaluationMethod() 
-        paramGrid = {"alphaU": self.alphas, "alphaV": self.alphas, "lmbdaU": self.lmbdas, "lmbdaV": self.lmbdas}        
-        self.parallelGridSearch(X, paramGrid, evaluationMethod, testX, minVal=False)
+        paramDict = {"alphaU": self.alphas, "alphaV": self.alphas, "lmbdaU": self.lmbdas, "lmbdaV": self.lmbdas}       
+        
+        if meanMetrics == None: 
+            meanMetrics = self.parallelGridSearch(X, paramDict, evaluationMethod, testX, minVal=minVal)
+        else: 
+            resultDict, bestMetric = self.setBestLearner(meanMetrics, paramDict, minVal)
+        
+        return meanMetrics, paramDict
 
     def objectiveApprox(self, positiveArray, U, V, r, gi, gp, gq, allArray=None, full=False): 
         """
@@ -437,12 +452,8 @@ class MaxLocalAUC(AbstractRecommender):
         if self.numProcesses != 1:
             pool.terminate()
 
-        reusltDict, bestMetric = self.setBestLearner(meanMetrics, paramDict, minVal)
+        resultDict, bestMetric = self.setBestLearner(meanMetrics, paramDict, minVal)
         
-        logging.debug("Param dict: " + str(paramDict))
-        logging.debug("Mean metrics: " + str(meanMetrics))
-        logging.debug("Best parameters: " + str(reusltDict) + " with metric value " + str(bestMetric))
-
         return meanMetrics     
 
     def parallelLearnModel(self, X, verbose=False, U=None, V=None): 
@@ -687,14 +698,19 @@ class MaxLocalAUC(AbstractRecommender):
         else: 
             bestInds = numpy.unravel_index(numpy.argmax(meanMetrics), meanMetrics.shape)
                
-        valueDict = {}              
+        resultDict = {}              
                
         for i, (key, val) in enumerate(paramDict.items()):
             bestVal = val[bestInds[i]]
             setattr(self, key, bestVal)
-            valueDict[key] = bestVal
+            resultDict[key] = bestVal
             
-        return valueDict, meanMetrics[bestInds]     
+        bestMetric = meanMetrics[bestInds] 
+        logging.debug("Param dict: " + str(paramDict))
+        logging.debug("Mean metrics: " + str(meanMetrics))
+        logging.debug("Best parameters: " + str(resultDict) + " with metric value " + str(bestMetric))            
+            
+        return resultDict, bestMetric 
     
     def singleLearnModel(self, X, verbose=False, U=None, V=None): 
         """

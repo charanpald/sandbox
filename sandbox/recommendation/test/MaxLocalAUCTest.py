@@ -66,7 +66,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         U, V = maxLocalAuc.parallelLearnModel(X)
 
 
-    @unittest.skip("")
+    #@unittest.skip("")
     def testModelSelectMaxNorm(self): 
         m = 10 
         n = 20 
@@ -82,7 +82,6 @@ class MaxLocalAUCTest(unittest.TestCase):
         k = 5
         maxLocalAuc = MaxLocalAUC(k, w, eps=eps, stochastic=True)
         maxLocalAuc.maxIterations = 5
-        maxLocalAuc.numProcesses = 1
         maxLocalAuc.recordStep = 1
         maxLocalAuc.validationSize = 3
         maxLocalAuc.metric = "f1"
@@ -106,7 +105,6 @@ class MaxLocalAUCTest(unittest.TestCase):
         k = 5
         maxLocalAuc = MaxLocalAUC(k, w, eps=eps, stochastic=True)
         maxLocalAuc.maxIterations = 5
-        maxLocalAuc.numProcesses = 8
         maxLocalAuc.recordStep = 1
         maxLocalAuc.validationSize = 3
         maxLocalAuc.metric = "f1"
