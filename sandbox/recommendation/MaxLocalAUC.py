@@ -350,8 +350,9 @@ class MaxLocalAUC(AbstractRecommender):
         Let's set the initial learning rate. 
         """        
         evaluationMethod = computeObjective
-        paramGrid = {"alphaU": self.alphas, "alphaV": self.alphas}        
-        self.parallelGridSearch(X, paramGrid, evaluationMethod, minVal=True)
+        paramDict = {"alphaU": self.alphas, "alphaV": self.alphas}        
+        meanMetrics = self.parallelGridSearch(X, paramDict, evaluationMethod, minVal=True)
+        return meanMetrics, paramDict
 
     def modelParamsStr(self): 
         outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " maxNormU=" + str(self.maxNormU) + " maxNormV=" + str(self.maxNormV) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alphaU=" + str(self.alphaU) + " alphaV=" + str(self.alphaV) + " t0=" + str(self.t0)
