@@ -362,7 +362,7 @@ class MaxLocalAUC(AbstractRecommender):
         choose maxNorm values instead of lambdas. 
         """
         evaluationMethod = self.getEvaluationMethod() 
-        paramGrid = {"maxNormU": self.maxNorms, "maxNormV": self.maxNorms}        
+        paramGrid = {"alphaU": self.alphas, "alphaV": self.alphas, "maxNormU": self.maxNorms, "maxNormV": self.maxNorms}        
         self.parallelGridSearch(X, paramGrid, evaluationMethod, testX, minVal=False)
 
     def modelSelectLmbda(self, X, testX=None): 
@@ -371,7 +371,7 @@ class MaxLocalAUC(AbstractRecommender):
         choose maxNorms independently 
         """
         evaluationMethod = self.getEvaluationMethod() 
-        paramGrid = {"lmbdaU": self.lmbdas, "lmbdaV": self.lmbdas}        
+        paramGrid = {"alphaU": self.alphas, "alphaV": self.alphas, "lmbdaU": self.lmbdas, "lmbdaV": self.lmbdas}        
         self.parallelGridSearch(X, paramGrid, evaluationMethod, testX, minVal=False)
 
     def objectiveApprox(self, positiveArray, U, V, r, gi, gp, gq, allArray=None, full=False): 
