@@ -169,13 +169,14 @@ class MaxLocalAUC(AbstractRecommender):
                
         #Model selection parameters 
         self.ks = 2**numpy.arange(3, 8)
-        self.lmbdas = 2.0**numpy.arange(-6, -3)
+        self.lmbdas = 2.0**-numpy.arange(1, 7)
         self.rhos = numpy.array([0, 0.1, 0.5, 1.0])
         self.itemExps = numpy.array([0, 0.25, 0.5, 0.75, 1.0])
         
         #Learning rate selection 
+        self.alphas = 2.0**-numpy.arange(1, 7)
         self.t0s = 2.0**-numpy.arange(0.0, 5.0)
-        self.alphas = 2.0**-numpy.arange(0, 3)
+        
     
     def __str__(self): 
         outputStr = "MaxLocalAUC: "
@@ -365,7 +366,7 @@ class MaxLocalAUC(AbstractRecommender):
         """
         minVal = False
         evaluationMethod = self.getEvaluationMethod() 
-        paramDict = {"alphaU": self.alphas, "alphaV": self.alphas, "maxNormU": self.maxNorms, "maxNormV": self.maxNorms}    
+        paramDict = {"k": self.ks, "alphaU": self.alphas, "alphaV": self.alphas, "maxNormU": self.maxNorms, "maxNormV": self.maxNorms}    
         
         if meanMetrics == None: 
             meanMetrics = self.parallelGridSearch(X, paramDict, evaluationMethod, testX, minVal=minVal)
@@ -381,7 +382,7 @@ class MaxLocalAUC(AbstractRecommender):
         """
         minVal = False
         evaluationMethod = self.getEvaluationMethod() 
-        paramDict = {"alphaU": self.alphas, "alphaV": self.alphas, "lmbdaU": self.lmbdas, "lmbdaV": self.lmbdas}       
+        paramDict = {"k": self.ks, "alphaU": self.alphas, "alphaV": self.alphas, "lmbdaU": self.lmbdas, "lmbdaV": self.lmbdas}       
         
         if meanMetrics == None: 
             meanMetrics = self.parallelGridSearch(X, paramDict, evaluationMethod, testX, minVal=minVal)
