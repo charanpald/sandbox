@@ -31,7 +31,7 @@ def computeObjective(args):
     X, testX, maxLocalAuc = args 
     U, V, trainMeasures, testMeasures, iterations, totalTime = maxLocalAuc.singleLearnModel(X, verbose=True)
     obj = trainMeasures[-1, 0]
-    logging.debug("Final objective: " + str(obj) + " with t0=" + str(maxLocalAuc.t0) + " and alphaU=" + str(maxLocalAuc.alphaU) + " and alphaV=" + str(maxLocalAuc.alphaV))
+    logging.debug("Final objective: " + str(obj) + " with t0=" + str(maxLocalAuc.t0) + " and alpha=" + str(maxLocalAuc.alpha))
     return obj
           
 def updateUVBlock(sharedArgs, methodArgs): 
@@ -61,16 +61,16 @@ def updateUVBlock(sharedArgs, methodArgs):
         blockColInds = permutedColInds[colInd*colBlockSize:(colInd+1)*colBlockSize]
         
         ind = iterationsPerBlock[rowInd, colInd] + loopInd
-        sigmaU = learner.getSigma(ind, learner.alphaU)
-        sigmaV = learner.getSigma(ind, learner.alphaV)
+        sigmaU = learner.getSigma(ind, learner.alpha)
+        sigmaV = learner.getSigma(ind, learner.alpha)
           
         lock.release()
     
         #Now update U and V based on the block 
         if foundBlock: 
             ind = iterationsPerBlock[rowInd, colInd] + loopInd
-            sigmaU = learner.getSigma(ind, learner.alphaU)
-            sigmaV = learner.getSigma(ind, learner.alphaV)
+            sigmaU = learner.getSigma(ind, learner.alpha)
+            sigmaV = learner.getSigma(ind, learner.alpha)
             numIterations = gradientsPerBlock[rowInd, colInd]
             
             indPtr2, colInds2 = omegasList[colInd]
@@ -127,8 +127,7 @@ class MaxLocalAUC(AbstractRecommender):
         """
         super(MaxLocalAUC, self).__init__(numProcesses)
         
-        self.alphaU = alpha #Initial learning rate 
-        self.alphaV = alpha
+        self.alpha = alpha #Initial learning rate 
         self.beta = 0.75
         self.bound = False
         self.delta = 0.05
@@ -351,12 +350,12 @@ class MaxLocalAUC(AbstractRecommender):
         Let's set the initial learning rate. 
         """        
         evaluationMethod = computeObjective
-        paramDict = {"alphaU": self.alphas, "alphaV": self.alphas}        
+        paramDict = {"alpha": self.alphas}        
         meanMetrics = self.parallelGridSearch(X, paramDict, evaluationMethod, minVal=True)
         return meanMetrics, paramDict
 
     def modelParamsStr(self): 
-        outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " maxNormU=" + str(self.maxNormU) + " maxNormV=" + str(self.maxNormV) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alphaU=" + str(self.alphaU) + " alphaV=" + str(self.alphaV) + " t0=" + str(self.t0)
+        outputStr = " lmbdaU=" + str(self.lmbdaU) + " lmbdaV=" + str(self.lmbdaV) + " maxNormU=" + str(self.maxNormU) + " maxNormV=" + str(self.maxNormV) + " k=" + str(self.k) + " rho=" + str(self.rho)  + " alpha=" + str(self.alpha)  + " t0=" + str(self.t0)
         return outputStr 
 
     def modelSelectNorm(self, X=None, testX=None, meanMetrics=None): 
@@ -366,7 +365,7 @@ class MaxLocalAUC(AbstractRecommender):
         """
         minVal = False
         evaluationMethod = self.getEvaluationMethod() 
-        paramDict = {"k": self.ks, "alphaU": self.alphas, "alphaV": self.alphas, "maxNormU": self.maxNorms, "maxNormV": self.maxNorms}    
+        paramDict = {"k": self.ks, "alpha": self.alphas, "maxNormU": self.maxNorms, "maxNormV": self.maxNorms}    
         
         if meanMetrics == None: 
             meanMetrics = self.parallelGridSearch(X, paramDict, evaluationMethod, testX, minVal=minVal)
@@ -382,7 +381,7 @@ class MaxLocalAUC(AbstractRecommender):
         """
         minVal = False
         evaluationMethod = self.getEvaluationMethod() 
-        paramDict = {"k": self.ks, "alphaU": self.alphas, "alphaV": self.alphas, "lmbdaU": self.lmbdas, "lmbdaV": self.lmbdas}       
+        paramDict = {"k": self.ks, "alpha": self.alphas, "lmbdaU": self.lmbdas, "lmbdaV": self.lmbdas}       
         
         if meanMetrics == None: 
             meanMetrics = self.parallelGridSearch(X, paramDict, evaluationMethod, testX, minVal=minVal)
@@ -633,8 +632,8 @@ class MaxLocalAUC(AbstractRecommender):
 
     def recordResults(self, muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime): 
         
-        sigmaU = self.getSigma(loopInd, self.alphaU) 
-        sigmaV = self.getSigma(loopInd, self.alphaV) 
+        sigmaU = self.getSigma(loopInd, self.alpha) 
+        sigmaV = self.getSigma(loopInd, self.alpha) 
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
         objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=True)
         if trainMeasures == None: 
@@ -784,8 +783,8 @@ class MaxLocalAUC(AbstractRecommender):
         normGp, normGq = self.computeNormGpq(indPtr, colInds, gp, gq, m)
     
         while loopInd < self.maxIterations and abs(lastObj - currentObj) > self.eps: 
-            sigmaU = self.getSigma(loopInd, self.alphaU)
-            sigmaV = self.getSigma(loopInd, self.alphaV)
+            sigmaU = self.getSigma(loopInd, self.alpha)
+            sigmaV = self.getSigma(loopInd, self.alpha)
 
             if loopInd % self.recordStep == 0: 
                 if loopInd != 0 and self.stochastic: 
