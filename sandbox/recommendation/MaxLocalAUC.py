@@ -61,16 +61,16 @@ def updateUVBlock(sharedArgs, methodArgs):
         blockColInds = permutedColInds[colInd*colBlockSize:(colInd+1)*colBlockSize]
         
         ind = iterationsPerBlock[rowInd, colInd] + loopInd
-        sigmaU = learner.getSigma(ind, learner.alpha)
-        sigmaV = learner.getSigma(ind, learner.alpha)
+        sigmaU = learner.getSigma(ind, learner.alpha, muU.shape[0])
+        sigmaV = learner.getSigma(ind, learner.alpha, muV.shape[1])
           
         lock.release()
     
         #Now update U and V based on the block 
         if foundBlock: 
             ind = iterationsPerBlock[rowInd, colInd] + loopInd
-            sigmaU = learner.getSigma(ind, learner.alpha)
-            sigmaV = learner.getSigma(ind, learner.alpha)
+            sigmaU = learner.getSigma(ind, learner.alpha, muU.shape[0])
+            sigmaV = learner.getSigma(ind, learner.alpha, muV.shape[0])
             numIterations = gradientsPerBlock[rowInd, colInd]
             
             indPtr2, colInds2 = omegasList[colInd]
@@ -291,13 +291,15 @@ class MaxLocalAUC(AbstractRecommender):
             raise ValueError("Invalid metric: " + self.metric)
         return evaluationMethod 
         
-    def getSigma(self, ind, alpha):    
+    def getSigma(self, ind, alpha, shape):    
         if self.rate == "constant": 
             sigma = alpha 
         elif self.rate == "optimal":
             t0 = self.t0
             
             sigma = alpha/((1 + alpha*t0*ind)**self.beta)
+        elif self.rate == "scale": 
+            sigma = alpha*shape
         else: 
             raise ValueError("Invalid rate: " + self.rate)
             
@@ -632,8 +634,8 @@ class MaxLocalAUC(AbstractRecommender):
 
     def recordResults(self, muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime): 
         
-        sigmaU = self.getSigma(loopInd, self.alpha) 
-        sigmaV = self.getSigma(loopInd, self.alpha) 
+        sigmaU = self.getSigma(loopInd, self.alpha, muU.shape[0]) 
+        sigmaV = self.getSigma(loopInd, self.alpha, muV.shape[0]) 
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
         objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=True)
         if trainMeasures == None: 
@@ -783,8 +785,8 @@ class MaxLocalAUC(AbstractRecommender):
         normGp, normGq = self.computeNormGpq(indPtr, colInds, gp, gq, m)
     
         while loopInd < self.maxIterations and abs(lastObj - currentObj) > self.eps: 
-            sigmaU = self.getSigma(loopInd, self.alpha)
-            sigmaV = self.getSigma(loopInd, self.alpha)
+            sigmaU = self.getSigma(loopInd, self.alpha, m)
+            sigmaV = self.getSigma(loopInd, self.alpha, n)
 
             if loopInd % self.recordStep == 0: 
                 if loopInd != 0 and self.stochastic: 
