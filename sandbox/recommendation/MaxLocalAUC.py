@@ -62,7 +62,7 @@ def updateUVBlock(sharedArgs, methodArgs):
         
         ind = iterationsPerBlock[rowInd, colInd] + loopInd
         sigmaU = learner.getSigma(ind, learner.alpha, muU.shape[0])
-        sigmaV = learner.getSigma(ind, learner.alpha, muV.shape[1])
+        sigmaV = learner.getSigma(ind, learner.alpha, muU.shape[0])
           
         lock.release()
     
@@ -70,7 +70,7 @@ def updateUVBlock(sharedArgs, methodArgs):
         if foundBlock: 
             ind = iterationsPerBlock[rowInd, colInd] + loopInd
             sigmaU = learner.getSigma(ind, learner.alpha, muU.shape[0])
-            sigmaV = learner.getSigma(ind, learner.alpha, muV.shape[0])
+            sigmaV = learner.getSigma(ind, learner.alpha, muU.shape[0])
             numIterations = gradientsPerBlock[rowInd, colInd]
             
             indPtr2, colInds2 = omegasList[colInd]
@@ -572,7 +572,7 @@ class MaxLocalAUC(AbstractRecommender):
         printStr = "Finished, time=" + str('%.1f' % totalTime) + " "
         printStr += self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime)
         logging.debug(printStr)
-        logging.debug("Final difference in objectives: " + str(abs(lastObj - currentObj)))
+        logging.debug("Final difference in objectives: " + "%.3e" % abs(lastObj - currentObj))
                           
         self.U = bestU 
         self.V = bestV
@@ -635,7 +635,7 @@ class MaxLocalAUC(AbstractRecommender):
     def recordResults(self, muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime): 
         
         sigmaU = self.getSigma(loopInd, self.alpha, muU.shape[0]) 
-        sigmaV = self.getSigma(loopInd, self.alpha, muV.shape[0]) 
+        sigmaV = self.getSigma(loopInd, self.alpha, muU.shape[0]) 
         r = SparseUtilsCython.computeR(muU, muV, self.w, self.numRecordAucSamples)
         objArr = self.objectiveApprox((indPtr, colInds), muU, muV, r, gi, gp, gq, full=True)
         if trainMeasures == None: 
@@ -786,7 +786,7 @@ class MaxLocalAUC(AbstractRecommender):
     
         while loopInd < self.maxIterations and abs(lastObj - currentObj) > self.eps: 
             sigmaU = self.getSigma(loopInd, self.alpha, m)
-            sigmaV = self.getSigma(loopInd, self.alpha, n)
+            sigmaV = self.getSigma(loopInd, self.alpha, m)
 
             if loopInd % self.recordStep == 0: 
                 if loopInd != 0 and self.stochastic: 
@@ -819,7 +819,7 @@ class MaxLocalAUC(AbstractRecommender):
         printStr += self.recordResults(muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime)
         
         logging.debug(printStr)        
-        logging.debug("Final difference in objectives: " + str(abs(lastObj - currentObj)))
+        logging.debug("Final difference in objectives: " + "%.3e" % abs(lastObj - currentObj))
          
         self.U = bestU 
         self.V = bestV
