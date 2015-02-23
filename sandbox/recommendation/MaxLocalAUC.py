@@ -160,6 +160,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.recordStep = 10
         self.reg = True
         self.rho = 1.0
+        self.scaleAlpha = True
         self.startAverage = 30
         self.stochastic = stochastic
         self.t0 = 0.1 #Convergence speed - larger means we get to 0 faster
@@ -291,17 +292,17 @@ class MaxLocalAUC(AbstractRecommender):
             raise ValueError("Invalid metric: " + self.metric)
         return evaluationMethod 
         
-    def getSigma(self, ind, alpha, shape):    
+    def getSigma(self, ind, alpha, scale):    
         if self.rate == "constant": 
             sigma = alpha 
         elif self.rate == "optimal":
             t0 = self.t0
-            
             sigma = alpha/((1 + alpha*t0*ind)**self.beta)
-        elif self.rate == "scale": 
-            sigma = alpha*shape
         else: 
             raise ValueError("Invalid rate: " + self.rate)
+            
+        if self.scaleAlpha: 
+            sigma *= scale            
             
         return sigma     
     
@@ -332,7 +333,6 @@ class MaxLocalAUC(AbstractRecommender):
             raise ValueError("Unknown initialisation: " + str(self.initialAlg))  
          
         U = numpy.ascontiguousarray(U)
-
         V = numpy.ascontiguousarray(V) 
 
         return U, V    
@@ -352,7 +352,13 @@ class MaxLocalAUC(AbstractRecommender):
         Let's set the initial learning rate. 
         """        
         evaluationMethod = computeObjective
-        paramDict = {"alpha": self.alphas}        
+        
+        if self.rate == "optimal": 
+            paramDict = {"t0": self.t0s, "alpha": self.alphas}        
+        else: 
+            paramDict = {"alpha": self.alphas}
+            
+        logging.debug("Learning rate selection with params: " + str(paramDict))
         meanMetrics = self.parallelGridSearch(X, paramDict, evaluationMethod, minVal=True)
         return meanMetrics, paramDict
 
