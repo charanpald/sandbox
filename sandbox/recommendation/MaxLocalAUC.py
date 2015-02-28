@@ -347,7 +347,7 @@ class MaxLocalAUC(AbstractRecommender):
         else: 
             return self.singleLearnModel(X, verbose, U, V)
         
-    def learningRateSelect(self, X): 
+    def learningRateSelect(self, X=None, meanMetrics=None): 
         """
         Let's set the initial learning rate. 
         """        
@@ -358,8 +358,12 @@ class MaxLocalAUC(AbstractRecommender):
         else: 
             paramDict = {"alpha": self.alphas}
             
-        logging.debug("Learning rate selection with params: " + str(paramDict))
-        meanMetrics = self.parallelGridSearch(X, paramDict, evaluationMethod, minVal=True)
+        
+        if meanMetrics == None: 
+            meanMetrics = self.parallelGridSearch(X, paramDict, evaluationMethod, minVal=True)
+        else: 
+            resultDict, bestMetric = self.setBestLearner(meanMetrics, paramDict, minVal=True)
+            
         return meanMetrics, paramDict
 
     def modelParamsStr(self): 
@@ -389,7 +393,7 @@ class MaxLocalAUC(AbstractRecommender):
         """
         minVal = False
         evaluationMethod = self.getEvaluationMethod() 
-        paramDict = {"k": self.ks, "alpha": self.alphas, "lmbdaU": self.lmbdas, "lmbdaV": self.lmbdas}       
+        paramDict = {"k": self.ks, "lmbdaU": self.lmbdas, "lmbdaV": self.lmbdas}       
         
         if meanMetrics == None: 
             meanMetrics = self.parallelGridSearch(X, paramDict, evaluationMethod, testX, minVal=minVal)
@@ -420,6 +424,8 @@ class MaxLocalAUC(AbstractRecommender):
         """
         Perform parallel model selection using any learner. 
         """
+        logging.debug("Parallel grid search with params: " + str(paramDict))
+        
         m, n = X.shape
         if testX==None:
             trainTestXs = Sampling.shuffleSplitRows(X, self.folds, self.validationSize)
@@ -577,8 +583,8 @@ class MaxLocalAUC(AbstractRecommender):
         totalTime = time.time() - startTime
         printStr = "Finished, time=" + str('%.1f' % totalTime) + " "
         printStr += self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime)
+        printStr += " delta obj" + "%.3e" % abs(lastObj - currentObj)        
         logging.debug(printStr)
-        logging.debug("Final difference in objectives: " + "%.3e" % abs(lastObj - currentObj))
                           
         self.U = bestU 
         self.V = bestV
@@ -823,9 +829,9 @@ class MaxLocalAUC(AbstractRecommender):
         totalTime = time.time() - startTime
         printStr = "\nFinished, time=" + str('%.1f' % totalTime) + " "
         printStr += self.recordResults(muU, muV, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime)
-        
+        printStr += " delta obj=" + "%.3e" % abs(lastObj - currentObj)
         logging.debug(printStr)        
-        logging.debug("Final difference in objectives: " + "%.3e" % abs(lastObj - currentObj))
+        
          
         self.U = bestU 
         self.V = bestV
