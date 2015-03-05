@@ -108,7 +108,7 @@ def restrictOmega(indPtr, colInds, colIndsSubset):
     return newIndPtr, newColInds
       
 class MaxLocalAUC(AbstractRecommender): 
-    def __init__(self, k, w=0.9, alpha=0.05, eps=10**-6, lmbdaU=0, lmbdaV=1, maxIterations=50, stochastic=False, numProcesses=None): 
+    def __init__(self, k, w=0.9, alpha=0.05, eps=10**-6, lmbdaU=0.1, lmbdaV=0.1, maxIterations=50, stochastic=False, numProcesses=None): 
         """
         Create an object for  maximising the local AUC with a penalty term using the matrix
         decomposition UV.T 
@@ -138,8 +138,7 @@ class MaxLocalAUC(AbstractRecommender):
         self.itemExpP = 0.0 #Sample from power law between 0 and 1 
         self.itemExpQ = 0.0    
         self.k = k 
-        self.lmbdaU = lmbdaU 
-        self.lmbdaV = lmbdaV 
+        self.lmbda = (lmbdaU+lmbdaV)/2 
         self.maxIterations = maxIterations
         self.maxNormU = 100
         self.maxNormV = 100
@@ -292,6 +291,12 @@ class MaxLocalAUC(AbstractRecommender):
             raise ValueError("Invalid metric: " + self.metric)
         return evaluationMethod 
         
+    def getLmbdaU(self): 
+        return self.lmbda        
+
+    def getLmbdaV(self): 
+        return self.lmbda         
+        
     def getSigma(self, ind, alpha, scale):    
         if self.rate == "constant": 
             sigma = alpha 
@@ -393,7 +398,7 @@ class MaxLocalAUC(AbstractRecommender):
         """
         minVal = False
         evaluationMethod = self.getEvaluationMethod() 
-        paramDict = {"k": self.ks, "lmbdaU": self.lmbdas, "lmbdaV": self.lmbdas}       
+        paramDict = {"k": self.ks, "lmbda": self.lmbdas}       
         
         if meanMetrics == None: 
             meanMetrics = self.parallelGridSearch(X, paramDict, evaluationMethod, testX, minVal=minVal)
@@ -859,3 +864,6 @@ class MaxLocalAUC(AbstractRecommender):
             muV[:] = V[:]
         else: 
             self.learnerCython.updateUVApprox(indPtr, colInds, U, V, muU, muV, permutedRowInds, permutedColInds, gp, gq, normGp, normGq, ind, numIterations, sigmaU, sigmaV)
+
+    lmbdaU = property(getLmbdaU)
+    lmbdaV = property(getLmbdaV)
