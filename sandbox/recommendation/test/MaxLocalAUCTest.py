@@ -194,8 +194,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc.numProcesses = 1
         maxLocalAuc.loss = "hinge"
         maxLocalAuc.validationUsers = 0
-        maxLocalAuc.lmbdaU = 0 
-        maxLocalAuc.lmbdaV = 0        
+        maxLocalAuc.lmbda = 0        
         
         print("Overfit example")
         U, V, trainMeasures, testMeasures, iterations, time = maxLocalAuc.learnModel(X, verbose=True)

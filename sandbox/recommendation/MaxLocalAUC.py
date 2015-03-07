@@ -562,11 +562,11 @@ class MaxLocalAUC(AbstractRecommender):
                 printStr = self.recordResults(muU2, muV2, trainMeasures, testMeasures, loopInd, rowSamples, indPtr, colInds, testIndPtr, testColInds, allIndPtr, allColInds, gi, gp, gq, trainX, startTime)    
                 logging.debug(printStr) 
                                 
-                if testIndPtr != None and testMeasures[-1][metricInd] >= bestMetric: 
+                if testIndPtr is not None and testMeasures[-1][metricInd] >= bestMetric: 
                     bestMetric = testMeasures[-1][metricInd]
                     bestU = muU2.copy() 
                     bestV = muV2.copy() 
-                elif testIndPtr == None: 
+                elif testIndPtr is None: 
                     bestU = muU2.copy() 
                     bestV = muV2.copy()  
                     
