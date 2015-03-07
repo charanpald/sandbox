@@ -306,8 +306,9 @@ class MaxLocalAUC(AbstractRecommender):
         else: 
             raise ValueError("Invalid rate: " + self.rate)
             
+        #Note that scaling by m is a bad idea 
         if self.scaleAlpha: 
-            sigma *= scale            
+            sigma *= 10**3            
             
         return sigma     
     
