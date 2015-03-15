@@ -99,12 +99,12 @@ def restrictOmega(indPtr, colInds, colIndsSubset):
     for i in range(m): 
         omegai = numpy.array(colInds[indPtr[i]:indPtr[i+1]], numpy.int)
         
-        newOmegai = numpy.intersect1d(omegai, colIndsSubset, assume_unique=True)
+        #newOmegai = numpy.intersect1d(omegai, colIndsSubset, assume_unique=True)
         
         #This way is 60% faster 
-        #total = numpy.concatenate((omegai, colIndsSubset))
-        #counts = numpy.bincount(total)
-        #newOmegai = numpy.where(counts>1)[0]
+        total = numpy.concatenate((omegai, colIndsSubset))
+        counts = numpy.bincount(total)
+        newOmegai = numpy.where(counts>1)[0]
 
         newIndPtr[i] = ptr 
         newIndPtr[i+1] = ptr + newOmegai.shape[0]
