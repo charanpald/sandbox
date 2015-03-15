@@ -3,7 +3,7 @@ import logging
 import sys
 import os
 from sandbox.util.ProfileUtils import ProfileUtils
-from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC
+from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC, restrictOmega
 from sandbox.util.SparseUtils import SparseUtils
 from sandbox.util.MCEvaluator import MCEvaluator
 from sandbox.util.Sampling import Sampling
@@ -27,16 +27,18 @@ class MaxLocalAUCProfile(object):
         
     def profileLearnModel(self):
         #Profile full gradient descent 
-        #X, U, V = DatasetUtils.syntheticDataset1(u=0.01, m=1000, n=2000)
-        X, U, V = DatasetUtils.syntheticDataset1()
+        X, U, V = DatasetUtils.syntheticDataset1(u=0.01, m=1000, n=2000)
+        #X, U, V = DatasetUtils.syntheticDataset1()
         #X, U, V = DatasetUtils.syntheticDataset1(u=0.2, sd=0.2)
         #X = DatasetUtils.flixster()
     
         u = 0.2
         w = 1-u
         eps = 10**-6
-        alpha = 0.1
+        alpha = 0.5
         maxLocalAuc = MaxLocalAUC(self.k, w, alpha=alpha, eps=eps, stochastic=True)
+        maxLocalAuc.maxNormU = 10
+        maxLocalAuc.maxNormV = 10
         maxLocalAuc.maxIterations = 100
         maxLocalAuc.initialAlg = "rand"
         maxLocalAuc.rate = "constant"
@@ -44,6 +46,7 @@ class MaxLocalAUCProfile(object):
         maxLocalAuc.numProcesses = 8
         maxLocalAuc.numAucSamples = 10
         maxLocalAuc.numRowSamples = 30
+        maxLocalAuc.scaleAlpha = False
         maxLocalAuc.loss = "hinge"
         maxLocalAuc.validationUsers = 0.0
         print(maxLocalAuc)
@@ -121,8 +124,23 @@ class MaxLocalAUCProfile(object):
                 
         ProfileUtils.profile('run()', globals(), locals())
 
+    def profileRestrictOmega(self): 
+        X, U, V = DatasetUtils.syntheticDataset1(u=0.01, m=1000, n=2000)
+        m, n = X.shape
+        indPtr, colInds = SparseUtils.getOmegaListPtr(X)
+
+        colIndsSubset = numpy.random.choice(n, 500, replace=False)
+        
+        def run(): 
+            for i in range(100): 
+                newIndPtr, newColInds = restrictOmega(indPtr, colInds, colIndsSubset)
+
+
+        ProfileUtils.profile('run()', globals(), locals())
+
 profiler = MaxLocalAUCProfile()
 profiler.profileLearnModel()  
 #profiler.profileLearnModel2()
 #profiler.profileLocalAucApprox()
 #profiler.profileRandomChoice()
+#profiler.profileRestrictOmega()

@@ -1,6 +1,6 @@
 import os
 import sys
-from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC 
+from sandbox.recommendation.MaxLocalAUC import MaxLocalAUC, restrictOmega
 from sandbox.util.SparseUtils import SparseUtils
 import numpy
 import unittest
@@ -16,7 +16,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         numpy.seterr(all="raise")
         numpy.random.seed(22)
     
-    #@unittest.skip("")
+    @unittest.skip("")
     def testLearnModel(self): 
         m = 50 
         n = 20 
@@ -38,7 +38,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         U, V = maxLocalAuc.learnModel(X)
 
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testParallelLearnModel(self): 
         numpy.random.seed(21)
         m = 500 
@@ -66,7 +66,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         U, V = maxLocalAuc.parallelLearnModel(X)
 
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testModelSelectMaxNorm(self): 
         m = 10 
         n = 20 
@@ -113,7 +113,7 @@ class MaxLocalAUCTest(unittest.TestCase):
         maxLocalAuc.modelSelectLmbda(X)
         
 
-    #@unittest.skip("")
+    @unittest.skip("")
     def testLearningRateSelect(self): 
         m = 10 
         n = 20 
@@ -147,8 +147,8 @@ class MaxLocalAUCTest(unittest.TestCase):
 
 
     def testRestrictOmega(self):
-        m = 5 
-        n = 10 
+        m = 50 
+        n = 100 
         k = 5 
         
         u = 0.5
@@ -156,23 +156,19 @@ class MaxLocalAUCTest(unittest.TestCase):
         X = SparseUtils.generateSparseBinaryMatrix((m, n), k, w, csarray=True)
         
         indPtr, colInds = SparseUtils.getOmegaListPtr(X)
+        runs = 100 
         
-        
-        colSubset = numpy.array([0, 1, 2, 8, 9], numpy.uint)
-
-        
-        from sandbox.recommendation.MaxLocalAUC import restrictOmega
-        
-        newIndPtr, newColInds = restrictOmega(indPtr, colInds, colSubset)
-        
-        
-        for i in range(m): 
-            omegai = colInds[indPtr[i]:indPtr[i+1]]
-            omegai2 = newColInds[newIndPtr[i]:newIndPtr[i+1]]
+        for i in range(runs): 
+            colSubset = numpy.random.choice(n, 20, replace=False)
+    
+            newIndPtr, newColInds = restrictOmega(indPtr, colInds, colSubset)
             
-            a = numpy.setdiff1d(omegai, omegai2)
-            
-            self.assertEquals(numpy.intersect1d(a, colSubset).shape[0], 0)
+            for i in range(m): 
+                omegai = colInds[indPtr[i]:indPtr[i+1]]
+                omegai2 = newColInds[newIndPtr[i]:newIndPtr[i+1]]
+                
+                a = numpy.setdiff1d(omegai, omegai2)
+                self.assertEquals(numpy.intersect1d(a, colSubset).shape[0], 0)
             
     def testOverfit(self): 
         """
